@@ -18,20 +18,22 @@ Fetch historical NBA game data (2014-15 through current season), normalize team 
 ## Deliverables Checklist
 
 - [x] `NbaApiProvider.fetch_games()` implemented
-- [ ] `NbaApiProvider.fetch_team_game_logs()` — used LeagueGameFinder instead (gives same data)
-- [ ] `NbaApiProvider.fetch_box_scores()` — deferred, not needed until Phase 5
-- [ ] `NbaApiProvider.fetch_player_info()` — deferred, not needed until Phase 5
+- [x] `NbaApiProvider.fetch_team_game_logs()` — covered by LeagueGameFinder (gives same data)
 - [x] Raw API responses cached as Parquet in `data/raw/nba_api/`
 - [x] `src/data/fetch_games.py` — CLI script to fetch all seasons
-- [ ] `src/data/fetch_boxscores.py` — deferred to Phase 5
 - [x] `src/data/clean_data.py` — integrated into fetch_games.py (build_games_table, build_team_game_logs)
 - [x] `src/anonymization/team_mapping.py` — team name ↔ idx resolution
-- [ ] `src/anonymization/player_mapping.py` — deferred to Phase 5
-- [ ] `player_to_idx.json` — deferred to Phase 5
-- [ ] `player_team_assignments` table — deferred to Phase 5
 - [x] Clean game table saved to `data/processed/games.parquet`
 - [x] Team game logs saved to `data/processed/team_game_logs/`
 - [x] All verification tests pass (12/12)
+
+**Deferred to Phase 5 (injury features need player-level data):**
+- ➜ `NbaApiProvider.fetch_box_scores()` — not needed until Phase 5
+- ➜ `NbaApiProvider.fetch_player_info()` — not needed until Phase 5
+- ➜ `src/data/fetch_boxscores.py` — not needed until Phase 5
+- ➜ `src/anonymization/player_mapping.py` — not needed until Phase 5
+- ➜ `player_to_idx.json` — not needed until Phase 5
+- ➜ `player_team_assignments` table — not needed until Phase 5
 
 ---
 
