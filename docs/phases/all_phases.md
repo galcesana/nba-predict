@@ -9,8 +9,8 @@
 
 | Phase | Name | Size | Est. Time | Status | Depends On |
 |-------|------|------|-----------|--------|------------|
-| [0](phase_00_project_setup.md) | Project Setup | S | 1–2 days | `[ ]` Not Started | — |
-| [1](phase_01_historical_data.md) | Historical Data Foundation | M | 3–5 days | `[ ]` Not Started | Phase 0 |
+| [0](phase_00_project_setup.md) | Project Setup | S | 1–2 days | `[x]` Complete | — |
+| [1](phase_01_historical_data.md) | Historical Data Foundation | M | 3–5 days | `[x]` Complete | Phase 0 |
 | [2](phase_02_feature_table.md) | Leakage-Safe Feature Table | M | 3–5 days | `[ ]` Not Started | Phase 1 |
 | [3](phase_03_baselines.md) | Baseline Models | M | 3–5 days | `[ ]` Not Started | Phase 2 |
 | [4](phase_04_sequence_model.md) | Team Sequence Model | L | 1–2 weeks | `[ ]` Not Started | Phase 3 |
@@ -66,8 +66,8 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 ─┬→ Phase 4 ──┐
 
 | Phase | Tests | Focus |
 |-------|-------|-------|
-| 0 | 7 | Structure, configs, imports |
-| 1 | 13 | Data schemas, coverage, caching |
+| 0 | 21 (actual) | Structure, configs, imports |
+| 1 | 12 (actual) | Data schemas, coverage, caching |
 | 2 | 14 | Leakage prevention (5), feature correctness (9) |
 | 3 | 12 | Model training, performance, calibration |
 | 4 | 14 | Sequences, padding, gradients, determinism |

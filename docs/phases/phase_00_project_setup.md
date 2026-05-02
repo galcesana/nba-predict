@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Size** | S (1–2 days) |
-| **Status** | `[ ]` Not Started |
+| **Status** | `[x]` Complete |
 | **Depends on** | Nothing |
 | **Unlocks** | Phase 1 |
 
@@ -17,19 +17,19 @@ Set up a clean, professional repository: folder structure, configs, environment,
 
 ## Deliverables Checklist
 
-- [ ] Repository initialized with `.gitignore`
-- [ ] `pyproject.toml` and `requirements.txt`
-- [ ] `.env.example` with placeholder keys
-- [ ] Full directory structure created
-- [ ] `DataProvider` ABC (`src/data/providers/base.py`)
-- [ ] `NbaApiProvider` skeleton (`src/data/providers/nba_api_provider.py`)
-- [ ] Config files (data_sources, model_config, feature_config)
-- [ ] `team_to_idx.json` mapping (all 30 NBA teams → indices 0–29)
-- [ ] Logging setup (`src/utils/logging.py`)
-- [ ] Path utilities (`src/utils/paths.py`)
-- [ ] Makefile with standard targets
-- [ ] Basic test structure
-- [ ] `README.md`
+- [x] Repository initialized with `.gitignore`
+- [x] `pyproject.toml` and `requirements.txt`
+- [x] `.env.example` with placeholder keys
+- [x] Full directory structure created
+- [x] `DataProvider` ABC (`src/data/providers/base.py`)
+- [x] `NbaApiProvider` skeleton (`src/data/providers/nba_api_provider.py`)
+- [x] Config files (data_sources, model_config, feature_config)
+- [x] `team_to_idx.json` mapping (all 30 NBA teams → indices 0–29)
+- [x] Logging setup (`src/utils/logging.py`)
+- [x] Path utilities (`src/utils/paths.py`)
+- [x] Makefile with standard targets
+- [x] Basic test structure
+- [x] `README.md`
 
 ---
 
@@ -123,21 +123,27 @@ def test_makefile_exists():
     """Makefile exists at project root."""
 ```
 
-**Expected: 7/7 pass.**
+**Actual: 21/21 pass (expanded beyond original 7).**
 
 ---
 
 ## Definition of Done
 
-- [ ] All 7 verification tests pass
-- [ ] `git status` is clean (initial commit)
-- [ ] `pip install -r requirements.txt` succeeds
-- [ ] `make test` runs without import errors
+- [x] All 21 verification tests pass
+- [x] `git status` is clean (initial commit)
+- [x] `pip install -r requirements.txt` succeeds
+- [x] `make test` runs without import errors
 
 ---
 
 ## Notes & Learnings
 
 ```
-(fill in during implementation)
+Completed: 2026-05-02
+Tests expanded from 7 to 21 (6 test classes covering structure, mappings,
+  providers, configs, utilities, and project files).
+All 30 NBA teams mapped to indices 0-29.
+DataProvider ABC with 4 abstract methods + NbaApiProvider with retry logic.
+Makefile has 8 targets: setup, fetch-data, build-features, train-baseline,
+  train-model, evaluate, predict-today, test, lint.
 ```
