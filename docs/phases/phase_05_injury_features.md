@@ -17,6 +17,15 @@ Ingest structured injury data, compute the basketball impact of missing/limited 
 
 ## Deliverables Checklist
 
+**Carried from Phase 1 (player-level data infrastructure):**
+- [ ] `NbaApiProvider.fetch_box_scores()` implemented
+- [ ] `NbaApiProvider.fetch_player_info()` implemented
+- [ ] `src/data/fetch_boxscores.py` — player box score collection
+- [ ] `src/anonymization/player_mapping.py` — player name ↔ idx resolution
+- [ ] `player_to_idx.json` generated and saved
+- [ ] `player_team_assignments` table built (handles mid-season trades)
+
+**Phase 5 deliverables:**
 - [ ] `src/data/fetch_injuries.py` — injury report collection
 - [ ] Injury data cached in `data/raw/injuries/`
 - [ ] Player value estimation (minutes, usage, plus-minus)
