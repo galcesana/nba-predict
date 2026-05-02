@@ -1,0 +1,42 @@
+# Feature engineering configuration
+
+# Rolling window sizes
+rolling_windows: [5, 10]
+
+# MVP core features (used in Phase 2-3, expanded in Phase 4+)
+mvp_features:
+  - season_win_pct_before_game
+  - last_5_win_pct
+  - last_10_win_pct
+  - season_point_diff
+  - last_10_point_diff
+  - season_net_rating
+  - last_10_net_rating
+  - season_off_rating
+  - season_def_rating
+  - last_10_off_rating
+  - last_10_def_rating
+  - pace
+  - turnover_pct
+  - true_shooting_pct
+  - effective_fg_pct
+  - free_throw_rate
+  - assist_pct
+  - rebound_pct
+
+# Schedule features
+schedule_features:
+  - rest_days
+  - back_to_back
+  - games_last_7
+  - games_last_14
+
+# Feature normalization
+normalization:
+  method: standard_scaler
+  fit_on: train_only
+  per_season: true
+  exclude_binary:
+    - back_to_back
+    - home_back_to_back
+    - away_back_to_back

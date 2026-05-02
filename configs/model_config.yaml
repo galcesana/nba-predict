@@ -1,0 +1,44 @@
+# Model configuration
+
+# Reproducibility
+random_seed: 42
+device: auto  # auto, cpu, cuda
+
+# Sequence model
+sequence:
+  length: 20  # number of previous games per team
+  game_features: 20  # features per game step
+
+# Elo baseline
+elo:
+  k_factor: 20
+  home_advantage: 100
+  initial_rating: 1500
+
+# Neural model
+neural:
+  encoder: gru  # gru, tcn, transformer
+  hidden_dim: 64
+  num_layers: 2
+  dropout: 0.3
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  batch_size: 64
+  max_epochs: 100
+  patience: 10  # early stopping patience
+
+# Ensemble
+ensemble:
+  meta_model: logistic_regression
+
+# Calibration
+calibration:
+  method: platt  # platt, isotonic, temperature
+
+# Time-based splits
+splits:
+  train_end: "2021-22"
+  validation: "2022-23"
+  test:
+    - "2023-24"
+    - "2024-25"

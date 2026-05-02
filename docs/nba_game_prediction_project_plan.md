@@ -151,6 +151,40 @@ The main prediction model should be responsible for learning whether these LLM f
 
 ---
 
+### 1.5 Ensure reproducibility
+
+Every experiment should be reproducible:
+
+```text
+Pin random seeds: Python, NumPy, PyTorch
+Version data snapshots with download dates
+Store feature configs as versioned YAML files
+Log git commit hash with every experiment run
+Use deterministic operations where possible
+```
+
+Data reproducibility:
+
+```text
+Cache all raw API responses as Parquet snapshots.
+Never re-fetch historical data that has already been downloaded.
+Tag each data snapshot with a date and source version.
+```
+
+Model reproducibility:
+
+```text
+Every training run should log:
+  random_seed
+  git_commit
+  data_snapshot_id
+  feature_config_version
+  hyperparameters
+  environment_info
+```
+
+---
+
 ## 2. High-Level System Architecture
 
 ```text
@@ -233,6 +267,38 @@ nba_api
 ```
 
 because it integrates naturally into a Python pipeline.
+
+However, `nba_api` is an unofficial scraper of NBA.com endpoints. These endpoints change without notice and are rate-limited. Mitigations:
+
+```text
+Abstract all data fetching behind a DataProvider interface.
+First implementation wraps nba_api.
+If nba_api breaks, swap in a Basketball Reference scraper or manual CSV import.
+Cache all raw API responses as Parquet snapshots.
+Historical data should never need re-fetching.
+```
+
+Rate limiting and retry strategy:
+
+```text
+Maximum 1 request per second to NBA.com endpoints.
+Exponential backoff on 429/5xx errors: 2s, 4s, 8s, 16s, max 60s.
+Maximum 3 retries per request.
+Log all failed requests for manual review.
+Validate response schemas before saving.
+```
+
+DataProvider interface:
+
+```python
+class DataProvider(ABC):
+    def fetch_games(self, season: str) -> pd.DataFrame: ...
+    def fetch_team_game_logs(self, season: str) -> pd.DataFrame: ...
+    def fetch_box_scores(self, game_id: str) -> pd.DataFrame: ...
+    def fetch_player_info(self, season: str) -> pd.DataFrame: ...
+```
+
+Define this interface in Phase 0. Implement the `nba_api` version first.
 
 ---
 
@@ -317,6 +383,30 @@ Article collection should be timestamped.
 Only articles published before game start may be used.
 ```
 
+#### Historical news backfill strategy
+
+Decision: do not attempt to backfill news articles for old seasons.
+
+```text
+Rationale:
+  Retroactive scraping is legally questionable and unreliable.
+  Synthetic backfill would introduce fake signal.
+  Old article archives have inconsistent availability.
+
+Approach:
+  For seasons before 2023-24: use a zero news vector + news_available=0 flag.
+  The model must learn to predict without news features when unavailable.
+  News features should improve predictions when available, not break them when absent.
+  Train the news encoder only on seasons where real articles were collected.
+  The fusion model receives a news_available flag per team.
+
+News feature availability by season:
+  2014-15 through 2022-23: no news features (zero vector + news_available=0)
+  2023-24 onward: real news features collected and processed
+```
+
+This means news encoder ablation tests should focus on recent-season validation only.
+
 ---
 
 ## 4. Data Model
@@ -333,6 +423,7 @@ InjuryReport
 NewsArticle
 ArticleSentimentScore
 TeamNewsAggregate
+PlayerTeamAssignment
 MatchupTrainingRow
 Prediction
 ```
@@ -429,6 +520,40 @@ This is the base unit for team sequence modeling.
 
 ---
 
+### 4.5 Player-team assignment table
+
+To handle mid-season trades correctly:
+
+```text
+player_id
+team_idx
+start_date
+end_date
+source
+```
+
+Example:
+
+```json
+{
+  "player_id": "203954",
+  "team_idx": 4,
+  "start_date": "2025-10-22",
+  "end_date": "2026-02-06",
+  "source": "nba_api"
+}
+```
+
+When computing injury features for a game on date D, only consider players whose team assignment includes date D:
+
+```text
+start_date <= D AND (end_date IS NULL OR end_date >= D)
+```
+
+This prevents counting a traded player's injury against their former team.
+
+---
+
 ## 5. Feature Engineering
 
 ### 5.1 Numerical performance features
@@ -467,6 +592,41 @@ last_10_net_rating_diff
 ```
 
 Difference features help the model reason relationally.
+
+Feature normalization strategy:
+
+```text
+Use per-season StandardScaler for all numerical features.
+Fit scalers on training data only. Never fit on validation or test data.
+Store fitted scalers as artifacts alongside model checkpoints.
+For rolling features, normalize after computing rolling windows.
+Binary flags (back_to_back, etc.) do not need normalization.
+```
+
+MVP core feature set (start with these ~35 features before expanding):
+
+```text
+season_win_pct_before_game
+last_5_win_pct
+last_10_win_pct
+season_point_diff
+last_10_point_diff
+season_net_rating
+last_10_net_rating
+season_off_rating
+season_def_rating
+last_10_off_rating
+last_10_def_rating
+pace
+turnover_pct
+true_shooting_pct
+effective_fg_pct
+free_throw_rate
+assist_pct
+rebound_pct
+```
+
+Expand to the full feature set listed above in Phase 4 after baselines are established.
 
 ---
 
@@ -679,27 +839,38 @@ If there is no evidence for a field, return 0 for neutral fields and low confide
 
 ### 6.4 Article-level LLM output schema
 
+Start with a core schema of 7 fields. Expand only after correlation analysis shows the extra fields add independent signal.
+
+Core schema (MVP):
+
 ```json
 {
   "team_idx": 12,
   "article_id": "abc123",
   "article_relevance": 0.82,
   "overall_sentiment": 0.20,
-  "morale": 0.35,
-  "confidence": 0.40,
-  "pressure": 0.25,
-  "distraction": 0.10,
   "injury_concern": 0.60,
+  "pressure": 0.25,
   "team_cohesion": 0.15,
-  "coach_player_tension": 0.00,
   "motivation": 0.30,
-  "fatigue_mentions": 0.20,
-  "returning_player_optimism": 0.10,
-  "minutes_restriction_concern": 0.40,
   "llm_confidence": 0.78,
   "evidence_summary": "Short non-predictive explanation for debugging only."
 }
 ```
+
+Extended schema (add after validating core fields help):
+
+```text
+morale
+confidence
+distraction
+coach_player_tension
+fatigue_mentions
+returning_player_optimism
+minutes_restriction_concern
+```
+
+Many of the extended fields are likely correlated with the core fields (morale ↔ overall_sentiment, confidence ↔ motivation). Run PCA or correlation analysis before adding them as independent features.
 
 For training features, use the numeric fields. Keep `evidence_summary` for debugging, not model input.
 
@@ -738,6 +909,50 @@ article_volume_24h
 negative_article_ratio_72h
 sentiment_volatility_72h
 avg_llm_confidence
+```
+
+---
+
+### 6.6 LLM cost estimation
+
+Estimated token usage per extraction:
+
+```text
+Input: ~500 tokens per article (title + truncated body)
+Output: ~200 tokens per structured JSON response
+Total per article: ~700 tokens
+```
+
+Estimated volume:
+
+```text
+Articles per team per game: ~10-20
+Teams per game: 2
+Games per season: ~1,230
+Articles per season: ~25,000 to 50,000
+Tokens per season: ~17M to 35M tokens
+```
+
+Cost control strategy:
+
+```text
+Use a cost-efficient model: GPT-4o-mini, Claude Haiku, or similar.
+At ~$0.15 per 1M input tokens and ~$0.60 per 1M output tokens:
+  Input cost per season: ~$1.90 to $3.75
+  Output cost per season: ~$3.00 to $6.00
+  Total per season: ~$5 to $10
+
+For 3 seasons of collection (2023-24, 2024-25, 2025-26): ~$15 to $30 total.
+This is affordable. Budget $50 for the full project including retries and experiments.
+```
+
+Cost reduction options if needed:
+
+```text
+Batch API calls where available (50% discount on most providers).
+Filter low-relevance articles before LLM extraction.
+Cache LLM responses keyed by article text hash.
+Use shorter article truncation.
 ```
 
 ---
@@ -907,6 +1122,41 @@ Do not start with a huge Transformer. NBA game data is not big enough to justify
 
 ---
 
+### 7.3.1 Sequence padding and masking
+
+Not all teams have N previous games available:
+
+```text
+Season openers: 0 previous games
+Early season (game 5): only 4 previous games available
+All-Star break: gap in schedule but not in game count
+```
+
+Padding strategy:
+
+```text
+Use zero-padding for missing game slots.
+Provide a binary mask tensor alongside the sequence.
+GRU: mask is applied to ignore padded timesteps.
+Transformer: mask prevents attention to padded positions.
+```
+
+Sequence construction:
+
+```text
+For a team with K < N previous games:
+  Sequence = [zero_pad] * (N - K) + [game_K, game_K-1, ..., game_1]
+  Mask = [0] * (N - K) + [1] * K
+
+For a team with K >= N previous games:
+  Sequence = [game_N, game_N-1, ..., game_1]
+  Mask = [1] * N
+```
+
+Optional warm-start: for season openers, use the last M games from the previous season with a `cross_season_flag=1` indicator. Test whether this helps versus pure zero-padding.
+
+---
+
 ### 7.4 Shared weights for home and away teams
 
 Use the same encoder for both teams:
@@ -1068,6 +1318,21 @@ F_context = 8-20
 }
 ```
 
+The `top_model_factors` field is generated using:
+
+```text
+Tabular models: SHAP values (TreeExplainer for XGBoost/LightGBM).
+Neural models: input gradient attribution or attention weights.
+Ensemble: weighted combination of component-level attributions.
+
+Fallback for MVP: rule-based templates.
+  Compare feature values to season averages.
+  Flag features more than 1 standard deviation from mean.
+  Example: if rest_diff > 1σ → "away team is on short rest"
+```
+
+Start with the rule-based fallback. Add SHAP in Phase 8 when building the daily prediction system.
+
 ---
 
 ## 9. Training and Evaluation
@@ -1099,6 +1364,35 @@ Train 2014-2022 → validate 2023
 ```
 
 This simulates real forecasting.
+
+#### Playoff vs regular season
+
+```text
+Decision: V1 is regular season only.
+
+Rationale:
+  Playoff games have different dynamics (7-game series, higher intensity,
+  longer rest, different rotations).
+  Mixing playoff and regular season data can confuse the model.
+  Regular season provides ~1,230 games/season vs ~80 playoff games.
+
+Future option (Phase 10+):
+  Train a separate playoff model or add a playoff_flag feature.
+  Test whether regular-season-trained model generalizes to playoffs.
+```
+
+#### Performance by season phase
+
+Track and report metrics broken down by month:
+
+```text
+October/November: small sample, roster experimentation
+December-February: mid-season stability
+February trade deadline: roster disruption
+March-April: tanking, resting starters, playoff positioning
+```
+
+A good model should know its own weak spots across the season.
 
 ---
 
@@ -1239,6 +1533,7 @@ nba-outcome-model/
 ├── README.md
 ├── pyproject.toml
 ├── requirements.txt
+├── Makefile
 ├── .env.example
 ├── .gitignore
 │
@@ -1279,6 +1574,9 @@ nba-outcome-model/
 │
 ├── src/
 │   ├── data/
+│   │   ├── providers/
+│   │   │   ├── base.py
+│   │   │   └── nba_api_provider.py
 │   │   ├── fetch_games.py
 │   │   ├── fetch_boxscores.py
 │   │   ├── fetch_play_by_play.py
@@ -1354,11 +1652,24 @@ nba-outcome-model/
     └── evaluation_plan.md
 ```
 
+Makefile targets:
+
+```makefile
+fetch-data:     # Download raw data from nba_api
+build-features: # Build leakage-safe feature tables
+train-baseline: # Train Elo + tabular baselines
+train-model:    # Train neural sequence model
+evaluate:       # Run full evaluation suite
+predict-today:  # Generate today's predictions
+test:           # Run all tests including leakage checks
+lint:           # Run linting and type checks
+```
+
 ---
 
 ## 12. Implementation Roadmap
 
-### Phase 0 — Project setup
+### Phase 0 — Project setup [S — 1 to 2 days]
 
 Deliverables:
 
@@ -1366,8 +1677,10 @@ Deliverables:
 Repository structure
 Python environment
 Config files
+DataProvider interface + nba_api implementation
 Data folders
 Logging setup
+Makefile
 Basic tests
 README
 ```
@@ -1380,17 +1693,19 @@ A clean, professional codebase from day one.
 
 ---
 
-### Phase 1 — Historical data foundation
+### Phase 1 — Historical data foundation [M — 3 to 5 days]
 
 Deliverables:
 
 ```text
-Fetch historical games
+Fetch historical games (2014-15 through current)
 Fetch team box scores
 Normalize team IDs
 Create anonymous team mapping
+Build player-team assignment table
 Build game table
 Build team game logs
+Cache all raw responses as Parquet snapshots
 ```
 
 Success condition:
@@ -1401,7 +1716,7 @@ Can generate one clean historical dataset with one row per team per game.
 
 ---
 
-### Phase 2 — Leakage-safe feature table
+### Phase 2 — Leakage-safe feature table [M — 3 to 5 days]
 
 Deliverables:
 
@@ -1429,7 +1744,7 @@ test_rolling_features_shifted_correctly
 
 ---
 
-### Phase 3 — Baselines
+### Phase 3 — Baselines [M — 3 to 5 days]
 
 Deliverables:
 
@@ -1450,7 +1765,7 @@ Reliable benchmark metrics on time-based validation.
 
 ---
 
-### Phase 4 — Team sequence model
+### Phase 4 — Team sequence model [L — 1 to 2 weeks]
 
 Deliverables:
 
@@ -1472,7 +1787,7 @@ Do not worry if it does not beat XGBoost immediately. The first goal is a correc
 
 ---
 
-### Phase 5 — Injury features
+### Phase 5 — Injury features [M — 3 to 5 days]
 
 Deliverables:
 
@@ -1493,7 +1808,7 @@ Injury features improve log loss or calibration, especially in games with missin
 
 ---
 
-### Phase 6 — LLM news/sentiment layer
+### Phase 6 — LLM news/sentiment layer [XL — 2 to 3 weeks]
 
 Deliverables:
 
@@ -1516,7 +1831,7 @@ News sentiment features improve validation metrics or specific subsets like upse
 
 ---
 
-### Phase 7 — Full fusion model
+### Phase 7 — Full fusion model [L — 1 to 2 weeks]
 
 Deliverables:
 
@@ -1538,7 +1853,7 @@ Full model beats baselines on log loss/Brier score without becoming miscalibrate
 
 ---
 
-### Phase 8 — Daily prediction system
+### Phase 8 — Daily prediction system [M — 3 to 5 days]
 
 Deliverables:
 
@@ -1562,7 +1877,7 @@ Top model factors
 
 ---
 
-### Phase 9 — Product/dashboard
+### Phase 9 — Product/dashboard [L — 1 to 2 weeks]
 
 Deliverables:
 
@@ -1612,10 +1927,23 @@ SQLite/Postgres optional
 For LLM structured extraction:
 
 ```text
-Use an LLM API with strict JSON schema / structured output support.
+Primary model: GPT-4o-mini (best cost/quality ratio for structured extraction).
+Fallback: Claude 3.5 Haiku or Gemini Flash.
+Use strict JSON mode / structured output where available.
+Temperature: 0 for deterministic, reproducible extraction.
 Validate every response with Pydantic.
-Retry invalid outputs.
+Retry invalid outputs up to 3 times.
 Store raw and parsed outputs.
+Log model name + version alongside every extraction.
+```
+
+LLM consistency validation:
+
+```text
+Create a small human-labeled validation set (~50 articles).
+Score LLM extraction quality against human labels.
+Re-run validation when switching models or updating prompts.
+Track inter-run agreement on the same articles.
 ```
 
 ---

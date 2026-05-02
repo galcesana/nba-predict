@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Data (large files - not tracked in git)
+data/raw/
+data/interim/
+data/processed/
+*.parquet
+*.csv
+
+# Keep mappings (small JSON files)
+!data/mappings/
+
+# Environment
+.env
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Models (large binary files)
+models/baselines/*.pkl
+models/baselines/*.joblib
+models/neural/*.pt
+models/neural/*.pth
+models/calibrators/*.pkl
+models/ensembles/*.pkl
+
+# Predictions (generated output)
+predictions/daily/*.json
+predictions/historical_backtests/*.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Jupyter
+.ipynb_checkpoints/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+
+# ruff
+.ruff_cache/

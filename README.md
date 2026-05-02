@@ -1,87 +1,243 @@
-# NBA Game Prediction — Implementation Phases
+# 🏀 NBA Game Outcome Prediction Model
 
-> **Master tracker for all implementation phases.**
-> Update the status column as you work. Each phase has its own detailed doc linked below.
-
----
-
-## Timeline Overview
-
-| Phase | Name | Size | Est. Time | Status | Depends On |
-|-------|------|------|-----------|--------|------------|
-| [0](phase_00_project_setup.md) | Project Setup | S | 1–2 days | `[ ]` Not Started | — |
-| [1](phase_01_historical_data.md) | Historical Data Foundation | M | 3–5 days | `[ ]` Not Started | Phase 0 |
-| [2](phase_02_feature_table.md) | Leakage-Safe Feature Table | M | 3–5 days | `[ ]` Not Started | Phase 1 |
-| [3](phase_03_baselines.md) | Baseline Models | M | 3–5 days | `[ ]` Not Started | Phase 2 |
-| [4](phase_04_sequence_model.md) | Team Sequence Model | L | 1–2 weeks | `[ ]` Not Started | Phase 3 |
-| [5](phase_05_injury_features.md) | Injury Features | M | 3–5 days | `[ ]` Not Started | Phase 3 |
-| [6](phase_06_llm_sentiment.md) | LLM News/Sentiment Layer | XL | 2–3 weeks | `[ ]` Not Started | Phase 4 |
-| [7](phase_07_fusion_model.md) | Full Fusion Model | L | 1–2 weeks | `[ ]` Not Started | Phase 4 + 5 + 6 |
-| [8](phase_08_daily_predictions.md) | Daily Prediction System | M | 3–5 days | `[ ]` Not Started | Phase 7 |
-| [9](phase_09_dashboard.md) | Product Dashboard | L | 1–2 weeks | `[ ]` Not Started | Phase 8 |
-
-**Total estimated: ~10–14 weeks**
+> Predict calibrated win probabilities for NBA games using historical performance, team sequences, injury impact, and LLM-extracted news/team-spirit signals.
 
 ---
 
-## Status Legend
+## Overview
 
-```
-[ ] Not Started
-[/] In Progress
-[x] Complete
-[!] Blocked
+This project builds an NBA game-outcome prediction system that outputs **calibrated probabilities**, not just hard picks. For a scheduled game, the model outputs:
+
+```json
+{
+  "home_win_probability": 0.64,
+  "away_win_probability": 0.36,
+  "confidence": "medium"
+}
 ```
 
+The system fuses four signal streams:
+
+| Stream | Source | Encoder |
+|--------|--------|---------|
+| **Team Performance** | Historical game sequences (last 20 games) | GRU / TCN |
+| **Injury Impact** | Official injury reports | MLP |
+| **News / Team Spirit** | LLM-extracted sentiment from news articles | MLP |
+| **Schedule Context** | Rest days, back-to-back, travel | MLP |
+
+All streams feed into a **matchup fusion model** → **calibration layer** → P(home win).
+
+> **This is a sports analytics and forecasting project, not a betting project.**
+
 ---
 
-## Dependency Graph
+## Core Principles
 
-```text
-Phase 0 ──→ Phase 1 ──→ Phase 2 ──→ Phase 3 ──┬──→ Phase 4 ──┐
-                                                 │              │
-                                                 ├──→ Phase 5 ──┤
-                                                 │              │
-                                                 │   Phase 6 ───┤
-                                                 │              │
-                                                 │              ▼
-                                                 │         Phase 7 ──→ Phase 8 ──→ Phase 9
-                                                 │
-                                                 └──→ (Phase 6 can start after Phase 3,
-                                                       but needs Phase 4 for integration)
+1. **Predict probabilities, not just winners** — a 56% prediction is more honest than "home wins"
+2. **No data leakage** — only information available before tip-off is used
+3. **Anonymous team IDs** — the model learns from team features, not team names
+4. **LLM = feature extractor** — the LLM extracts structured signals, it does not predict winners
+5. **Reproducibility** — pinned seeds, versioned data snapshots, logged experiments
+
+---
+
+## Project Structure
+
+```
+nba-outcome-model/
+├── README.md
+├── pyproject.toml
+├── requirements.txt
+├── Makefile
+├── .env.example
+│
+├── configs/                      # YAML/JSON configuration
+│   ├── data_sources.yaml
+│   ├── model_config.yaml
+│   └── feature_config.yaml
+│
+├── data/
+│   ├── raw/                      # Cached API responses (Parquet)
+│   ├── interim/                  # Cleaned intermediate data
+│   ├── processed/                # Feature tables ready for modeling
+│   └── mappings/                 # team_to_idx.json, player_to_idx.json
+│
+├── src/
+│   ├── data/                     # Data fetching & cleaning
+│   │   └── providers/            # DataProvider ABC + implementations
+│   ├── anonymization/            # Team/player name → anonymous ID
+│   ├── nlp/                      # LLM sentiment extraction pipeline
+│   ├── features/                 # Feature engineering (rolling, schedule, injury, news)
+│   ├── models/                   # Elo, tabular, neural, ensemble, calibration
+│   ├── app/                      # Streamlit dashboard + API
+│   └── utils/                    # Logging, paths, validation
+│
+├── models/                       # Saved model artifacts
+├── predictions/                  # Daily + backtest prediction JSONs
+├── notebooks/                    # Exploratory analysis
+├── tests/                        # Comprehensive test suite
+└── docs/                         # Architecture docs + implementation phases
+    └── phases/                   # Phase-by-phase implementation guides
 ```
 
 ---
 
-## How to Use These Docs
+## Quick Start
 
-1. **Start each phase** by reading its full doc and checking prerequisites
-2. **Track progress** by checking off deliverables in the phase doc
-3. **Run verification tests** at the end of each phase — do not proceed until all pass
-4. **Update this master file** with the phase status as you work
-5. **Leave notes** in the phase doc's "Notes & Learnings" section for future context
+### Prerequisites
+
+- Python 3.10+
+- Git
+
+### Setup
+
+```bash
+git clone <repo-url>
+cd nba-outcome-model
+
+python -m venv .venv
+source .venv/bin/activate    # Linux/Mac
+# or: .venv\Scripts\activate  # Windows
+
+pip install -r requirements.txt
+```
+
+### Run Pipeline
+
+```bash
+# Fetch historical data
+make fetch-data
+
+# Build feature tables
+make build-features
+
+# Train baseline models
+make train-baseline
+
+# Train neural model
+make train-model
+
+# Evaluate all models
+make evaluate
+
+# Predict today's games
+make predict-today
+
+# Run tests
+make test
+```
+
+### Launch Dashboard
+
+```bash
+streamlit run src/app/streamlit_app.py
+```
 
 ---
 
-## Quick Reference
+## Implementation Phases
 
-### Core Principles (from project plan)
+The project is built in 10 phases. See [docs/phases/all_phases.md](docs/phases/all_phases.md) for the full tracker.
 
-- **Predict probabilities**, not just winners
-- **No data leakage** — only use information available before tip-off
-- **Anonymous team IDs** internally — no team name memorization
-- **LLM is a feature extractor**, not the predictor
-- **Reproducibility** — pin seeds, version snapshots, log everything
+| Phase | Name | Status |
+|-------|------|--------|
+| 0 | Project Setup | `[ ]` |
+| 1 | Historical Data Foundation | `[ ]` |
+| 2 | Leakage-Safe Feature Table | `[ ]` |
+| 3 | Baseline Models | `[ ]` |
+| 4 | Team Sequence Model | `[ ]` |
+| 5 | Injury Features | `[ ]` |
+| 6 | LLM News/Sentiment Layer | `[ ]` |
+| 7 | Full Fusion Model | `[ ]` |
+| 8 | Daily Prediction System | `[ ]` |
+| 9 | Product Dashboard | `[ ]` |
 
-### Key Technical Decisions
+---
 
-| Decision | Choice |
-|----------|--------|
-| Primary data source | `nba_api` behind `DataProvider` interface |
-| Historical news backfill | None — zero vector + `news_available=0` for pre-2023-24 |
-| Sequence padding | Zero-pad + binary mask |
-| LLM model | GPT-4o-mini (temp=0), Haiku/Flash fallback |
-| LLM schema | 7 core fields MVP, 8 extended deferred |
-| Feature normalization | Per-season StandardScaler, train-only fit |
-| Scope | Regular season only (V1) |
-| Meta-model | Logistic regression ensemble |
+## Architecture
+
+```
+Historical team sequences ──→ Team Performance Encoder (GRU)
+                                        │
+Structured injury reports ──→ Injury Impact Encoder (MLP)
+                                        │
+LLM-extracted news signals ──→ News/Spirit Encoder (MLP)
+                                        │
+Schedule context (rest, B2B) ──→ Context Encoder (MLP)
+                                        │
+                                        ▼
+                              Matchup Fusion Network
+                                        │
+                                        ▼
+                              Calibration Layer
+                                        │
+                                        ▼
+                              P(home team wins)
+```
+
+---
+
+## Key Technical Decisions
+
+| Area | Decision | Rationale |
+|------|----------|-----------|
+| Data source | `nba_api` behind `DataProvider` interface | Swap-ready if API breaks |
+| Team identity | Anonymous indices (0-29) | Prevent name memorization |
+| Sequence model | GRU first, then TCN/Transformer | Simpler models first |
+| News backfill | None pre-2023-24 | No reliable historical articles |
+| LLM model | GPT-4o-mini (temp=0) | Cost-efficient, deterministic |
+| LLM schema | 7 core fields (MVP) | Reduce noise, expand later |
+| Normalization | Per-season StandardScaler | Accounts for era changes |
+| Validation | Time-based + rolling splits | Simulates real forecasting |
+| Playoffs | Excluded from V1 | Different dynamics, small sample |
+| Ensemble | Logistic regression meta-model | Simple, interpretable |
+
+---
+
+## Metrics
+
+The model is evaluated as a **probability model**, not just a classifier:
+
+| Metric | Why |
+|--------|-----|
+| **Log Loss** | Primary metric — penalizes confident wrong predictions |
+| **Brier Score** | Proper scoring rule for probability quality |
+| **Calibration Error** | Do predicted 60% games actually win ~60%? |
+| **Accuracy** | Simple but not sufficient alone |
+| **ROC-AUC** | Discrimination ability |
+
+Target performance: **~62-66% accuracy with well-calibrated probabilities**.
+
+> A well-calibrated 62% model is better than an overconfident 65% model.
+
+---
+
+## Testing
+
+Every phase ends with comprehensive tests. Run the full suite:
+
+```bash
+make test
+# or: pytest tests/ -v --tb=short
+```
+
+Key test categories:
+- **Leakage tests** — verify no future data is used
+- **Schema tests** — validate data shapes and types
+- **Model tests** — check training, gradients, outputs
+- **Prediction tests** — verify output format and reasonableness
+- **Integration tests** — end-to-end pipeline checks
+
+---
+
+## License
+
+This project is for educational and research purposes.
+
+---
+
+## Acknowledgments
+
+- [nba_api](https://github.com/swar/nba_api) for NBA.com data access
+- Basketball Reference for validation data
+- OpenAI / Anthropic / Google for LLM APIs
