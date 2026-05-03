@@ -141,8 +141,8 @@ The project is built in 10 phases. See [docs/phases/all_phases.md](docs/phases/a
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 0 | Project Setup | `[ ]` |
-| 1 | Historical Data Foundation | `[ ]` |
+| 0 | Project Setup | ✅ Complete |
+| 1 | Historical Data Foundation | ✅ Complete |
 | 2 | Leakage-Safe Feature Table | `[ ]` |
 | 3 | Baseline Models | `[ ]` |
 | 4 | Team Sequence Model | `[ ]` |
@@ -151,6 +151,8 @@ The project is built in 10 phases. See [docs/phases/all_phases.md](docs/phases/a
 | 7 | Full Fusion Model | `[ ]` |
 | 8 | Daily Prediction System | `[ ]` |
 | 9 | Product Dashboard | `[ ]` |
+
+**Current data:** 14,429 games across 12 seasons (2014–2026), 28,878 team game logs with 25 stat columns, 33 tests passing.
 
 ---
 
