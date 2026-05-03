@@ -43,17 +43,19 @@ Fetch historical NBA game data (2014-15 through current season), normalize team 
 
 ```text
 game_id, date, season, home_team_idx, away_team_idx,
-home_score, away_score, home_win, arena, start_time_utc
+home_score, away_score, home_win
 ```
+
+> `arena` and `start_time_utc` are not available from LeagueGameFinder. Not needed for prediction.
 
 ### Team game log schema (one row per team per game)
 
 ```text
 game_id, date, season, team_idx, opponent_team_idx, is_home, won,
 points_for, points_against, point_diff,
-off_rating, def_rating, net_rating, pace,
-efg_pct, ts_pct, turnover_pct, off_rebound_pct, def_rebound_pct,
-free_throw_rate, assist_pct, steal_pct, block_pct
+fg_pct, ts_pct, efg_pct, turnover_pct, off_rebound_pct, def_rebound_pct,
+free_throw_rate, assist_pct, steal_pct, block_pct,
+plus_minus, pace, off_rating, def_rating, net_rating
 ```
 
 ### Player-team assignment table
@@ -163,15 +165,18 @@ def test_no_duplicate_games():
 ## Notes & Learnings
 
 ```
-Completed: 2026-05-02
+Completed: 2026-05-02 (pipeline fix: 2026-05-03)
 Seasons fetched: 12 (2014-15 through 2025-26)
-Games: 14,429 total
-Team game log rows: 28,878 total
+Games: 14,429 total (8 columns)
+Team game log rows: 28,878 total (25 columns)
 Home win rate: 56.5% (realistic sanity check)
 2019-20 correctly has fewer games (~1,059) due to COVID bubble.
 2024-25 used Parquet cache from earlier test run (caching works).
 Used LeagueGameFinder endpoint — gives team game logs directly.
 Derived stats computed: TS%, eFG%, TOV%, FTR, AST%, OREB%, DREB%, STL%, BLK%.
+Advanced stats: pace, off_rating, def_rating, net_rating computed from
+  possessions estimate (FGA + 0.44*FTA - OREB + TOV).
+Sanity checks: pace ~20, off_rating ~109.4, net_rating mean=0.0.
 Player-level data (box scores, player mapping, trades) deferred to Phase 5
   since it's only needed for injury feature computation.
 ```

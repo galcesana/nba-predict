@@ -210,21 +210,52 @@ def build_team_game_logs(raw_df: pd.DataFrame) -> pd.DataFrame:
     df["steal_pct"] = (df["STL"].astype(float) / (fga + 0.44 * fta + tov)).round(4).fillna(0)
     df["block_pct"] = (df["BLK"].astype(float) / fga).round(4).fillna(0)
 
-    # Select final columns
-    result = df[[
-        "GAME_ID", "date", "season", "team_idx", "opponent_team_idx",
-        "is_home", "won", "points_for", "points_against", "point_diff",
-        "FG_PCT", "ts_pct", "efg_pct", "turnover_pct",
-        "off_rebound_pct", "def_rebound_pct",
-        "free_throw_rate", "assist_pct", "steal_pct", "block_pct",
-        "PLUS_MINUS",
-    ]].copy()
+    # --- Advanced stats: pace and ratings ---
+    # Pace ≈ possessions per 48 minutes
+    # Possessions (team) ≈ FGA + 0.44 * FTA - OREB + TOV
+    possessions = fga + 0.44 * fta - oreb + tov
+    possessions = possessions.clip(lower=1)  # avoid division by zero
 
-    result = result.rename(columns={
+    # Minutes played (team total, e.g. 240 for a normal game)
+    minutes = df["MIN"].astype(float).clip(lower=1)
+    df["pace"] = ((possessions / minutes) * 48.0).round(2)
+
+    # Offensive rating = points scored per 100 possessions
+    df["off_rating"] = ((pts / possessions) * 100.0).round(2)
+
+    # Defensive rating = points allowed per 100 possessions
+    # Need opponent possessions — approximate using opponent's stats from same game
+    opp_stats = df.groupby("GAME_ID").agg({
+        "FGA": "sum", "FTA": "sum", "OREB": "sum", "TOV": "sum"
+    }).rename(columns={"FGA": "total_fga", "FTA": "total_fta", "OREB": "total_oreb", "TOV": "total_tov"})
+    df = df.merge(opp_stats, on="GAME_ID", how="left")
+    opp_possessions = (
+        (df["total_fga"] - fga)
+        + 0.44 * (df["total_fta"] - fta)
+        - (df["total_oreb"] - oreb)
+        + (df["total_tov"] - tov)
+    ).clip(lower=1)
+    df["def_rating"] = ((df["points_against"].astype(float) / opp_possessions) * 100.0).round(2)
+
+    # Net rating = off_rating - def_rating
+    df["net_rating"] = (df["off_rating"] - df["def_rating"]).round(2)
+
+    # Rename raw columns before selection
+    df = df.rename(columns={
         "GAME_ID": "game_id",
         "FG_PCT": "fg_pct",
         "PLUS_MINUS": "plus_minus",
     })
+
+    # Select final columns
+    result = df[[
+        "game_id", "date", "season", "team_idx", "opponent_team_idx",
+        "is_home", "won", "points_for", "points_against", "point_diff",
+        "fg_pct", "ts_pct", "efg_pct", "turnover_pct",
+        "off_rebound_pct", "def_rebound_pct",
+        "free_throw_rate", "assist_pct", "steal_pct", "block_pct",
+        "plus_minus", "pace", "off_rating", "def_rating", "net_rating",
+    ]].copy()
 
     result = result.sort_values(["date", "game_id"]).reset_index(drop=True)
     return result
