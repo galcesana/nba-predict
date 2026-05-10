@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Size** | M (3–5 days) |
-| **Status** | `[ ]` Not Started |
+| **Status** | `[x]` Complete |
 | **Depends on** | Phase 1 |
 | **Unlocks** | Phase 3 |
 
@@ -17,12 +17,12 @@ Build a leakage-safe feature table where **every feature for a game on date D is
 
 ## Deliverables Checklist
 
-- [ ] `src/features/rolling_features.py` — rolling stats (last 5, 10, season)
-- [ ] `src/features/schedule_features.py` — rest days, back-to-back, games in 7/14 days
-- [ ] `src/features/build_matchup_dataset.py` — combine into matchup rows
-- [ ] Matchup dataset saved to `data/processed/matchup_rows/`
-- [ ] Leakage prevention tests pass
-- [ ] All verification tests pass
+- [x] `src/features/rolling_features.py` — rolling stats (last 5, 10, season)
+- [x] `src/features/schedule_features.py` — rest days, back-to-back, games in 7/14 days
+- [x] `src/features/build_matchup_dataset.py` — combine into matchup rows
+- [x] Matchup dataset saved to `data/processed/matchup_rows/`
+- [x] Leakage prevention tests pass (5/5)
+- [x] All verification tests pass (9/9)
 
 ---
 
@@ -141,15 +141,28 @@ def test_home_win_rate_around_60():
 
 ## Definition of Done
 
-- [ ] All 14 verification tests pass (especially the 5 leakage tests)
-- [ ] `data/processed/matchup_rows/` has one parquet file
-- [ ] `make build-features` runs end-to-end
-- [ ] Manual spot-check: pick 3 random games, verify features by hand
+- [x] All 14 verification tests pass (especially the 5 leakage tests)
+- [x] `data/processed/matchup_rows/` has one parquet file (298 KB)
+- [x] `make build-features` runs end-to-end
+- [x] Manual spot-check: verified rolling features match manual computation for 100+ sampled rows
 
 ---
 
 ## Notes & Learnings
 
 ```
-(fill in during implementation)
+- Critical bug: pandas index alignment. When building features DF with .values
+  (fresh 0..N index) and assigning Series that kept the original group index
+  (e.g. 11, 66, 91...), pandas aligned on index → 99.8% NaN.
+  Fix: .reset_index(drop=True) on group before computing.
+
+- Schedule features must group by (team_idx, season), not just team_idx.
+  Otherwise offseason gaps (157-288 days, especially COVID bubble) appear as
+  absurd rest_days values.
+
+- season_games_played is an integer counter (0 for openers), not a rolling stat.
+  Excluded from the "must be NaN for openers" leakage test.
+
+- Final dataset: 14,429 rows × 110 columns, 56.5% home win rate.
+- 47/47 tests passing after fixes.
 ```

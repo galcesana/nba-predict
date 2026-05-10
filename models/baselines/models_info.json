@@ -1,0 +1,13 @@
+{
+  "home_baseline": {
+    "home_win_rate": 0.5704380712259691
+  },
+  "logistic_regression": {
+    "C": 1.0,
+    "n_features": 104
+  },
+  "xgboost": {
+    "best_iteration": 54,
+    "n_estimators": 500
+  }
+}

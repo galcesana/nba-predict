@@ -11,9 +11,9 @@
 |-------|------|------|-----------|--------|------------|
 | [0](phase_00_project_setup.md) | Project Setup | S | 1–2 days | `[x]` Complete | — |
 | [1](phase_01_historical_data.md) | Historical Data Foundation | M | 3–5 days | `[x]` Complete | Phase 0 |
-| [2](phase_02_feature_table.md) | Leakage-Safe Feature Table | M | 3–5 days | `[ ]` Not Started | Phase 1 |
-| [3](phase_03_baselines.md) | Baseline Models | M | 3–5 days | `[ ]` Not Started | Phase 2 |
-| [4](phase_04_sequence_model.md) | Team Sequence Model | L | 1–2 weeks | `[ ]` Not Started | Phase 3 |
+| [2](phase_02_feature_table.md) | Leakage-Safe Feature Table | M | 3–5 days | `[x]` Complete | Phase 1 |
+| [3](phase_03_baselines.md) | Baseline Models | M | 3–5 days | `[x]` Complete | Phase 2 |
+| [4](phase_04_sequence_model.md) | Team Sequence Model | L | 1–2 weeks | `[x]` Complete | Phase 3 |
 | [5](phase_05_injury_features.md) | Injury Features | M | 3–5 days | `[ ]` Not Started | Phase 3 |
 | [6](phase_06_llm_sentiment.md) | LLM News/Sentiment Layer | XL | 2–3 weeks | `[ ]` Not Started | Phase 4 |
 | [7](phase_07_fusion_model.md) | Full Fusion Model | L | 1–2 weeks | `[ ]` Not Started | Phase 4 + 5 + 6 |
