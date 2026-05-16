@@ -280,9 +280,19 @@ ruff check src/ tests/
 
 ---
 
-## Implementation Phases
+## Planning And History
 
-The project is built in 13 phases. See [docs/phases/all_phases.md](docs/phases/all_phases.md) for the full tracker.
+For current and future planning, use:
+
+- [docs/next_generation_model_roadmap.md](docs/next_generation_model_roadmap.md) for the active roadmap
+- [docs/current_system_implementation_summary.md](docs/current_system_implementation_summary.md) for how the current system works
+- [docs/m1_player_lineup_foundation.md](docs/m1_player_lineup_foundation.md) for the first active build milestone
+- [docs/m1_tracker.md](docs/m1_tracker.md) for milestone status
+
+Historical implementation history is preserved in:
+
+- [docs/phases/all_phases.md](docs/phases/all_phases.md)
+- [docs/nba_game_prediction_project_plan.md](docs/nba_game_prediction_project_plan.md) as a legacy archive
 
 | Phase | Name | Status |
 |-------|------|--------|

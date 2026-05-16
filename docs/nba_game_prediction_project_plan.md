@@ -1,5 +1,13 @@
 # NBA Game Outcome Prediction Model — Comprehensive Project Plan
 
+> **Legacy planning document.**
+> This file is retained as historical context only and is no longer the active roadmap.
+>
+> Use these docs instead:
+>
+> - [next_generation_model_roadmap.md](next_generation_model_roadmap.md) for the active forward plan
+> - [current_system_implementation_summary.md](current_system_implementation_summary.md) for the current implementation reference
+
 **Project goal:** Build an ambitious NBA game-outcome prediction system that predicts calibrated win probabilities using historical performance, recent form, injuries, schedule context, and LLM-extracted news/team-spirit signals.
 
 **Core prediction task:** For a scheduled game, output:

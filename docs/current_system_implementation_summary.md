@@ -1,0 +1,390 @@
+# Current System Implementation Summary
+
+> **Canonical summary of how the current production system works today.**
+> Use this document before changing the model, data flows, or deployment logic.
+
+---
+
+## 1. System Scope
+
+The current system is a calibrated NBA pregame forecasting pipeline that:
+
+- trains on historical NBA game data
+- predicts `P(home_win)` for scheduled games
+- publishes weekly live forecast windows
+- exposes results through Streamlit and FastAPI
+
+The system is primarily **team-level**.
+
+It already includes live injury/news overlays, but those overlays are still limited compared to a full player- and lineup-aware system.
+
+---
+
+## 2. Historical Data Foundation
+
+Historical data lives under:
+
+- `data/raw/`
+- `data/interim/`
+- `data/processed/`
+
+Key tracked mapping:
+
+- `data/mappings/team_to_idx.json`
+
+Core historical processed tables:
+
+- `data/processed/games.parquet`
+- `data/processed/team_game_logs/team_game_logs.parquet`
+- `data/processed/injury_features/injury_features.parquet`
+- `data/processed/news_features/news_features.parquet`
+
+Historical modeling is built around anonymous team IDs `0-29`, with team names reserved for collection and UI only.
+
+---
+
+## 3. Feature Streams
+
+The current predictor uses four feature streams.
+
+### 3.1 Team performance stream
+
+Built from:
+
+- rolling team-game logs
+- recent form windows
+- matchup dataset features
+- sequence builder utilities
+
+Conceptually:
+
+- recent game sequences per team
+- schedule/rest context
+- matchup deltas between home and away teams
+
+This is the strongest and most mature stream in the current model.
+
+### 3.2 Injury stream
+
+Built in:
+
+- [src/features/injury_features.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/features/injury_features.py>)
+
+Current behavior:
+
+- if official live injury-report rows are available, they are aggregated into team-level features
+- otherwise the fallback is a heuristic proxy based on recent performance instability
+
+Current injury features:
+
+- `players_out_count`
+- `players_questionable_count`
+- `starter_out_count`
+- `minutes_missing`
+- `usage_missing`
+- `estimated_value_missing`
+- `injury_data_available`
+
+Important limitation:
+
+- this is still team-level aggregation, not player-level value modeling
+
+### 3.3 News/sentiment stream
+
+Built in:
+
+- [src/features/news_features.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/features/news_features.py>)
+
+Current behavior:
+
+- cached news scores are loaded when available
+- live news scores are fetched for current live forecast windows
+- if no usable rows exist, the stream falls back to zero vectors
+
+Current news features:
+
+- `weighted_sentiment_24h`
+- `weighted_sentiment_72h`
+- `article_volume_24h`
+- `negative_ratio_72h`
+- `sentiment_volatility_72h`
+- `avg_llm_confidence`
+- `news_available`
+
+Important limitation:
+
+- coverage is often sparse, especially outside the immediate live window
+
+### 3.4 Schedule/context stream
+
+Built from:
+
+- rest days
+- back-to-backs
+- schedule structure
+- other matchup context features
+
+This stream is stable and useful, but still relatively simple.
+
+---
+
+## 4. Model Stack
+
+### 4.1 Baselines
+
+Historical baselines include:
+
+- Elo
+- logistic regression
+- XGBoost
+
+The current deployed inference pipeline still loads:
+
+- Elo ratings
+- XGBoost model
+- scaler artifact
+
+### 4.2 Neural model
+
+Core model file:
+
+- [src/models/matchup_fusion_model.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/models/matchup_fusion_model.py>)
+
+Current structure:
+
+- shared team sequence encoder
+- context MLP
+- injury encoder MLP
+- news encoder MLP
+- fusion head over concatenated home/away/difference/product representations
+
+Current design strengths:
+
+- clean multi-stream structure
+- shared home/away encoders
+- explicit support for ablations by stream
+
+Current design limitations:
+
+- team-level rather than player-/lineup-level
+- injury and news streams are relatively low-dimensional
+- fusion is still simple compared to the complexity of NBA matchup dynamics
+
+### 4.3 Ensemble and calibration
+
+Current production forecasting uses an ensemble layer and calibrator stored under:
+
+- `models/ensembles/`
+
+The ensemble is still intentionally simple and interpretable.
+
+---
+
+## 5. Training Pipeline
+
+Main training entrypoint:
+
+- [src/models/train.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/models/train.py>)
+
+Current training behavior includes:
+
+- time-based train/validation/test splits
+- GRU-based sequence learning
+- optional injury/news stream inclusion
+- early stopping
+- ablation support
+
+Important discipline already enforced:
+
+- no random-split evaluation
+- rolling / season-aware data handling
+- reproducibility through pinned seeds and tracked artifacts
+
+---
+
+## 6. Inference Pipeline
+
+Main inference entrypoint:
+
+- [src/models/predict.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/models/predict.py>)
+
+Current behavior:
+
+- loads trained Elo, XGBoost, neural, ensemble, and calibrator artifacts
+- rebuilds the same feature streams used during training
+- attempts live injury/news overlays for target games
+- falls back to zero or proxy defaults when live context is missing
+- returns prediction payloads with `context_details`
+
+Important current limitation:
+
+- when no live aux data exists, inference still zero-fills or fallback-fills the aux streams rather than reasoning over player-level uncertainty
+
+---
+
+## 7. Live Forecast Generation
+
+Forecast scripts:
+
+- [src/app/predict_today.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/app/predict_today.py>)
+- [src/app/publish_today.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/app/publish_today.py>)
+
+Current publish design:
+
+- weekly forecast window
+- published JSON artifacts committed under `published/`
+- manifest written to `published/manifest.json`
+- no-games windows preserve the previous `latest.json`
+- playoff filtering limits the board to the next scheduled game per series
+
+Live publish metadata includes:
+
+- status
+- target date
+- window start/end
+- model version
+- games count
+- context coverage summary
+
+---
+
+## 8. Live Context Overlay
+
+Phase 11 added live overlays rather than fully retraining the core model around live player-level data.
+
+### Injury overlay
+
+- official NBA injury-report PDFs are parsed when available
+- team-level features are overlaid on top of fallback features
+- coverage is partial for later-week games when reports do not yet exist
+
+### News overlay
+
+- current-slate team news is collected
+- relevant articles are scored into structured sentiment rows
+- game-level aggregates are built from those rows
+
+The dashboard and manifest expose whether a prediction used:
+
+- `live`
+- `partial`
+- `fallback`
+
+for both injury and news context.
+
+---
+
+## 9. Product Surfaces
+
+### Streamlit dashboard
+
+Main app:
+
+- [src/app/streamlit_app.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/app/streamlit_app.py>)
+
+Data helpers:
+
+- [src/app/dashboard_data.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/app/dashboard_data.py>)
+
+The dashboard shows:
+
+- weekly slate
+- game detail
+- archive
+- performance
+- calibration
+- team form
+- injury impact
+- news sentiment
+
+### FastAPI service
+
+API app:
+
+- [src/app/api.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/app/api.py>)
+
+Current endpoints:
+
+- `/health`
+- `/manifest`
+- `/forecast/week`
+- `/forecast/game/{game_id}`
+- `/metrics`
+
+The API is intentionally thin and reuses the same loaders as the dashboard.
+
+---
+
+## 10. Artifact Layout
+
+Tracked publish artifacts:
+
+- `published/daily/YYYY-MM-DD.json`
+- `published/daily/latest.json`
+- `published/manifest.json`
+
+Tracked minimal inference bundle:
+
+- selected processed tables
+- scaler and neural checkpoint
+- ensemble artifacts
+
+Local-only outputs:
+
+- `predictions/daily/`
+- `predictions/historical_backtests/`
+
+---
+
+## 11. Current Strengths
+
+The current system is already strong in these ways:
+
+- leakage-aware historical modeling discipline
+- calibrated probability framing
+- clear separation between data, features, models, and product surfaces
+- live publishing path
+- honest context-coverage reporting
+- dashboard + API parity through shared loaders
+
+---
+
+## 12. Current Weaknesses
+
+These are the most important limitations to remember before extending the system:
+
+1. **The model is still mostly team-level.**
+2. **Injury value is still heuristic in many cases.**
+3. **News coverage is still sparse and often fallback-heavy.**
+4. **Playoff handling is stronger in publishing logic than in model design.**
+5. **Displayed explanations are still partly heuristic rather than fully learned attribution.**
+6. **The ensemble is simple and not yet context-aware or regime-aware.**
+
+---
+
+## 13. What Should Not Be Accidentally Broken
+
+Any future redesign should preserve:
+
+- anonymous team IDs as the internal join backbone
+- strict pregame leakage safety
+- time-based validation
+- calibrated probabilities as the main output
+- graceful fallback behavior for incomplete live context
+- parity between the dashboard and API forecast source
+
+---
+
+## 14. How To Use This Summary
+
+Use this doc before:
+
+- changing feature schemas
+- replacing the model backbone
+- refactoring publishing
+- adding player/lineup data
+- changing dashboard/API forecast semantics
+
+For future work planning, pair this document with:
+
+- [next_generation_model_roadmap.md](next_generation_model_roadmap.md)

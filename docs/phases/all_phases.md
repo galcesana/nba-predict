@@ -2,6 +2,9 @@
 
 > **Master tracker for all implementation phases.**
 > Update the status column as you work. Each phase has its own detailed doc linked below.
+>
+> This tracker is now primarily a **historical implementation record** for phases 0-12.
+> The active forward roadmap lives in [../next_generation_model_roadmap.md](../next_generation_model_roadmap.md).
 
 ---
 
