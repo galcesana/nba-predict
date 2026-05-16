@@ -89,56 +89,150 @@ nba-outcome-model/
 - Python 3.10+
 - Git
 
-### Setup
+### 1. Set Up the Environment
+
+Clone the repository, create a virtual environment, and install the dependencies:
 
 ```bash
 git clone <repo-url>
-cd nba-outcome-model
+cd nba-predict
 
 python -m venv .venv
 source .venv/bin/activate    # Linux/Mac
 # or: .venv\Scripts\activate  # Windows
 
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### Run Pipeline
+You can also install dependencies with:
 
 ```bash
-# Fetch historical data
+make setup
+```
+
+### 2. Build the Local Data and Models
+
+On a fresh checkout, the app needs local data, processed features, and trained model artifacts before it can generate predictions or populate the dashboard.
+
+Run the pipeline in this order:
+
+```bash
+# Fetch historical NBA games and box scores
 make fetch-data
 
-# Build feature tables
+# Build leakage-safe feature tables
 make build-features
 
-# Train baseline models
+# Train Elo and tabular baseline models
 make train-baseline
 
-# Train neural model
+# Train the full neural / fusion model
 make train-model
 
-# Evaluate all models
+# Evaluate saved models
 make evaluate
-
-# Predict today's games
-make predict-today
-
-# Run a historical backtest
-python -m src.app.run_backtest --start-date 2024-01-15 --end-date 2024-01-16
-
-# Run tests
-make test
 ```
 
-### Launch Dashboard
+What each step does:
+
+- `make fetch-data` downloads and caches the historical NBA data used by the project.
+- `make build-features` creates the processed game table and team-game logs that power both training and inference.
+- `make train-baseline` trains the Elo and tabular benchmark models.
+- `make train-model` trains the sequence-based fusion model and ensemble artifacts used by the app.
+- `make evaluate` writes the evaluation outputs that the dashboard uses for performance views.
+
+### 3. Generate Predictions
+
+To create a prediction file for today's slate:
 
 ```bash
-streamlit run src/app/streamlit_app.py
+make predict-today
 ```
+
+Or run the script directly for a specific date:
+
+```bash
+python -m src.app.predict_today --date 2026-05-16
+```
+
+This script:
+
+- fetches the NBA schedule for the target date
+- loads only games and team logs from before that date
+- runs the prediction pipeline without leakage
+- saves the output to `predictions/daily/YYYY-MM-DD.json`
+
+### 4. Run a Historical Backtest
+
+To simulate the live prediction workflow on past dates:
+
+```bash
+python -m src.app.run_backtest --start-date 2024-01-15 --end-date 2024-01-16
+```
+
+This backtest runs day by day, only using prior information for each date, and saves a report to:
+
+```text
+predictions/historical_backtests/backtest_<start>_to_<end>.json
+```
+
+### 5. Launch the Dashboard
+
+Start the Streamlit app with:
+
+```bash
+streamlit run streamlit_app.py
+```
+
+The dashboard reads from:
+
+- the latest file in `predictions/daily/`
+- saved reports in `predictions/historical_backtests/`
+- processed tables in `data/processed/`
+- saved evaluation artifacts in `models/`
+
+If the dashboard opens with empty states, it usually means you still need to run `make predict-today`, a backtest, or the earlier pipeline steps.
 
 Dashboard screenshots:
 - `docs/screenshots/dashboard_today.png`
 - `docs/screenshots/dashboard_calibration.png`
+
+### App Features
+
+The Streamlit app is organized into the following pages:
+
+- `Today's Games` shows the latest prediction slate, game confidence, probability bars, and the top factors behind each forecast.
+- `Game Detail` lets you inspect one matchup in depth, including component model outputs and recent team form.
+- `Archive` combines saved daily predictions and historical backtests into one searchable table.
+- `Performance` summarizes model comparison results, rolling validation trends, and ensemble behavior.
+- `Calibration` shows how well predicted probabilities line up with actual outcomes, including error by probability bucket.
+- `Team Form` highlights recent record, point differential, and net-rating style trends for a selected team.
+- `Injury Impact` displays the available injury feature view for each team. At this stage, those inputs are still proxy-based rather than a full live injury feed.
+- `News Sentiment` shows the current news feature view for each team and makes it clear when the zero-vector fallback is being used.
+
+### Typical Workflow
+
+For day-to-day use, the simplest flow is:
+
+1. Set up the environment once with `pip install -r requirements.txt`.
+2. Build data and train models once with `make fetch-data`, `make build-features`, `make train-baseline`, `make train-model`, and `make evaluate`.
+3. Generate a slate with `make predict-today`.
+4. Optionally run backtests for past date ranges.
+5. Launch `streamlit run streamlit_app.py` to explore predictions and diagnostics.
+
+For Streamlit Cloud deployment, set the main file path to:
+
+```text
+streamlit_app.py
+```
+
+### Quality Checks
+
+```bash
+make test
+ruff check src/ tests/
+```
 
 ---
 
