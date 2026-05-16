@@ -191,8 +191,9 @@ The dashboard reads from:
 - saved reports in `predictions/historical_backtests/`
 - processed tables in `data/processed/`
 - saved evaluation artifacts in `models/`
+- a bundled snapshot in `src/app/bundled_data/` when generated local artifacts are not available
 
-If the dashboard opens with empty states, it usually means you still need to run `make predict-today`, a backtest, or the earlier pipeline steps.
+On Streamlit Cloud, the app can fall back to the bundled snapshot so the deployed UI still opens with a representative slate and diagnostics even before a live forecast has been published.
 
 Dashboard screenshots:
 - `docs/screenshots/dashboard_today.png`

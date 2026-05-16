@@ -1,4 +1,4 @@
-"""Data loaders and view-model helpers for the Phase 9 dashboard."""
+"""Data loaders and view-model helpers for the dashboard."""
 
 from __future__ import annotations
 
@@ -10,10 +10,15 @@ import numpy as np
 import pandas as pd
 
 from src.anonymization.team_mapping import load_idx_to_team
-from src.utils.paths import MODELS_DIR, PREDICTIONS_DIR, PROCESSED_DIR
+from src.utils.paths import MODELS_DIR, PREDICTIONS_DIR, PROCESSED_DIR, PROJECT_ROOT
 
 DAILY_PREDICTIONS_DIR = PREDICTIONS_DIR / "daily"
 BACKTEST_DIR = PREDICTIONS_DIR / "historical_backtests"
+BUNDLED_DATA_DIR = PROJECT_ROOT / "src" / "app" / "bundled_data"
+
+
+def _bundled_path(filename: str) -> Path:
+    return BUNDLED_DATA_DIR / filename
 
 
 def team_abbr(team_idx: Any) -> str:
@@ -40,49 +45,101 @@ def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _load_frame_from_json(path: Path, *, date_columns: tuple[str, ...] = ("date",)) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame()
+    frame = pd.DataFrame(json.loads(path.read_text(encoding="utf-8")))
+    for column in date_columns:
+        if column in frame.columns:
+            frame[column] = pd.to_datetime(frame[column])
+    return frame
+
+
+def _load_frame(
+    primary: Path,
+    *,
+    bundled_filename: str | None = None,
+    date_columns: tuple[str, ...] = ("date",),
+    allow_bundled: bool = True,
+) -> pd.DataFrame:
+    if primary.exists():
+        if primary.suffix == ".json":
+            return _load_frame_from_json(primary, date_columns=date_columns)
+        frame = pd.read_parquet(primary)
+        for column in date_columns:
+            if column in frame.columns:
+                frame[column] = pd.to_datetime(frame[column])
+        return frame
+
+    if allow_bundled and bundled_filename:
+        return _load_frame_from_json(_bundled_path(bundled_filename), date_columns=date_columns)
+
+    return pd.DataFrame()
+
+
 def load_games_table(path: Path | None = None) -> pd.DataFrame:
     """Load the processed games table."""
     source = path or (PROCESSED_DIR / "games.parquet")
-    if not source.exists():
-        return pd.DataFrame()
-    games = pd.read_parquet(source)
-    games["date"] = pd.to_datetime(games["date"])
-    return games
+    return _load_frame(
+        source,
+        bundled_filename="games_snapshot.json",
+        date_columns=("date",),
+        allow_bundled=path is None,
+    )
 
 
 def load_team_logs(path: Path | None = None) -> pd.DataFrame:
     """Load processed team game logs."""
     source = path or (PROCESSED_DIR / "team_game_logs" / "team_game_logs.parquet")
-    if not source.exists():
-        return pd.DataFrame()
-    logs = pd.read_parquet(source)
-    logs["date"] = pd.to_datetime(logs["date"])
-    return logs
+    return _load_frame(
+        source,
+        bundled_filename="team_game_logs_snapshot.json",
+        date_columns=("date",),
+        allow_bundled=path is None,
+    )
 
 
 def load_injury_features(path: Path | None = None) -> pd.DataFrame:
     """Load processed injury features."""
     source = path or (PROCESSED_DIR / "injury_features" / "injury_features.parquet")
-    if not source.exists():
-        return pd.DataFrame()
-    return pd.read_parquet(source)
+    return _load_frame(
+        source,
+        bundled_filename="injury_features_snapshot.json",
+        date_columns=(),
+        allow_bundled=path is None,
+    )
 
 
 def load_news_features(path: Path | None = None) -> pd.DataFrame:
     """Load processed news features."""
     source = path or (PROCESSED_DIR / "news_features" / "news_features.parquet")
-    if not source.exists():
-        return pd.DataFrame()
-    return pd.read_parquet(source)
+    return _load_frame(
+        source,
+        bundled_filename="news_features_snapshot.json",
+        date_columns=(),
+        allow_bundled=path is None,
+    )
 
 
 def load_latest_daily_predictions(directory: Path | None = None) -> dict[str, Any] | None:
     """Load the most recent daily prediction payload."""
     files = _json_files(directory or DAILY_PREDICTIONS_DIR)
-    if not files:
+    if files:
+        payload = _load_json(files[-1])
+        payload["source_file"] = str(files[-1])
+        payload["data_mode"] = "published"
+        return payload
+
+    if directory is not None:
         return None
-    payload = _load_json(files[-1])
-    payload["source_file"] = str(files[-1])
+
+    bundled = _bundled_path("latest_daily_predictions.json")
+    if not bundled.exists():
+        return None
+
+    payload = _load_json(bundled)
+    payload["source_file"] = str(bundled)
+    payload["data_mode"] = "bundled"
     return payload
 
 
@@ -92,6 +149,16 @@ def load_backtest_reports(directory: Path | None = None) -> list[dict[str, Any]]
     for path in _json_files(directory or BACKTEST_DIR):
         report = _load_json(path)
         report["source_file"] = str(path)
+        report["data_mode"] = "published"
+        reports.append(report)
+    if reports or directory is not None:
+        return reports
+
+    bundled = _bundled_path("backtest_snapshot.json")
+    if bundled.exists():
+        report = _load_json(bundled)
+        report["source_file"] = str(bundled)
+        report["data_mode"] = "bundled"
         reports.append(report)
     return reports
 
@@ -314,6 +381,11 @@ def build_calibration_frame(path: Path | None = None, n_bins: int = 10) -> pd.Da
     """Build calibration bins from ensemble test predictions."""
     source = path or (MODELS_DIR / "ensembles" / "ensemble_predictions_test.parquet")
     if not source.exists():
+        if path is None:
+            return _load_frame_from_json(
+                _bundled_path("calibration_snapshot.json"),
+                date_columns=(),
+            )
         return pd.DataFrame(
             columns=["bin_mid", "avg_pred", "actual_rate", "count", "ideal", "abs_gap"]
         )

@@ -1,15 +1,8 @@
-"""Phase 9 Streamlit dashboard for NBA predictions."""
+"""Streamlit dashboard for NBA predictions."""
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 from typing import Iterable
-
-# Streamlit Cloud executes this file directly; repo root must be on sys.path.
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PROJECT_ROOT))
 
 import pandas as pd
 import streamlit as st
@@ -235,11 +228,11 @@ def _hero() -> None:
     st.markdown(
         """
         <div class="hero-card">
-          <div class="hero-eyebrow">Phase 9 Dashboard</div>
-          <h1 class="hero-title">NBA Predict Control Room</h1>
+          <div class="hero-eyebrow">Forecasts and Diagnostics</div>
+          <h1 class="hero-title">NBA Predict</h1>
           <p class="hero-copy">
-            Monitor daily probabilities, compare model families, inspect calibration,
-            and trace the injury/news context that shaped each matchup.
+            Daily win probabilities, model performance, calibration tracking,
+            and matchup context in one place.
           </p>
         </div>
         """,
@@ -279,6 +272,21 @@ def _probability_bar(home_prob: float, home_team: str, away_team: str) -> str:
           <span>{home_prob * 100:.1f}%</span>
         </div>
     """
+
+
+def _slate_caption(payload: dict | None) -> str:
+    if not payload:
+        return "Forecast status: waiting for a published slate"
+    prefix = "Example slate" if payload.get("data_mode") == "bundled" else "Latest slate"
+    return f"{prefix}: {payload.get('date', 'unknown')}"
+
+
+def _slate_source_notice(payload: dict) -> None:
+    if payload.get("data_mode") == "bundled":
+        st.info(
+            "Showing the latest bundled example slate because this deployment "
+            "does not have a freshly published forecast yet."
+        )
 
 
 @st.cache_data(show_spinner=False)
@@ -328,10 +336,14 @@ def _news_summary() -> pd.DataFrame:
 
 def render_today_page() -> None:
     payload = _latest_daily_payload()
-    st.subheader("Today's Games")
+    st.subheader("Latest Forecasts")
     if not payload:
-        st.info("No daily prediction JSON is available yet. Run `make predict-today` first.")
+        st.info(
+            "No published forecast is available right now. Check back later once a new slate "
+            "has been generated."
+        )
         return
+    _slate_source_notice(payload)
 
     predictions = payload.get("predictions", [])
     avg_edge = 0.0
@@ -343,8 +355,8 @@ def render_today_page() -> None:
 
     _metric_row(
         [
-            ("Prediction Date", payload.get("date", "Unknown"), "Most recent generated slate"),
-            ("Games On Slate", str(len(predictions)), "Saved daily predictions in the repo"),
+            ("Forecast Date", payload.get("date", "Unknown"), "Most recent available slate"),
+            ("Games On Slate", str(len(predictions)), "Matchups in the current slate"),
             ("Average Edge", f"{avg_edge * 100:.1f}%", "Mean distance from a coin flip"),
             (
                 "High Confidence",
@@ -392,8 +404,9 @@ def render_game_detail_page() -> None:
     payload = _latest_daily_payload()
     st.subheader("Game Detail")
     if not payload or not payload.get("predictions"):
-        st.info("No latest daily predictions are available for the detail view.")
+        st.info("Game detail becomes available once a forecast slate has been published.")
         return
+    _slate_source_notice(payload)
 
     options = {
         (
@@ -489,7 +502,7 @@ def render_archive_page() -> None:
     archive = _archive_frame()
     st.subheader("Historical Archive")
     if archive.empty:
-        st.info("No archive rows are available yet.")
+        st.info("Historical forecasts and backtests will appear here once they are available.")
         return
 
     source_options = ["all"] + sorted(archive["source"].dropna().unique().tolist())
@@ -534,7 +547,7 @@ def render_performance_page() -> None:
 
     st.subheader("Model Performance")
     if comparison.empty:
-        st.info("No model metrics are available yet.")
+        st.info("Model performance metrics are not available in this deployment yet.")
         return
 
     best_row = comparison.dropna(subset=["log_loss"]).sort_values("log_loss").iloc[0]
@@ -567,7 +580,7 @@ def render_calibration_page() -> None:
     calibration = _calibration_frame()
     st.subheader("Calibration")
     if calibration.empty:
-        st.info("Calibration bins are unavailable because ensemble test predictions are missing.")
+        st.info("Calibration metrics are not available in this deployment yet.")
         return
 
     ece = data.compute_expected_calibration_error(calibration)
@@ -588,7 +601,7 @@ def render_team_form_page() -> None:
     logs = _team_logs()
     st.subheader("Team Form")
     if logs.empty:
-        st.info("Team game logs are unavailable.")
+        st.info("Recent team form is not available in this deployment yet.")
         return
 
     team_ids = sorted(int(team_idx) for team_idx in logs["team_idx"].dropna().unique())
@@ -639,14 +652,14 @@ def render_injury_page() -> None:
     summary = _injury_summary()
     st.subheader("Injury Impact")
     if summary.empty:
-        st.info("Injury features are unavailable.")
+        st.info("Injury context is not available in this deployment yet.")
         return
 
     availability_rate = summary["data_available_rate"].mean()
     if availability_rate == 0:
         st.warning(
-            "Current injury inputs are still proxy-based for the dashboard view. "
-            "The page remains useful for relative instability, but not yet for player-level status."
+            "Current injury inputs are still proxy-based. This view is useful for relative "
+            "team instability, but not yet for live player-level status."
         )
 
     st.bar_chart(
@@ -658,16 +671,16 @@ def render_injury_page() -> None:
 
 def render_news_page() -> None:
     summary = _news_summary()
-    st.subheader("News Sentiment Debug")
+    st.subheader("News Sentiment")
     if summary.empty:
-        st.info("News feature rows are unavailable.")
+        st.info("News context is not available in this deployment yet.")
         return
 
     coverage_rate = summary["coverage_rate"].mean()
     if coverage_rate == 0:
         st.info(
-            "Real pregame news coverage is not populated in the current artifact set, "
-            "so this page is showing the zero-vector fallback behavior from Phase 6."
+            "Live pregame news coverage is not populated in the current artifact set, "
+            "so this view is reflecting the fallback news features."
         )
 
     st.bar_chart(
@@ -685,7 +698,7 @@ def render_dashboard() -> None:
     with st.sidebar:
         st.title("NBA Predict")
         latest_daily = _latest_daily_payload()
-        st.caption(f"Latest slate: {latest_daily.get('date', 'none') if latest_daily else 'none'}")
+        st.caption(_slate_caption(latest_daily))
         selected_page = st.radio("Pages", PAGES)
 
     if selected_page == "Today's Games":

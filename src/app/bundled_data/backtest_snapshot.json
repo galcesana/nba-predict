@@ -1,0 +1,279 @@
+{
+  "start_date": "2024-01-15",
+  "end_date": "2024-01-16",
+  "total_games": 14,
+  "accuracy": 0.7142857142857143,
+  "log_loss": 0.6317985325135077,
+  "predictions": [
+    {
+      "game_id": "0022300564",
+      "home_team_idx": 28,
+      "away_team_idx": 11,
+      "home_win_probability": 0.5767,
+      "away_win_probability": 0.4233,
+      "predicted_winner": "home",
+      "confidence_bucket": "low",
+      "component_outputs": {
+        "elo_probability": 0.5779,
+        "tabular_probability": 0.4900999963283539,
+        "sequence_probability": 0.6746000051498413,
+        "final_probability": 0.5767
+      },
+      "top_model_factors": [
+        "Matchup appears statistically balanced"
+      ],
+      "actual_home_win": 1
+    },
+    {
+      "game_id": "0022300562",
+      "home_team_idx": 2,
+      "away_team_idx": 15,
+      "home_win_probability": 0.4256,
+      "away_win_probability": 0.5744,
+      "predicted_winner": "away",
+      "confidence_bucket": "low",
+      "component_outputs": {
+        "elo_probability": 0.331,
+        "tabular_probability": 0.462799996137619,
+        "sequence_probability": 0.4562999904155731,
+        "final_probability": 0.4256
+      },
+      "top_model_factors": [
+        "Away team has significantly better recent net rating"
+      ],
+      "actual_home_win": 0
+    },
+    {
+      "game_id": "0022300556",
+      "home_team_idx": 6,
+      "away_team_idx": 18,
+      "home_win_probability": 0.5184,
+      "away_win_probability": 0.4816,
+      "predicted_winner": "home",
+      "confidence_bucket": "low",
+      "component_outputs": {
+        "elo_probability": 0.6153,
+        "tabular_probability": 0.4392000138759613,
+        "sequence_probability": 0.44780001044273376,
+        "final_probability": 0.5184
+      },
+      "top_model_factors": [
+        "Away team has significantly better recent net rating",
+        "Home team projects as more shorthanded"
+      ],
+      "actual_home_win": 1
+    },
+    {
+      "game_id": "0022300563",
+      "home_team_idx": 27,
+      "away_team_idx": 1,
+      "home_win_probability": 0.4546,
+      "away_win_probability": 0.5454,
+      "predicted_winner": "away",
+      "confidence_bucket": "low",
+      "component_outputs": {
+        "elo_probability": 0.4177,
+        "tabular_probability": 0.5376999974250793,
+        "sequence_probability": 0.33869999647140503,
+        "final_probability": 0.4546
+      },
+      "top_model_factors": [
+        "Away team has significantly better recent net rating",
+        "Away team projects as more shorthanded"
+      ],
+      "actual_home_win": 0
+    },
+    {
+      "game_id": "0022300555",
+      "home_team_idx": 22,
+      "away_team_idx": 10,
+      "home_win_probability": 0.6191,
+      "away_win_probability": 0.3809,
+      "predicted_winner": "home",
+      "confidence_bucket": "medium",
+      "component_outputs": {
+        "elo_probability": 0.5349,
+        "tabular_probability": 0.6730999946594238,
+        "sequence_probability": 0.6603000164031982,
+        "final_probability": 0.6191
+      },
+      "top_model_factors": [
+        "Home team has significantly better recent net rating",
+        "Home team projects as more shorthanded"
+      ],
+      "actual_home_win": 1
+    },
+    {
+      "game_id": "0022300557",
+      "home_team_idx": 19,
+      "away_team_idx": 21,
+      "home_win_probability": 0.6874,
+      "away_win_probability": 0.3126,
+      "predicted_winner": "home",
+      "confidence_bucket": "medium",
+      "component_outputs": {
+        "elo_probability": 0.7331,
+        "tabular_probability": 0.6503000259399414,
+        "sequence_probability": 0.7411999702453613,
+        "final_probability": 0.6874
+      },
+      "top_model_factors": [
+        "Home team has significantly better recent net rating"
+      ],
+      "actual_home_win": 0
+    },
+    {
+      "game_id": "0022300559",
+      "home_team_idx": 0,
+      "away_team_idx": 26,
+      "home_win_probability": 0.5179,
+      "away_win_probability": 0.4821,
+      "predicted_winner": "home",
+      "confidence_bucket": "low",
+      "component_outputs": {
+        "elo_probability": 0.4445,
+        "tabular_probability": 0.5891000032424927,
+        "sequence_probability": 0.4853000044822693,
+        "final_probability": 0.5179
+      },
+      "top_model_factors": [
+        "Away team has significantly better recent net rating"
+      ],
+      "actual_home_win": 1
+    },
+    {
+      "game_id": "0022300561",
+      "home_team_idx": 5,
+      "away_team_idx": 4,
+      "home_win_probability": 0.7424,
+      "away_win_probability": 0.2576,
+      "predicted_winner": "home",
+      "confidence_bucket": "high",
+      "component_outputs": {
+        "elo_probability": 0.8883,
+        "tabular_probability": 0.7712000012397766,
+        "sequence_probability": 0.6883999705314636,
+        "final_probability": 0.7424
+      },
+      "top_model_factors": [
+        "Home team has significantly better recent net rating"
+      ],
+      "actual_home_win": 1
+    },
+    {
+      "game_id": "0022300560",
+      "home_team_idx": 14,
+      "away_team_idx": 9,
+      "home_win_probability": 0.4669,
+      "away_win_probability": 0.5331,
+      "predicted_winner": "away",
+      "confidence_bucket": "low",
+      "component_outputs": {
+        "elo_probability": 0.4687,
+        "tabular_probability": 0.40529999136924744,
+        "sequence_probability": 0.5073000192642212,
+        "final_probability": 0.4669
+      },
+      "top_model_factors": [
+        "Away team projects as more shorthanded"
+      ],
+      "actual_home_win": 1
+    },
+    {
+      "game_id": "0022300565",
+      "home_team_idx": 13,
+      "away_team_idx": 20,
+      "home_win_probability": 0.4453,
+      "away_win_probability": 0.5547,
+      "predicted_winner": "away",
+      "confidence_bucket": "low",
+      "component_outputs": {
+        "elo_probability": 0.4709,
+        "tabular_probability": 0.46399998664855957,
+        "sequence_probability": 0.32659998536109924,
+        "final_probability": 0.4453
+      },
+      "top_model_factors": [
+        "Away team has significantly better recent net rating"
+      ],
+      "actual_home_win": 1
+    },
+    {
+      "game_id": "0022300558",
+      "home_team_idx": 29,
+      "away_team_idx": 8,
+      "home_win_probability": 0.37,
+      "away_win_probability": 0.63,
+      "predicted_winner": "away",
+      "confidence_bucket": "medium",
+      "component_outputs": {
+        "elo_probability": 0.1286,
+        "tabular_probability": 0.4036000072956085,
+        "sequence_probability": 0.5960000157356262,
+        "final_probability": 0.37
+      },
+      "top_model_factors": [
+        "Away team projects as more shorthanded"
+      ],
+      "actual_home_win": 0
+    },
+    {
+      "game_id": "0022300568",
+      "home_team_idx": 12,
+      "away_team_idx": 20,
+      "home_win_probability": 0.5044,
+      "away_win_probability": 0.4956,
+      "predicted_winner": "home",
+      "confidence_bucket": "low",
+      "component_outputs": {
+        "elo_probability": 0.3627,
+        "tabular_probability": 0.5692999958992004,
+        "sequence_probability": 0.5828999876976013,
+        "final_probability": 0.5044
+      },
+      "top_model_factors": [
+        "Matchup appears statistically balanced"
+      ],
+      "actual_home_win": 1
+    },
+    {
+      "game_id": "0022300566",
+      "home_team_idx": 22,
+      "away_team_idx": 7,
+      "home_win_probability": 0.4955,
+      "away_win_probability": 0.5045,
+      "predicted_winner": "away",
+      "confidence_bucket": "low",
+      "component_outputs": {
+        "elo_probability": 0.4588,
+        "tabular_probability": 0.43650001287460327,
+        "sequence_probability": 0.5950999855995178,
+        "final_probability": 0.4955
+      },
+      "top_model_factors": [
+        "Away team has significantly better recent net rating"
+      ],
+      "actual_home_win": 1
+    },
+    {
+      "game_id": "0022300567",
+      "home_team_idx": 23,
+      "away_team_idx": 25,
+      "home_win_probability": 0.6315,
+      "away_win_probability": 0.3685,
+      "predicted_winner": "home",
+      "confidence_bucket": "medium",
+      "component_outputs": {
+        "elo_probability": 0.827,
+        "tabular_probability": 0.4560999870300293,
+        "sequence_probability": 0.5934000015258789,
+        "final_probability": 0.6315
+      },
+      "top_model_factors": [
+        "Home team has significantly better recent net rating",
+        "Home team projects as more shorthanded"
+      ],
+      "actual_home_win": 1
+    }
+  ]
+}

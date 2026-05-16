@@ -1,4 +1,4 @@
-"""Tests for the Phase 9 Streamlit dashboard."""
+"""Tests for the Streamlit dashboard."""
 
 from __future__ import annotations
 
@@ -108,7 +108,7 @@ def test_dashboard_startup():
         "-m",
         "streamlit",
         "run",
-        "src/app/streamlit_app.py",
+        "streamlit_app.py",
         "--server.headless=true",
         "--server.fileWatcherType=none",
         "--browser.gatherUsageStats=false",
