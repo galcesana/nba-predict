@@ -45,6 +45,27 @@ def test_streamlit_app_imports():
     assert "Calibration" in streamlit_app.PAGES
 
 
+def test_nested_streamlit_entry_imports():
+    """Import succeeds when the nested app file is executed like Streamlit Cloud."""
+    entry = PROJECT_ROOT / "src" / "app" / "streamlit_app.py"
+    entry_arg = json.dumps(str(entry))
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import runpy; "
+                f"runpy.run_path({entry_arg}, run_name='__streamlit_cloud__')"
+            ),
+        ],
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_predictions_page_renders():
     """Latest daily predictions payload loads with at least one game."""
     payload = dashboard_data.load_latest_daily_predictions()

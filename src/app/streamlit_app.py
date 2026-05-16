@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from typing import Iterable
 
-import pandas as pd
-import streamlit as st
+# Streamlit Cloud may run this file as the main module; repo root must be importable.
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_root_str = str(_PROJECT_ROOT)
+if _root_str not in sys.path:
+    sys.path.insert(0, _root_str)
 
-from src.app import dashboard_data as data
+import pandas as pd  # noqa: E402
+import streamlit as st  # noqa: E402
+
+from src.app import dashboard_data as data  # noqa: E402
 
 PAGES = [
     "Today's Games",
@@ -454,7 +462,7 @@ def render_game_detail_page() -> None:
         st.markdown("#### Component Outputs")
         st.dataframe(
             data.build_component_output_frame(prediction),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
         st.markdown("#### Top Model Factors")
@@ -471,7 +479,7 @@ def render_game_detail_page() -> None:
             else:
                 st.line_chart(
                     home_form.set_index("date")[["net_rating", "point_diff"]],
-                    use_container_width=True,
+                    width="stretch",
                 )
                 st.dataframe(
                     home_form[
@@ -485,7 +493,7 @@ def render_game_detail_page() -> None:
                             "net_rating",
                         ]
                     ],
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
         with tabs[1]:
@@ -495,7 +503,7 @@ def render_game_detail_page() -> None:
             else:
                 st.line_chart(
                     away_form.set_index("date")[["net_rating", "point_diff"]],
-                    use_container_width=True,
+                    width="stretch",
                 )
                 st.dataframe(
                     away_form[
@@ -509,7 +517,7 @@ def render_game_detail_page() -> None:
                             "net_rating",
                         ]
                     ],
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
 
@@ -551,7 +559,7 @@ def render_archive_page() -> None:
                 "confidence_bucket",
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -580,16 +588,16 @@ def render_performance_page() -> None:
     )
 
     st.markdown("#### Test-Set Comparison")
-    st.dataframe(comparison, use_container_width=True, hide_index=True)
+    st.dataframe(comparison, width="stretch", hide_index=True)
 
     if not rolling.empty:
         st.markdown("#### Rolling Validation Trend")
         rolling_chart = rolling.set_index("fold")[["accuracy", "log_loss"]]
-        st.line_chart(rolling_chart, use_container_width=True)
+        st.line_chart(rolling_chart, width="stretch")
 
     if not weights.empty:
         st.markdown("#### Ensemble Weights")
-        st.bar_chart(weights.set_index("model"), use_container_width=True)
+        st.bar_chart(weights.set_index("model"), width="stretch")
 
 
 def render_calibration_page() -> None:
@@ -609,8 +617,8 @@ def render_calibration_page() -> None:
     )
 
     chart = calibration.set_index("bin_mid")[["avg_pred", "actual_rate", "ideal"]]
-    st.line_chart(chart, use_container_width=True)
-    st.dataframe(calibration, use_container_width=True, hide_index=True)
+    st.line_chart(chart, width="stretch")
+    st.dataframe(calibration, width="stretch", hide_index=True)
 
 
 def render_team_form_page() -> None:
@@ -644,7 +652,7 @@ def render_team_form_page() -> None:
 
     st.line_chart(
         form.set_index("date")[["net_rating", "point_diff"]],
-        use_container_width=True,
+        width="stretch",
     )
     st.dataframe(
         form[
@@ -659,7 +667,7 @@ def render_team_form_page() -> None:
                 "pace",
             ]
         ],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -680,9 +688,9 @@ def render_injury_page() -> None:
 
     st.bar_chart(
         summary.set_index("team")[["avg_estimated_value_missing", "avg_players_out"]],
-        use_container_width=True,
+        width="stretch",
     )
-    st.dataframe(summary, use_container_width=True, hide_index=True)
+    st.dataframe(summary, width="stretch", hide_index=True)
 
 
 def render_news_page() -> None:
@@ -701,9 +709,9 @@ def render_news_page() -> None:
 
     st.bar_chart(
         summary.set_index("team")[["avg_sentiment_72h", "avg_article_volume"]],
-        use_container_width=True,
+        width="stretch",
     )
-    st.dataframe(summary, use_container_width=True, hide_index=True)
+    st.dataframe(summary, width="stretch", hide_index=True)
 
 
 def render_dashboard() -> None:

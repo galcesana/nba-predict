@@ -111,7 +111,12 @@ class TestDataProviderInterface:
     def test_nba_api_provider_has_all_methods(self):
         """NbaApiProvider has all required abstract methods."""
         from src.data.providers.nba_api_provider import NbaApiProvider
-        required_methods = ["fetch_games", "fetch_team_game_logs", "fetch_box_scores", "fetch_player_info"]
+        required_methods = [
+            "fetch_games",
+            "fetch_team_game_logs",
+            "fetch_box_scores",
+            "fetch_player_info",
+        ]
         for method in required_methods:
             assert hasattr(NbaApiProvider, method), f"Missing method: {method}"
 
@@ -167,15 +172,24 @@ class TestUtilities:
 
     def test_paths_importable(self):
         """Path constants can be imported."""
-        from src.utils.paths import PROJECT_ROOT, DATA_DIR, CONFIGS_DIR, MODELS_DIR
+        from src.utils.paths import (
+            CONFIGS_DIR,
+            DATA_DIR,
+            MODELS_DIR,
+            PREDICTIONS_DIR,
+            PROJECT_ROOT,
+            PUBLISHED_DIR,
+        )
         assert PROJECT_ROOT is not None
         assert DATA_DIR is not None
         assert CONFIGS_DIR is not None
         assert MODELS_DIR is not None
+        assert PREDICTIONS_DIR is not None
+        assert PUBLISHED_DIR == PROJECT_ROOT / "published"
 
     def test_paths_resolve_to_real_dirs(self):
         """Path constants point to existing directories."""
-        from src.utils.paths import PROJECT_ROOT, DATA_DIR, CONFIGS_DIR
+        from src.utils.paths import CONFIGS_DIR, DATA_DIR, PROJECT_ROOT
         assert PROJECT_ROOT.exists(), f"PROJECT_ROOT does not exist: {PROJECT_ROOT}"
         assert DATA_DIR.exists(), f"DATA_DIR does not exist: {DATA_DIR}"
         assert CONFIGS_DIR.exists(), f"CONFIGS_DIR does not exist: {CONFIGS_DIR}"
