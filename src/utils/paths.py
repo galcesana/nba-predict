@@ -24,6 +24,7 @@ MODELS_DIR = PROJECT_ROOT / "models"
 
 # Prediction outputs
 PREDICTIONS_DIR = PROJECT_ROOT / "predictions"
+PUBLISHED_DIR = PROJECT_ROOT / "published"
 
 # Docs
 DOCS_DIR = PROJECT_ROOT / "docs"

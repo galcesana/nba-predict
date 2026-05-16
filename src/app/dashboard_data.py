@@ -3,18 +3,29 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
 
 from src.anonymization.team_mapping import load_idx_to_team
-from src.utils.paths import MODELS_DIR, PREDICTIONS_DIR, PROCESSED_DIR, PROJECT_ROOT
+from src.utils.paths import (
+    MODELS_DIR,
+    PREDICTIONS_DIR,
+    PROCESSED_DIR,
+    PROJECT_ROOT,
+    PUBLISHED_DIR,
+)
 
 DAILY_PREDICTIONS_DIR = PREDICTIONS_DIR / "daily"
 BACKTEST_DIR = PREDICTIONS_DIR / "historical_backtests"
+PUBLISHED_DAILY_DIR = PUBLISHED_DIR / "daily"
+PUBLISHED_MANIFEST_PATH = PUBLISHED_DIR / "manifest.json"
 BUNDLED_DATA_DIR = PROJECT_ROOT / "src" / "app" / "bundled_data"
+DEFAULT_PUBLISH_TIMEZONE = "America/New_York"
 
 
 def _bundled_path(filename: str) -> Path:
@@ -35,10 +46,15 @@ def matchup_label(home_team_idx: Any, away_team_idx: Any) -> str:
     return f"{team_abbr(away_team_idx)} at {team_abbr(home_team_idx)}"
 
 
-def _json_files(directory: Path) -> list[Path]:
+def _json_files(directory: Path, *, exclude_names: set[str] | None = None) -> list[Path]:
     if not directory.exists():
         return []
-    return sorted(path for path in directory.glob("*.json") if path.is_file())
+    excluded = exclude_names or set()
+    return sorted(
+        path
+        for path in directory.glob("*.json")
+        if path.is_file() and path.name not in excluded
+    )
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -127,11 +143,20 @@ def load_latest_daily_predictions(directory: Path | None = None) -> dict[str, An
     if files:
         payload = _load_json(files[-1])
         payload["source_file"] = str(files[-1])
-        payload["data_mode"] = "published"
+        payload["data_mode"] = "local"
         return payload
 
     if directory is not None:
         return None
+
+    published_files = _json_files(PUBLISHED_DAILY_DIR, exclude_names={"latest.json"})
+    latest_path = PUBLISHED_DAILY_DIR / "latest.json"
+    if published_files or latest_path.exists():
+        source_path = latest_path if latest_path.exists() else published_files[-1]
+        payload = _load_json(source_path)
+        payload["source_file"] = str(source_path)
+        payload["data_mode"] = "published"
+        return payload
 
     bundled = _bundled_path("latest_daily_predictions.json")
     if not bundled.exists():
@@ -161,6 +186,71 @@ def load_backtest_reports(directory: Path | None = None) -> list[dict[str, Any]]
         report["data_mode"] = "bundled"
         reports.append(report)
     return reports
+
+
+def load_publish_manifest(path: Path | None = None) -> dict[str, Any] | None:
+    """Load the latest publish manifest when available."""
+    source = path or PUBLISHED_MANIFEST_PATH
+    if not source.exists():
+        return None
+    return _load_json(source)
+
+
+def current_publish_date(timezone_name: str = DEFAULT_PUBLISH_TIMEZONE) -> str:
+    """Return today's date in the publishing timezone."""
+    return datetime.now(ZoneInfo(timezone_name)).date().isoformat()
+
+
+def describe_forecast_status(
+    payload: dict[str, Any] | None,
+    manifest: dict[str, Any] | None = None,
+    *,
+    as_of_date: str | None = None,
+    timezone_name: str = DEFAULT_PUBLISH_TIMEZONE,
+) -> dict[str, str]:
+    """Describe the currently loaded forecast source for the dashboard."""
+    if payload is None:
+        if manifest and manifest.get("status") == "no_games":
+            return {"state": "no_games", "message": "No games today."}
+        return {"state": "unavailable", "message": "Waiting for the next published forecast."}
+
+    mode = payload.get("data_mode")
+    if mode == "bundled":
+        return {"state": "bundled", "message": "Showing bundled example slate."}
+    if mode == "local":
+        return {"state": "local", "message": "Showing local forecast preview."}
+
+    publish_date = as_of_date or current_publish_date(timezone_name)
+    payload_date = str(payload.get("date", "unknown"))
+    manifest = manifest or {}
+    status = str(manifest.get("status", ""))
+    latest_available = manifest.get("latest_available_date")
+
+    if (
+        status == "published"
+        and manifest.get("target_date") == publish_date
+        and payload_date == publish_date
+    ):
+        return {"state": "published_today", "message": "Published today."}
+
+    if status == "no_games":
+        if latest_available:
+            return {
+                "state": "no_games",
+                "message": (
+                    "No games today. "
+                    f"Showing previous published slate from {latest_available}."
+                ),
+            }
+        return {"state": "no_games", "message": "No games today."}
+
+    if manifest.get("target_date") != publish_date or payload_date != publish_date:
+        return {
+            "state": "stale",
+            "message": f"Showing previous published slate from {payload_date}.",
+        }
+
+    return {"state": "published", "message": f"Published slate for {payload_date}."}
 
 
 def get_prediction_detail(payload: dict[str, Any] | None, game_id: str) -> dict[str, Any] | None:
@@ -219,24 +309,37 @@ def _prediction_record(
 
 def build_archive_dataframe(
     daily_dir: Path | None = None,
+    published_daily_dir: Path | None = None,
     backtest_dir: Path | None = None,
     games_path: Path | None = None,
 ) -> pd.DataFrame:
     """Build a combined archive frame from daily predictions and backtests."""
     rows: list[dict[str, Any]] = []
 
-    latest_daily_files = _json_files(daily_dir or DAILY_PREDICTIONS_DIR)
-    for path in latest_daily_files:
-        payload = _load_json(path)
-        for prediction in payload.get("predictions", []):
-            rows.append(
-                _prediction_record(
-                    prediction,
-                    date=payload.get("date"),
-                    source="daily",
-                    generated_at=payload.get("generated_at"),
+    if daily_dir is None and published_daily_dir is None:
+        daily_sources = [
+            ("local", DAILY_PREDICTIONS_DIR, set()),
+            ("published", PUBLISHED_DAILY_DIR, {"latest.json"}),
+        ]
+    else:
+        daily_sources = []
+        if daily_dir is not None:
+            daily_sources.append(("local", Path(daily_dir), set()))
+        if published_daily_dir is not None:
+            daily_sources.append(("published", Path(published_daily_dir), {"latest.json"}))
+
+    for source_label, directory, excluded in daily_sources:
+        for path in _json_files(directory, exclude_names=excluded):
+            payload = _load_json(path)
+            for prediction in payload.get("predictions", []):
+                rows.append(
+                    _prediction_record(
+                        prediction,
+                        date=payload.get("date"),
+                        source=source_label,
+                        generated_at=payload.get("generated_at"),
+                    )
                 )
-            )
 
     games = load_games_table(games_path)
     if {"game_id", "date"}.issubset(games.columns):

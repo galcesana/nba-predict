@@ -8,62 +8,64 @@ NBA game outcome prediction system that outputs **calibrated win probabilities**
 
 ## Current State
 
-- **Phase 0 complete** — scaffolding, configs, DataProvider, 21 tests passing
-- **Phase 1 complete** — 14,429 games fetched across 12 seasons (2014-26), 33 tests passing
-- **Phase 2 complete** — leakage-safe rolling features + schedule features + matchup dataset (14,429 rows × 110 cols), 47 tests passing
-- **Phase 3 complete** — Elo, logistic regression, XGBoost baselines trained + evaluated (best: XGBoost 64.5% acc, 0.622 log loss), 59 tests passing
-- **Phase 4 complete** — GRU sequence model trained (65.1% acc, 0.619 log loss, beats all baselines), 73 tests passing
-- **Phase 5 complete** — Injury proxy features (variance-based) implemented and tested, 83 tests passing
-- **Phase 6 complete** — News/sentiment proxy features (zero-vectors) implemented and tested, 93 tests passing
-- **Phase 7 complete** — Full 4-stream fusion model trained (log loss 0.6169) and logistic ensemble trained (65.6% acc, 0.615 log loss), 105 tests passing
-- **Phase 8 complete** — Daily Prediction System implemented, verified on a historical daily slate and backtest window, 111 tests passing
-- **Phase 9 complete** — Streamlit dashboard implemented and browser-verified, 121 tests passing
+- **Phase 0 complete** - scaffolding, configs, DataProvider, 21 tests passing
+- **Phase 1 complete** - 14,429 games fetched across 12 seasons (2014-26), 33 tests passing
+- **Phase 2 complete** - leakage-safe rolling features + schedule features + matchup dataset (14,429 rows x 110 cols), 47 tests passing
+- **Phase 3 complete** - Elo, logistic regression, XGBoost baselines trained + evaluated (best: XGBoost 64.5% acc, 0.622 log loss), 59 tests passing
+- **Phase 4 complete** - GRU sequence model trained (65.1% acc, 0.619 log loss, beats all baselines), 73 tests passing
+- **Phase 5 complete** - injury proxy features (variance-based) implemented and tested, 83 tests passing
+- **Phase 6 complete** - news/sentiment proxy features (zero-vectors) implemented and tested, 93 tests passing
+- **Phase 7 complete** - full 4-stream fusion model trained (log loss 0.6169) and logistic ensemble trained (65.6% acc, 0.615 log loss), 105 tests passing
+- **Phase 8 complete** - Daily Prediction System implemented, verified on a historical daily slate and backtest window, 111 tests passing
+- **Phase 9 complete** - Streamlit dashboard implemented and browser-verified, 121 tests passing
+- **Phase 10 complete** - live publishing layer implemented with tracked published forecasts, dashboard source precedence, and GitHub Actions automation, 129 tests passing
 - See `docs/phases/all_phases.md` for the full phase tracker
 - See `docs/nba_game_prediction_project_plan.md` for the comprehensive project plan
 
 ## Project Structure
 
-```
+```text
 nba-predict/
-├── configs/                      # YAML configs (data_sources, model, features)
-├── data/
-│   ├── raw/                      # Cached API responses (Parquet) — gitignored
-│   ├── interim/                  # Cleaned intermediate data — gitignored
-│   ├── processed/                # Feature tables — gitignored
-│   └── mappings/                 # team_to_idx.json (tracked in git)
-├── src/
-│   ├── data/providers/           # DataProvider ABC + NbaApiProvider
-│   ├── anonymization/            # Team/player → anonymous ID mapping
-│   ├── nlp/                      # LLM sentiment extraction pipeline
-│   ├── features/                 # Feature engineering (rolling, schedule, injury, news)
-│   ├── models/                   # Elo, tabular, neural, ensemble, calibration
-│   ├── app/                      # Daily prediction scripts + Streamlit dashboard
-│   └── utils/                    # paths.py, logging.py
-├── models/                       # Saved model artifacts — gitignored
-├── predictions/                  # Output JSONs — gitignored
-├── tests/                        # pytest test suite
-├── docs/phases/                  # Phase implementation guides (10 phases)
-└── notebooks/                    # Exploratory analysis
+|- configs/                      # YAML configs (data_sources, model, features)
+|- data/
+|  |- raw/                       # Cached API responses (Parquet) - gitignored
+|  |- interim/                   # Cleaned intermediate data - gitignored
+|  |- processed/                 # Feature tables (minimal inference bundle tracked)
+|  `- mappings/                  # team_to_idx.json (tracked in git)
+|- published/                    # Tracked deployment forecast JSONs
+|- src/
+|  |- data/providers/            # DataProvider ABC + NbaApiProvider
+|  |- anonymization/             # Team/player -> anonymous ID mapping
+|  |- nlp/                       # LLM sentiment extraction pipeline
+|  |- features/                  # Feature engineering (rolling, schedule, injury, news)
+|  |- models/                    # Elo, tabular, neural, ensemble, calibration
+|  |- app/                       # Daily prediction + publishing scripts + Streamlit dashboard
+|  `- utils/                     # paths.py, logging.py
+|- models/                       # Saved model artifacts (minimal inference bundle tracked)
+|- predictions/                  # Local output JSONs - gitignored
+|- tests/                        # pytest test suite
+|- docs/phases/                  # Phase implementation guides (11 phases)
+`- notebooks/                    # Exploratory analysis
 ```
 
 ## Critical Rules
 
-1. **No data leakage** — For a game on date D, only use data from before D. This is the most important rule. All rolling features must use `.shift(1)`. Never include the target game's stats in its features.
-2. **Anonymous team IDs** — Internally use indices 0–29 (see `data/mappings/team_to_idx.json`). Team names are only for data collection and UI display.
+1. **No data leakage** - For a game on date D, only use data from before D. This is the most important rule. All rolling features must use `.shift(1)`. Never include the target game's stats in its features.
+2. **Anonymous team IDs** - Internally use indices 0-29 (see `data/mappings/team_to_idx.json`). Team names are only for data collection and UI display.
+3. **LLM is a feature extractor** - The LLM extracts structured sentiment scores from news articles. It does NOT predict game winners.
+4. **Calibrated probabilities** - The model outputs `P(home_win)`, not hard predictions. Calibration matters more than accuracy.
+5. **Reproducibility** - Pin seeds (42), cache raw data as Parquet, log git commit + config with every experiment.
 
 ## Mandatory Workflow
 
 **After completing any phase, you MUST update ALL tracking docs before moving on:**
 
-1. `docs/phases/all_phases.md` — update the Status column for the completed phase
-2. `docs/phases/phase_XX_*.md` — check off all deliverables, fill in Notes & Learnings
-3. `AGENTS.md` — update the "Current State" section
+1. `docs/phases/all_phases.md` - update the Status column for the completed phase
+2. `docs/phases/phase_XX_*.md` - check off all deliverables, fill in Notes & Learnings
+3. `AGENTS.md` - update the "Current State" section
 4. Commit and push the tracking updates
 
 **This is not optional. Do not start the next phase until tracking is updated.**
-3. **LLM is a feature extractor** — The LLM extracts structured sentiment scores from news articles. It does NOT predict game winners.
-4. **Calibrated probabilities** — The model outputs P(home_win), not hard predictions. Calibration matters more than accuracy.
-5. **Reproducibility** — Pin seeds (42), cache raw data as Parquet, log git commit + config with every experiment.
 
 ## Tech Stack
 
@@ -83,38 +85,40 @@ nba-predict/
 | Sequence padding | Zero-pad + binary mask | Handles season openers and early games |
 | LLM schema | 7 core fields MVP | Reduce noise; expand after correlation analysis |
 | Feature normalization | Per-season StandardScaler | Fit on training data only |
-| Validation | Time-based + rolling splits | Never random split — simulates real forecasting |
-| Scope | Regular season only (V1) | Playoffs deferred to Phase 10+ |
+| Validation | Time-based + rolling splits | Never random split - simulates real forecasting |
+| Scope | Regular season only (V1) | Playoffs deferred to future phases |
 | Ensemble meta-model | Logistic regression | Simple, interpretable, hard to overfit |
 
 ## Conventions
 
 - **Configs** are YAML in `configs/`. Load with `yaml.safe_load()`.
-- **Paths** use `src/utils/paths.py` constants — never hardcode paths.
-- **Logging** via `src/utils/logging.py` — call `setup_logging()` in entry points.
+- **Paths** use `src/utils/paths.py` constants - never hardcode paths.
+- **Logging** via `src/utils/logging.py` - call `setup_logging()` in entry points.
 - **Tests** live in `tests/`, one file per phase: `test_project_structure.py`, `test_data_foundation.py`, etc.
-- **Data** is gitignored. Raw API responses cached as Parquet. Mappings are tracked.
-- **Models** saved to `models/{baselines,neural,calibrators,ensembles}/`.
+- **Data** is mostly gitignored. Raw API responses stay cached locally; the minimal Phase 10 inference bundle is tracked.
+- **Models** save to `models/{baselines,neural,calibrators,ensembles}/`; only the minimal inference bundle is tracked.
 
 ## Running
 
 ```bash
 pip install -r requirements.txt
-pytest tests/ -v              # run tests
-make fetch-data               # download NBA data
-make build-features           # build feature tables
-make train-baseline           # train Elo + XGBoost
-make train-model              # train neural model
-make predict-today            # generate today's predictions
+pytest tests/ -v                 # run tests
+make fetch-data                  # download NBA data
+make build-features              # build feature tables
+make train-baseline              # train Elo + XGBoost
+make train-model                 # train neural model
+make predict-today               # generate today's predictions
+python -m src.app.publish_today  # publish deployment forecast JSONs
+streamlit run streamlit_app.py   # launch dashboard
 ```
 
 ## Architecture (Target)
 
-```
-Team game sequences → GRU encoder ─────────────┐
-Injury vectors      → Injury MLP  ─────────────┤
-News sentiment      → News MLP    ─────────────┤ → Fusion MLP → Calibration → P(home_win)
-Schedule context    → Context MLP ─────────────┘
+```text
+Team game sequences -> GRU encoder -----------+
+Injury vectors      -> Injury MLP ------------|
+News sentiment      -> News MLP --------------| -> Fusion MLP -> Calibration -> P(home_win)
+Schedule context    -> Context MLP -----------+
 ```
 
 Home and away teams use **shared encoders** (same weights). Matchup is modeled via concatenation + difference + element-wise product of encoded states.

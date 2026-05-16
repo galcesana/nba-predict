@@ -274,24 +274,41 @@ def _probability_bar(home_prob: float, home_team: str, away_team: str) -> str:
     """
 
 
-def _slate_caption(payload: dict | None) -> str:
-    if not payload:
-        return "Forecast status: waiting for a published slate"
-    prefix = "Example slate" if payload.get("data_mode") == "bundled" else "Latest slate"
-    return f"{prefix}: {payload.get('date', 'unknown')}"
+def _forecast_status(payload: dict | None, manifest: dict | None) -> dict[str, str]:
+    return data.describe_forecast_status(payload, manifest)
 
 
-def _slate_source_notice(payload: dict) -> None:
-    if payload.get("data_mode") == "bundled":
-        st.info(
-            "Showing the latest bundled example slate because this deployment "
-            "does not have a freshly published forecast yet."
-        )
+def _slate_caption(payload: dict | None, manifest: dict | None) -> str:
+    status = _forecast_status(payload, manifest)
+    if payload and payload.get("date"):
+        return f"{status['message']} Slate date: {payload['date']}"
+    return status["message"]
+
+
+def _slate_source_notice(payload: dict | None, manifest: dict | None) -> None:
+    status = _forecast_status(payload, manifest)
+    if status["state"] == "local":
+        return
+    if status["state"] == "published_today":
+        st.success(status["message"])
+    elif status["state"] in {"no_games", "bundled"}:
+        st.info(status["message"])
+    elif status["state"] == "stale":
+        st.warning(status["message"])
+    elif status["state"] == "published":
+        st.success(status["message"])
+    else:
+        st.info(status["message"])
 
 
 @st.cache_data(show_spinner=False)
 def _latest_daily_payload() -> dict | None:
     return data.load_latest_daily_predictions()
+
+
+@st.cache_data(show_spinner=False)
+def _publish_manifest() -> dict | None:
+    return data.load_publish_manifest()
 
 
 @st.cache_data(show_spinner=False)
@@ -336,14 +353,12 @@ def _news_summary() -> pd.DataFrame:
 
 def render_today_page() -> None:
     payload = _latest_daily_payload()
+    manifest = _publish_manifest()
     st.subheader("Latest Forecasts")
     if not payload:
-        st.info(
-            "No published forecast is available right now. Check back later once a new slate "
-            "has been generated."
-        )
+        _slate_source_notice(payload, manifest)
         return
-    _slate_source_notice(payload)
+    _slate_source_notice(payload, manifest)
 
     predictions = payload.get("predictions", [])
     avg_edge = 0.0
@@ -402,11 +417,12 @@ def render_today_page() -> None:
 
 def render_game_detail_page() -> None:
     payload = _latest_daily_payload()
+    manifest = _publish_manifest()
     st.subheader("Game Detail")
     if not payload or not payload.get("predictions"):
-        st.info("Game detail becomes available once a forecast slate has been published.")
+        _slate_source_notice(payload, manifest)
         return
-    _slate_source_notice(payload)
+    _slate_source_notice(payload, manifest)
 
     options = {
         (
@@ -698,7 +714,8 @@ def render_dashboard() -> None:
     with st.sidebar:
         st.title("NBA Predict")
         latest_daily = _latest_daily_payload()
-        st.caption(_slate_caption(latest_daily))
+        manifest = _publish_manifest()
+        st.caption(_slate_caption(latest_daily, manifest))
         selected_page = st.radio("Pages", PAGES)
 
     if selected_page == "Today's Games":

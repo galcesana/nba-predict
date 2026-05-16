@@ -61,3 +61,20 @@ htmlcov/
 
 # ruff
 .ruff_cache/
+
+# Phase 10 tracked inference bundle
+!data/processed/
+data/processed/*
+!data/processed/games.parquet
+!data/processed/team_game_logs/
+data/processed/team_game_logs/*
+!data/processed/team_game_logs/team_game_logs.parquet
+!data/processed/injury_features/
+data/processed/injury_features/*
+!data/processed/injury_features/injury_features.parquet
+!data/processed/news_features/
+data/processed/news_features/*
+!data/processed/news_features/news_features.parquet
+
+!models/baselines/scaler.joblib
+!models/neural/best_model.pt

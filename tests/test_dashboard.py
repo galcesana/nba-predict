@@ -2,13 +2,41 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
 from src.app import dashboard_data, streamlit_app
 from src.utils.paths import PROJECT_ROOT
+
+
+def _payload_for_date(date_str: str, game_id: str = "game-1") -> dict:
+    return {
+        "date": date_str,
+        "generated_at": "2026-05-16T12:00:00Z",
+        "model_version": "ensemble_v1",
+        "predictions": [
+            {
+                "game_id": game_id,
+                "home_team_idx": 0,
+                "away_team_idx": 1,
+                "home_win_probability": 0.61,
+                "away_win_probability": 0.39,
+                "predicted_winner": "home",
+                "confidence_bucket": "medium",
+                "top_model_factors": ["recent net rating"],
+                "component_outputs": {"ensemble_probability": 0.61},
+            }
+        ],
+    }
+
+
+def _write_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload), encoding="utf-8")
 
 
 def test_streamlit_app_imports():
@@ -99,6 +127,98 @@ def test_news_debug_view():
         "avg_article_volume",
         "coverage_rate",
     }.issubset(summary.columns)
+
+
+def test_prediction_source_precedence(monkeypatch, tmp_path):
+    """Local predictions override published snapshots, then bundled data."""
+    local_dir = tmp_path / "predictions" / "daily"
+    published_dir = tmp_path / "published" / "daily"
+    bundled_dir = tmp_path / "bundled"
+
+    monkeypatch.setattr(dashboard_data, "DAILY_PREDICTIONS_DIR", local_dir)
+    monkeypatch.setattr(dashboard_data, "PUBLISHED_DAILY_DIR", published_dir)
+    monkeypatch.setattr(dashboard_data, "BUNDLED_DATA_DIR", bundled_dir)
+
+    _write_json(bundled_dir / "latest_daily_predictions.json", _payload_for_date("2024-01-10"))
+    payload = dashboard_data.load_latest_daily_predictions()
+    assert payload is not None
+    assert payload["data_mode"] == "bundled"
+
+    _write_json(published_dir / "2024-01-11.json", _payload_for_date("2024-01-11"))
+    _write_json(published_dir / "latest.json", _payload_for_date("2024-01-11"))
+    payload = dashboard_data.load_latest_daily_predictions()
+    assert payload is not None
+    assert payload["data_mode"] == "published"
+    assert payload["date"] == "2024-01-11"
+
+    _write_json(local_dir / "2024-01-12.json", _payload_for_date("2024-01-12"))
+    payload = dashboard_data.load_latest_daily_predictions()
+    assert payload is not None
+    assert payload["data_mode"] == "local"
+    assert payload["date"] == "2024-01-12"
+
+
+def test_archive_includes_published_daily(tmp_path):
+    """Published daily slates are included in the archive view."""
+    local_dir = tmp_path / "local_daily"
+    published_dir = tmp_path / "published_daily"
+    backtests_dir = tmp_path / "historical_backtests"
+    local_dir.mkdir()
+    published_dir.mkdir()
+    backtests_dir.mkdir()
+
+    _write_json(published_dir / "2024-01-15.json", _payload_for_date("2024-01-15"))
+    _write_json(published_dir / "latest.json", _payload_for_date("2024-01-15"))
+
+    archive = dashboard_data.build_archive_dataframe(
+        daily_dir=local_dir,
+        published_daily_dir=published_dir,
+        backtest_dir=backtests_dir,
+        games_path=tmp_path / "missing_games.parquet",
+    )
+
+    assert not archive.empty
+    assert "published" in archive["source"].unique()
+
+
+def test_forecast_status_descriptions():
+    """Forecast status text reflects publish state and staleness."""
+    published_payload = _payload_for_date("2026-05-16")
+    published_payload["data_mode"] = "published"
+
+    status = dashboard_data.describe_forecast_status(
+        published_payload,
+        {"status": "published", "target_date": "2026-05-16", "latest_available_date": "2026-05-16"},
+        as_of_date="2026-05-16",
+    )
+    assert status["state"] == "published_today"
+    assert "Published today" in status["message"]
+
+    no_games = dashboard_data.describe_forecast_status(
+        published_payload,
+        {"status": "no_games", "target_date": "2026-05-17", "latest_available_date": "2026-05-16"},
+        as_of_date="2026-05-17",
+    )
+    assert no_games["state"] == "no_games"
+    assert "No games today" in no_games["message"]
+
+    stale = dashboard_data.describe_forecast_status(
+        published_payload,
+        {"status": "published", "target_date": "2026-05-15", "latest_available_date": "2026-05-15"},
+        as_of_date="2026-05-16",
+    )
+    assert stale["state"] == "stale"
+    assert "Showing previous published slate" in stale["message"]
+
+    bundled_payload = _payload_for_date("2024-01-15")
+    bundled_payload["data_mode"] = "bundled"
+    bundled = dashboard_data.describe_forecast_status(
+        bundled_payload,
+        None,
+        as_of_date="2026-05-16",
+    )
+    assert bundled["state"] == "bundled"
+    assert "bundled example slate" in bundled["message"]
 
 
 def test_dashboard_startup():

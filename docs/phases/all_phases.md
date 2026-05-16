@@ -1,4 +1,4 @@
-# NBA Game Prediction — Implementation Phases
+# NBA Game Prediction - Implementation Phases
 
 > **Master tracker for all implementation phases.**
 > Update the status column as you work. Each phase has its own detailed doc linked below.
@@ -9,24 +9,25 @@
 
 | Phase | Name | Size | Est. Time | Status | Depends On |
 |-------|------|------|-----------|--------|------------|
-| [0](phase_00_project_setup.md) | Project Setup | S | 1–2 days | `[x]` Complete | — |
-| [1](phase_01_historical_data.md) | Historical Data Foundation | M | 3–5 days | `[x]` Complete | Phase 0 |
-| [2](phase_02_feature_table.md) | Leakage-Safe Feature Table | M | 3–5 days | `[x]` Complete | Phase 1 |
-| [3](phase_03_baselines.md) | Baseline Models | M | 3–5 days | `[x]` Complete | Phase 2 |
-| [4](phase_04_sequence_model.md) | Team Sequence Model | L | 1–2 weeks | `[x]` Complete | Phase 3 |
-| [5](phase_05_injury_features.md) | Injury Features | M | 3–5 days | `[x]` Complete | Phase 3 |
-| [6](phase_06_llm_sentiment.md) | LLM News/Sentiment Layer | XL | 2–3 weeks | `[x]` Complete | Phase 4 |
-| [7](phase_07_fusion_model.md) | Full Fusion Model | L | 1–2 weeks | `[x]` Complete | Phase 4 + 5 + 6 |
-| [8](phase_08_daily_predictions.md) | Daily Prediction System | M | 3–5 days | `[x]` Complete | Phase 7 |
-| [9](phase_09_dashboard.md) | Product Dashboard | L | 1–2 weeks | `[x]` Complete | Phase 8 |
+| [0](phase_00_project_setup.md) | Project Setup | S | 1-2 days | `[x]` Complete | - |
+| [1](phase_01_historical_data.md) | Historical Data Foundation | M | 3-5 days | `[x]` Complete | Phase 0 |
+| [2](phase_02_feature_table.md) | Leakage-Safe Feature Table | M | 3-5 days | `[x]` Complete | Phase 1 |
+| [3](phase_03_baselines.md) | Baseline Models | M | 3-5 days | `[x]` Complete | Phase 2 |
+| [4](phase_04_sequence_model.md) | Team Sequence Model | L | 1-2 weeks | `[x]` Complete | Phase 3 |
+| [5](phase_05_injury_features.md) | Injury Features | M | 3-5 days | `[x]` Complete | Phase 3 |
+| [6](phase_06_llm_sentiment.md) | LLM News/Sentiment Layer | XL | 2-3 weeks | `[x]` Complete | Phase 4 |
+| [7](phase_07_fusion_model.md) | Full Fusion Model | L | 1-2 weeks | `[x]` Complete | Phase 4 + 5 + 6 |
+| [8](phase_08_daily_predictions.md) | Daily Prediction System | M | 3-5 days | `[x]` Complete | Phase 7 |
+| [9](phase_09_dashboard.md) | Product Dashboard | L | 1-2 weeks | `[x]` Complete | Phase 8 |
+| [10](phase_10_live_publishing.md) | Live Publishing Layer | M | 2-4 days | `[x]` Complete | Phase 9 |
 
-**Total estimated: ~10–14 weeks**
+**Total estimated: ~11-15 weeks**
 
 ---
 
 ## Status Legend
 
-```
+```text
 [ ] Not Started
 [/] In Progress
 [x] Complete
@@ -38,27 +39,24 @@
 ## Dependency Graph
 
 ```text
-Phase 0 → Phase 1 → Phase 2 → Phase 3 ─┬→ Phase 4 ──┐
-                                         │             │
-                                         ├→ Phase 5 ──┤
-                                         │             │
-                                         │  Phase 6 ───┤
-                                         │             ▼
-                                         │        Phase 7 → Phase 8 → Phase 9
-                                         │
-                                         └→ (Phase 6 can start after Phase 3,
-                                             needs Phase 4 for integration)
+Phase 0 -> Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 ----+
+                                 |                       |
+                                 +-> Phase 5 -----------|
+                                 |                       |
+                                 +-> Phase 6 -----------|
+                                                         v
+                                                    Phase 7 -> Phase 8 -> Phase 9 -> Phase 10
 ```
 
 ---
 
 ## How to Use These Docs
 
-1. **Start each phase** by reading its full doc and checking prerequisites
-2. **Track progress** by checking off deliverables in the phase doc
-3. **Run verification tests** at the end — do not proceed until all pass
-4. **Update this master file** with the phase status as you work
-5. **Leave notes** in each phase doc's "Notes & Learnings" section
+1. **Start each phase** by reading its full doc and checking prerequisites.
+2. **Track progress** by checking off deliverables in the phase doc.
+3. **Run verification tests** at the end - do not proceed until all pass.
+4. **Update this master file** with the phase status as you work.
+5. **Leave notes** in each phase doc's "Notes & Learnings" section.
 
 ---
 
@@ -76,7 +74,8 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 ─┬→ Phase 4 ──┐
 | 7 | 6 | Fusion forward pass plus ensemble training coverage |
 | 8 | 12 | Prediction pipeline, output format, backtest |
 | 9 | 10 + 8 manual | Dashboard pages, rendering, browser |
-| **Total** | **121 automated + 8 manual** | |
+| 10 | 8 | Publishing, manifest state, dashboard source precedence |
+| **Total** | **129 automated + 8 manual** | |
 
 ---
 
@@ -85,17 +84,17 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 ─┬→ Phase 4 ──┐
 ### Core Principles
 
 - **Predict probabilities**, not just winners
-- **No data leakage** — only pre-tip-off information
-- **Anonymous team IDs** — no name memorization
+- **No data leakage** - only pre-tip-off information
+- **Anonymous team IDs** - no name memorization
 - **LLM is a feature extractor**, not the predictor
-- **Reproducibility** — pin seeds, version snapshots, log everything
+- **Reproducibility** - pin seeds, version snapshots, log everything
 
 ### Key Technical Decisions
 
 | Decision | Choice |
 |----------|--------|
 | Data source | `nba_api` behind `DataProvider` interface |
-| Historical news | None — zero vector + `news_available=0` pre-2023-24 |
+| Historical news | None - zero vector + `news_available=0` pre-2023-24 |
 | Sequence padding | Zero-pad + binary mask |
 | LLM model | GPT-4o-mini (temp=0), Haiku/Flash fallback |
 | LLM schema | 7 core fields MVP, 8 extended deferred |
