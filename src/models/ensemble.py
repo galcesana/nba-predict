@@ -194,6 +194,7 @@ def main():
     # Save
     ENSEMBLE_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump(results["meta_model"], ENSEMBLE_DIR / "meta_model.joblib")
+    joblib.dump(results["calibrator"], ENSEMBLE_DIR / "calibrator.joblib")
 
     # Save predictions
     test_preds_out = test_preds[["game_id", "actual_home_win"]].copy()

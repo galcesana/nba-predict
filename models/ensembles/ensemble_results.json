@@ -1,0 +1,21 @@
+{
+  "ensemble_raw": {
+    "accuracy": 0.6562118126272912,
+    "log_loss": 0.6151888250768539,
+    "brier_score": 0.21327146089673396,
+    "roc_auc": 0.7249846174424825
+  },
+  "ensemble_calibrated": {
+    "accuracy": 0.6570264765784114,
+    "log_loss": 0.6206701780969561,
+    "brier_score": 0.21548050938260577,
+    "roc_auc": 0.7249846174424825
+  },
+  "model_weights": {
+    "neural_prob": 1.0365773433395458,
+    "xgboost_prob": 1.5236690892721856,
+    "elo_prob": 1.577246621652351
+  },
+  "model_intercept": -2.0672278389825025,
+  "n_models": 3
+}

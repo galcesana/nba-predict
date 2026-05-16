@@ -1,0 +1,13 @@
+{
+  "test_loss": 0.618324033724956,
+  "test_accuracy": 0.6492871690427698,
+  "best_val_loss": 0.6507563918828965,
+  "best_epoch": 20,
+  "total_epochs": 30,
+  "n_params": 106401,
+  "feature_streams": [
+    "performance",
+    "context",
+    "news"
+  ]
+}
