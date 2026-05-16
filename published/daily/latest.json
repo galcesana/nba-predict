@@ -3,13 +3,9 @@
   "slate_type": "week",
   "window_start": "2026-05-16",
   "window_end": "2026-05-22",
-  "generated_at": "2026-05-16T17:54:35Z",
+  "generated_at": "2026-05-16T18:13:44Z",
   "model_version": "ensemble_v1",
   "dates_with_games": [
-    {
-      "date": "2026-05-16",
-      "games_count": 1
-    },
     {
       "date": "2026-05-17",
       "games_count": 1
@@ -28,32 +24,6 @@
     }
   ],
   "predictions": [
-    {
-      "game_id": "0042500226",
-      "home_team_idx": 13,
-      "away_team_idx": 20,
-      "home_win_probability": 0.5074,
-      "away_win_probability": 0.4926,
-      "predicted_winner": "home",
-      "confidence_bucket": "low",
-      "component_outputs": {
-        "elo_probability": 0.4709,
-        "tabular_probability": 0.5102999806404114,
-        "sequence_probability": 0.5171999931335449,
-        "final_probability": 0.5074
-      },
-      "top_model_factors": [
-        "Away team projects as more shorthanded"
-      ],
-      "game_date": "2026-05-16",
-      "game_time_utc": "2026-05-16T04:00:00Z",
-      "game_time_et": "2026-05-16T00:00:00Z",
-      "game_status_text": "TBD",
-      "game_label": "West Conf. Semifinals",
-      "game_sub_label": "Game 6",
-      "series_text": "OKC leads 3-0",
-      "game_code": "20260516/OKCLAL"
-    },
     {
       "game_id": "0042500207",
       "home_team_idx": 8,

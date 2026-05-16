@@ -8,7 +8,11 @@ import json
 import pandas as pd
 import pytest
 
-from src.app.predict_today import generate_predictions_for_date, generate_predictions_for_window
+from src.app.predict_today import (
+    _filter_confirmed_schedule,
+    generate_predictions_for_date,
+    generate_predictions_for_window,
+)
 from src.app.run_backtest import run_backtest
 from src.models.predict import PredictionPipeline
 from src.utils.paths import PROCESSED_DIR
@@ -189,6 +193,31 @@ class TestPredictionPipeline:
 
 
 class TestScripts:
+    def test_if_necessary_games_are_filtered(self):
+        """Tentative playoff placeholders are excluded from the live slate."""
+        schedule = pd.DataFrame(
+            [
+                {
+                    "game_id": "g1",
+                    "date": "2026-05-16",
+                    "home_team_idx": 1,
+                    "away_team_idx": 2,
+                    "if_necessary": True,
+                },
+                {
+                    "game_id": "g2",
+                    "date": "2026-05-18",
+                    "home_team_idx": 3,
+                    "away_team_idx": 4,
+                    "if_necessary": False,
+                },
+            ]
+        )
+
+        filtered = _filter_confirmed_schedule(schedule)
+
+        assert filtered["game_id"].tolist() == ["g2"]
+
     def test_backtest_on_known_date(self, tmp_path, stub_pipeline, synthetic_backtest_data):
         """Backtest runner saves a valid report."""
         games, logs = synthetic_backtest_data

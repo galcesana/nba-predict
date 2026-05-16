@@ -34,6 +34,23 @@ def _season_from_date(date_str: str) -> str:
     return f"{start_year}-{(start_year + 1) % 100:02d}"
 
 
+def _filter_confirmed_schedule(schedule: pd.DataFrame) -> pd.DataFrame:
+    """Keep only confirmed scheduled games.
+
+    The NBA playoff schedule includes future `if necessary` placeholders that
+    are not guaranteed to happen. For the live forecast board we only publish
+    confirmed games.
+    """
+    if schedule.empty or "if_necessary" not in schedule.columns:
+        return schedule
+
+    confirmed = schedule[~schedule["if_necessary"].fillna(False)].copy()
+    filtered_count = len(schedule) - len(confirmed)
+    if filtered_count > 0:
+        logger.info("Filtered out %d tentative if-necessary games.", filtered_count)
+    return confirmed
+
+
 def _fetch_schedule_v3(date_str: str, team_mapping: dict[str, int]) -> pd.DataFrame:
     sb = scoreboardv3.ScoreboardV3(game_date=date_str)
     scoreboard = sb.get_dict().get("scoreboard", {})
@@ -67,11 +84,12 @@ def _fetch_schedule_v3(date_str: str, team_mapping: dict[str, int]) -> pd.DataFr
                     "game_time_utc": game.get("gameTimeUTC"),
                     "game_time_et": game.get("gameEt"),
                     "game_code": game.get("gameCode"),
+                    "if_necessary": bool(game.get("ifNecessary", False)),
                 }
             )
 
     logger.info("Found %d scheduled games via ScoreboardV3.", len(schedule_rows))
-    return pd.DataFrame(schedule_rows)
+    return _filter_confirmed_schedule(pd.DataFrame(schedule_rows))
 
 
 def _fetch_schedule_v2(date_str: str, team_mapping: dict[str, int]) -> pd.DataFrame:
@@ -100,11 +118,12 @@ def _fetch_schedule_v2(date_str: str, team_mapping: dict[str, int]) -> pd.DataFr
                     "away_team_idx": team_mapping[away_abbr],
                     "game_status_text": row.get("GAME_STATUS_TEXT"),
                     "game_code": row.get("GAMECODE"),
+                    "if_necessary": False,
                 }
             )
 
     logger.info("Found %d scheduled games via ScoreboardV2.", len(games))
-    return pd.DataFrame(games)
+    return _filter_confirmed_schedule(pd.DataFrame(games))
 
 
 def fetch_schedule(date_str: str) -> pd.DataFrame:
