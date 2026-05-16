@@ -1,7 +1,32 @@
 {
   "date": "2026-05-16",
-  "generated_at": "2026-05-16T17:22:44Z",
+  "slate_type": "week",
+  "window_start": "2026-05-16",
+  "window_end": "2026-05-22",
+  "generated_at": "2026-05-16T17:54:35Z",
   "model_version": "ensemble_v1",
+  "dates_with_games": [
+    {
+      "date": "2026-05-16",
+      "games_count": 1
+    },
+    {
+      "date": "2026-05-17",
+      "games_count": 1
+    },
+    {
+      "date": "2026-05-18",
+      "games_count": 1
+    },
+    {
+      "date": "2026-05-20",
+      "games_count": 1
+    },
+    {
+      "date": "2026-05-22",
+      "games_count": 1
+    }
+  ],
   "predictions": [
     {
       "game_id": "0042500226",
@@ -19,7 +44,120 @@
       },
       "top_model_factors": [
         "Away team projects as more shorthanded"
-      ]
+      ],
+      "game_date": "2026-05-16",
+      "game_time_utc": "2026-05-16T04:00:00Z",
+      "game_time_et": "2026-05-16T00:00:00Z",
+      "game_status_text": "TBD",
+      "game_label": "West Conf. Semifinals",
+      "game_sub_label": "Game 6",
+      "series_text": "OKC leads 3-0",
+      "game_code": "20260516/OKCLAL"
+    },
+    {
+      "game_id": "0042500207",
+      "home_team_idx": 8,
+      "away_team_idx": 5,
+      "home_win_probability": 0.6659,
+      "away_win_probability": 0.3341,
+      "predicted_winner": "home",
+      "confidence_bucket": "medium",
+      "component_outputs": {
+        "elo_probability": 0.6842,
+        "tabular_probability": 0.6175000071525574,
+        "sequence_probability": 0.7454000115394592,
+        "final_probability": 0.6659
+      },
+      "top_model_factors": [
+        "Home team has significantly better recent net rating",
+        "Away team projects as more shorthanded"
+      ],
+      "game_date": "2026-05-17",
+      "game_time_utc": "2026-05-18T00:00:00Z",
+      "game_time_et": "2026-05-17T20:00:00Z",
+      "game_status_text": "8:00 pm ET",
+      "game_label": "East Conf. Semifinals",
+      "game_sub_label": "Game 7",
+      "series_text": "Series tied 3-3",
+      "game_code": "20260517/CLEDET"
+    },
+    {
+      "game_id": "0042500311",
+      "home_team_idx": 20,
+      "away_team_idx": 26,
+      "home_win_probability": 0.6278,
+      "away_win_probability": 0.3722,
+      "predicted_winner": "home",
+      "confidence_bucket": "medium",
+      "component_outputs": {
+        "elo_probability": 0.6915,
+        "tabular_probability": 0.5773000121116638,
+        "sequence_probability": 0.6039000153541565,
+        "final_probability": 0.6278
+      },
+      "top_model_factors": [
+        "Matchup appears statistically balanced"
+      ],
+      "game_date": "2026-05-18",
+      "game_time_utc": "2026-05-19T00:30:00Z",
+      "game_time_et": "2026-05-18T20:30:00Z",
+      "game_status_text": "8:30 pm ET",
+      "game_label": "West Conf. Finals",
+      "game_sub_label": "Game 1",
+      "series_text": "Series tied 0-0",
+      "game_code": "20260518/SASOKC"
+    },
+    {
+      "game_id": "0042500312",
+      "home_team_idx": 20,
+      "away_team_idx": 26,
+      "home_win_probability": 0.628,
+      "away_win_probability": 0.372,
+      "predicted_winner": "home",
+      "confidence_bucket": "medium",
+      "component_outputs": {
+        "elo_probability": 0.6915,
+        "tabular_probability": 0.5773000121116638,
+        "sequence_probability": 0.6047999858856201,
+        "final_probability": 0.628
+      },
+      "top_model_factors": [
+        "Matchup appears statistically balanced"
+      ],
+      "game_date": "2026-05-20",
+      "game_time_utc": "2026-05-21T00:30:00Z",
+      "game_time_et": "2026-05-20T20:30:00Z",
+      "game_status_text": "8:30 pm ET",
+      "game_label": "West Conf. Finals",
+      "game_sub_label": "Game 2",
+      "series_text": "Series tied 0-0",
+      "game_code": "20260520/SASOKC"
+    },
+    {
+      "game_id": "0042500313",
+      "home_team_idx": 26,
+      "away_team_idx": 20,
+      "home_win_probability": 0.5883,
+      "away_win_probability": 0.4117,
+      "predicted_winner": "home",
+      "confidence_bucket": "low",
+      "component_outputs": {
+        "elo_probability": 0.5852,
+        "tabular_probability": 0.6087999939918518,
+        "sequence_probability": 0.539900004863739,
+        "final_probability": 0.5883
+      },
+      "top_model_factors": [
+        "Matchup appears statistically balanced"
+      ],
+      "game_date": "2026-05-22",
+      "game_time_utc": "2026-05-23T00:30:00Z",
+      "game_time_et": "2026-05-22T20:30:00Z",
+      "game_status_text": "8:30 pm ET",
+      "game_label": "West Conf. Finals",
+      "game_sub_label": "Game 3",
+      "series_text": "Series tied 0-0",
+      "game_code": "20260522/OKCSAS"
     }
   ]
 }

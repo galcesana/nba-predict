@@ -51,14 +51,43 @@ def _json_files(directory: Path, *, exclude_names: set[str] | None = None) -> li
         return []
     excluded = exclude_names or set()
     return sorted(
-        path
-        for path in directory.glob("*.json")
-        if path.is_file() and path.name not in excluded
+        path for path in directory.glob("*.json") if path.is_file() and path.name not in excluded
     )
 
 
 def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _latest_payload_from_directory(
+    directory: Path,
+    *,
+    data_mode: str,
+    exclude_names: set[str] | None = None,
+    preferred_filename: str | None = None,
+) -> dict[str, Any] | None:
+    files = _json_files(directory, exclude_names=exclude_names)
+    if not files and not preferred_filename:
+        return None
+
+    preferred_path = directory / preferred_filename if preferred_filename else None
+    if preferred_path and preferred_path.exists():
+        source_path = preferred_path
+    elif files:
+        source_path = files[-1]
+    else:
+        return None
+
+    payload = _load_json(source_path)
+    payload["source_file"] = str(source_path)
+    payload["data_mode"] = data_mode
+    return payload
+
+
+def _payload_recency_key(payload: dict[str, Any]) -> tuple[str, str]:
+    window_end = str(payload.get("window_end") or payload.get("date") or "")
+    generated_at = str(payload.get("generated_at") or "")
+    return window_end, generated_at
 
 
 def _load_frame_from_json(path: Path, *, date_columns: tuple[str, ...] = ("date",)) -> pd.DataFrame:
@@ -139,24 +168,28 @@ def load_news_features(path: Path | None = None) -> pd.DataFrame:
 
 def load_latest_daily_predictions(directory: Path | None = None) -> dict[str, Any] | None:
     """Load the most recent daily prediction payload."""
-    files = _json_files(directory or DAILY_PREDICTIONS_DIR)
-    if files:
-        payload = _load_json(files[-1])
-        payload["source_file"] = str(files[-1])
-        payload["data_mode"] = "local"
-        return payload
+    local_payload = _latest_payload_from_directory(
+        directory or DAILY_PREDICTIONS_DIR,
+        data_mode="local",
+    )
 
     if directory is not None:
-        return None
+        return local_payload
 
-    published_files = _json_files(PUBLISHED_DAILY_DIR, exclude_names={"latest.json"})
-    latest_path = PUBLISHED_DAILY_DIR / "latest.json"
-    if published_files or latest_path.exists():
-        source_path = latest_path if latest_path.exists() else published_files[-1]
-        payload = _load_json(source_path)
-        payload["source_file"] = str(source_path)
-        payload["data_mode"] = "published"
-        return payload
+    published_payload = _latest_payload_from_directory(
+        PUBLISHED_DAILY_DIR,
+        data_mode="published",
+        exclude_names={"latest.json"},
+        preferred_filename="latest.json",
+    )
+    if local_payload and published_payload:
+        if _payload_recency_key(local_payload) >= _payload_recency_key(published_payload):
+            return local_payload
+        return published_payload
+    if local_payload:
+        return local_payload
+    if published_payload:
+        return published_payload
 
     bundled = _bundled_path("latest_daily_predictions.json")
     if not bundled.exists():
@@ -211,7 +244,7 @@ def describe_forecast_status(
     """Describe the currently loaded forecast source for the dashboard."""
     if payload is None:
         if manifest and manifest.get("status") == "no_games":
-            return {"state": "no_games", "message": "No games today."}
+            return {"state": "no_games", "message": "No games scheduled in this forecast window."}
         return {"state": "unavailable", "message": "Waiting for the next published forecast."}
 
     mode = payload.get("data_mode")
@@ -225,32 +258,36 @@ def describe_forecast_status(
     manifest = manifest or {}
     status = str(manifest.get("status", ""))
     latest_available = manifest.get("latest_available_date")
+    window_start = str(payload.get("window_start") or manifest.get("window_start") or payload_date)
+    window_end = str(payload.get("window_end") or manifest.get("window_end") or payload_date)
 
-    if (
-        status == "published"
-        and manifest.get("target_date") == publish_date
-        and payload_date == publish_date
-    ):
-        return {"state": "published_today", "message": "Published today."}
+    if status == "published" and window_start <= publish_date <= window_end:
+        return {
+            "state": "published_this_week",
+            "message": f"Published this week. Window: {window_start} to {window_end}.",
+        }
 
     if status == "no_games":
         if latest_available:
             return {
                 "state": "no_games",
                 "message": (
-                    "No games today. "
+                    "No games scheduled in this forecast window. "
                     f"Showing previous published slate from {latest_available}."
                 ),
             }
-        return {"state": "no_games", "message": "No games today."}
+        return {"state": "no_games", "message": "No games scheduled in this forecast window."}
 
-    if manifest.get("target_date") != publish_date or payload_date != publish_date:
+    if window_end < publish_date:
         return {
             "state": "stale",
-            "message": f"Showing previous published slate from {payload_date}.",
+            "message": (f"Showing previous published slate from {window_start} to {window_end}."),
         }
 
-    return {"state": "published", "message": f"Published slate for {payload_date}."}
+    return {
+        "state": "published",
+        "message": f"Published slate for {window_start} to {window_end}.",
+    }
 
 
 def get_prediction_detail(payload: dict[str, Any] | None, game_id: str) -> dict[str, Any] | None:
@@ -335,7 +372,7 @@ def build_archive_dataframe(
                 rows.append(
                     _prediction_record(
                         prediction,
-                        date=payload.get("date"),
+                        date=prediction.get("game_date", payload.get("date")),
                         source=source_label,
                         generated_at=payload.get("generated_at"),
                     )
@@ -397,49 +434,57 @@ def build_model_performance_table(
         for name, metrics in baseline_results.items():
             if not name.endswith("_test") or not isinstance(metrics, dict):
                 continue
-            rows.append({
-                "family": "baseline",
-                "model": name.replace("_test", ""),
-                **metrics,
-            })
+            rows.append(
+                {
+                    "family": "baseline",
+                    "model": name.replace("_test", ""),
+                    **metrics,
+                }
+            )
 
     ensemble_source = ensemble_path or (MODELS_DIR / "ensembles" / "ensemble_results.json")
     if ensemble_source.exists():
         ensemble_results = _load_json(ensemble_source)
         for name in ("ensemble_raw", "ensemble_calibrated"):
             if name in ensemble_results:
-                rows.append({
-                    "family": "ensemble",
-                    "model": name,
-                    **ensemble_results[name],
-                })
+                rows.append(
+                    {
+                        "family": "ensemble",
+                        "model": name,
+                        **ensemble_results[name],
+                    }
+                )
 
     neural_source = neural_path or (MODELS_DIR / "neural" / "test_results.json")
     if neural_source.exists():
         neural_results = _load_json(neural_source)
-        rows.append({
-            "family": "neural",
-            "model": "full_fusion",
-            "accuracy": neural_results.get("test_accuracy"),
-            "log_loss": neural_results.get("test_loss"),
-            "brier_score": np.nan,
-            "roc_auc": np.nan,
-            "calibration_error": np.nan,
-        })
+        rows.append(
+            {
+                "family": "neural",
+                "model": "full_fusion",
+                "accuracy": neural_results.get("test_accuracy"),
+                "log_loss": neural_results.get("test_loss"),
+                "brier_score": np.nan,
+                "roc_auc": np.nan,
+                "calibration_error": np.nan,
+            }
+        )
 
     ablation_source = ablation_path or (MODELS_DIR / "neural" / "ablation_results.json")
     if ablation_source.exists():
         ablations = _load_json(ablation_source)
         for name, metrics in ablations.items():
-            rows.append({
-                "family": "ablation",
-                "model": name,
-                "accuracy": metrics.get("test_accuracy"),
-                "log_loss": metrics.get("test_loss"),
-                "brier_score": np.nan,
-                "roc_auc": np.nan,
-                "calibration_error": np.nan,
-            })
+            rows.append(
+                {
+                    "family": "ablation",
+                    "model": name,
+                    "accuracy": metrics.get("test_accuracy"),
+                    "log_loss": metrics.get("test_loss"),
+                    "brier_score": np.nan,
+                    "roc_auc": np.nan,
+                    "calibration_error": np.nan,
+                }
+            )
 
     if not rows:
         return pd.DataFrame()
@@ -449,9 +494,8 @@ def build_model_performance_table(
     for column in numeric_cols:
         if column in frame.columns:
             frame[column] = pd.to_numeric(frame[column], errors="coerce")
-    return (
-        frame.sort_values(["log_loss", "accuracy"], ascending=[True, False])
-        .reset_index(drop=True)
+    return frame.sort_values(["log_loss", "accuracy"], ascending=[True, False]).reset_index(
+        drop=True
     )
 
 
@@ -568,20 +612,16 @@ def build_injury_summary(window: int = 15, path: Path | None = None) -> pd.DataF
     if injuries.empty:
         return pd.DataFrame()
     recent = injuries.sort_values("date").groupby("team_idx", as_index=False).tail(window)
-    summary = (
-        recent.groupby("team_idx", as_index=False)
-        .agg(
-            avg_players_out=("players_out_count", "mean"),
-            avg_questionable=("players_questionable_count", "mean"),
-            avg_estimated_value_missing=("estimated_value_missing", "mean"),
-            avg_minutes_missing=("minutes_missing", "mean"),
-            data_available_rate=("injury_data_available", "mean"),
-        )
+    summary = recent.groupby("team_idx", as_index=False).agg(
+        avg_players_out=("players_out_count", "mean"),
+        avg_questionable=("players_questionable_count", "mean"),
+        avg_estimated_value_missing=("estimated_value_missing", "mean"),
+        avg_minutes_missing=("minutes_missing", "mean"),
+        data_available_rate=("injury_data_available", "mean"),
     )
     summary["team"] = summary["team_idx"].map(team_abbr)
-    return (
-        summary.sort_values("avg_estimated_value_missing", ascending=False)
-        .reset_index(drop=True)
+    return summary.sort_values("avg_estimated_value_missing", ascending=False).reset_index(
+        drop=True
     )
 
 
@@ -591,15 +631,12 @@ def build_news_summary(window: int = 15, path: Path | None = None) -> pd.DataFra
     if news.empty:
         return pd.DataFrame()
     recent = news.sort_values("date").groupby("team_idx", as_index=False).tail(window)
-    summary = (
-        recent.groupby("team_idx", as_index=False)
-        .agg(
-            avg_sentiment_24h=("weighted_sentiment_24h", "mean"),
-            avg_sentiment_72h=("weighted_sentiment_72h", "mean"),
-            avg_article_volume=("article_volume_24h", "mean"),
-            avg_negative_ratio=("negative_ratio_72h", "mean"),
-            coverage_rate=("news_available", "mean"),
-        )
+    summary = recent.groupby("team_idx", as_index=False).agg(
+        avg_sentiment_24h=("weighted_sentiment_24h", "mean"),
+        avg_sentiment_72h=("weighted_sentiment_72h", "mean"),
+        avg_article_volume=("article_volume_24h", "mean"),
+        avg_negative_ratio=("negative_ratio_72h", "mean"),
+        coverage_rate=("news_available", "mean"),
     )
     summary["team"] = summary["team_idx"].map(team_abbr)
     return summary.sort_values("avg_sentiment_72h", ascending=False).reset_index(drop=True)

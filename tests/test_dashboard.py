@@ -16,11 +16,13 @@ from src.utils.paths import PROJECT_ROOT
 def _payload_for_date(date_str: str, game_id: str = "game-1") -> dict:
     return {
         "date": date_str,
+        "slate_type": "day",
         "generated_at": "2026-05-16T12:00:00Z",
         "model_version": "ensemble_v1",
         "predictions": [
             {
                 "game_id": game_id,
+                "game_date": date_str,
                 "home_team_idx": 0,
                 "away_team_idx": 1,
                 "home_win_probability": 0.61,
@@ -41,7 +43,7 @@ def _write_json(path: Path, payload: dict) -> None:
 
 def test_streamlit_app_imports():
     """Streamlit app module imports with expected page definitions."""
-    assert "Today's Games" in streamlit_app.PAGES
+    assert "This Week's Games" in streamlit_app.PAGES
     assert "Calibration" in streamlit_app.PAGES
 
 
@@ -53,10 +55,7 @@ def test_nested_streamlit_entry_imports():
         [
             sys.executable,
             "-c",
-            (
-                "import runpy; "
-                f"runpy.run_path({entry_arg}, run_name='__streamlit_cloud__')"
-            ),
+            (f"import runpy; runpy.run_path({entry_arg}, run_name='__streamlit_cloud__')"),
         ],
         cwd=str(PROJECT_ROOT),
         capture_output=True,
@@ -151,7 +150,7 @@ def test_news_debug_view():
 
 
 def test_prediction_source_precedence(monkeypatch, tmp_path):
-    """Local predictions override published snapshots, then bundled data."""
+    """The freshest available forecast wins across local, published, and bundled data."""
     local_dir = tmp_path / "predictions" / "daily"
     published_dir = tmp_path / "published" / "daily"
     bundled_dir = tmp_path / "bundled"
@@ -167,6 +166,12 @@ def test_prediction_source_precedence(monkeypatch, tmp_path):
 
     _write_json(published_dir / "2024-01-11.json", _payload_for_date("2024-01-11"))
     _write_json(published_dir / "latest.json", _payload_for_date("2024-01-11"))
+    payload = dashboard_data.load_latest_daily_predictions()
+    assert payload is not None
+    assert payload["data_mode"] == "published"
+    assert payload["date"] == "2024-01-11"
+
+    _write_json(local_dir / "2024-01-10.json", _payload_for_date("2024-01-10"))
     payload = dashboard_data.load_latest_daily_predictions()
     assert payload is not None
     assert payload["data_mode"] == "published"
@@ -206,26 +211,48 @@ def test_forecast_status_descriptions():
     """Forecast status text reflects publish state and staleness."""
     published_payload = _payload_for_date("2026-05-16")
     published_payload["data_mode"] = "published"
+    published_payload["slate_type"] = "week"
+    published_payload["window_start"] = "2026-05-16"
+    published_payload["window_end"] = "2026-05-22"
+    published_payload["dates_with_games"] = [{"date": "2026-05-16", "games_count": 1}]
 
     status = dashboard_data.describe_forecast_status(
         published_payload,
-        {"status": "published", "target_date": "2026-05-16", "latest_available_date": "2026-05-16"},
+        {
+            "status": "published",
+            "target_date": "2026-05-16",
+            "latest_available_date": "2026-05-16",
+            "window_start": "2026-05-16",
+            "window_end": "2026-05-22",
+        },
         as_of_date="2026-05-16",
     )
-    assert status["state"] == "published_today"
-    assert "Published today" in status["message"]
+    assert status["state"] == "published_this_week"
+    assert "Published this week" in status["message"]
 
     no_games = dashboard_data.describe_forecast_status(
         published_payload,
-        {"status": "no_games", "target_date": "2026-05-17", "latest_available_date": "2026-05-16"},
-        as_of_date="2026-05-17",
+        {"status": "no_games", "target_date": "2026-05-23", "latest_available_date": "2026-05-16"},
+        as_of_date="2026-05-23",
     )
     assert no_games["state"] == "no_games"
-    assert "No games today" in no_games["message"]
+    assert "No games scheduled in this forecast window" in no_games["message"]
+
+    stale_payload = _payload_for_date("2026-05-08")
+    stale_payload["data_mode"] = "published"
+    stale_payload["slate_type"] = "week"
+    stale_payload["window_start"] = "2026-05-08"
+    stale_payload["window_end"] = "2026-05-14"
 
     stale = dashboard_data.describe_forecast_status(
-        published_payload,
-        {"status": "published", "target_date": "2026-05-15", "latest_available_date": "2026-05-15"},
+        stale_payload,
+        {
+            "status": "published",
+            "target_date": "2026-05-15",
+            "latest_available_date": "2026-05-15",
+            "window_start": "2026-05-08",
+            "window_end": "2026-05-14",
+        },
         as_of_date="2026-05-16",
     )
     assert stale["state"] == "stale"

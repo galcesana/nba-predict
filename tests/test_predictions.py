@@ -8,7 +8,7 @@ import json
 import pandas as pd
 import pytest
 
-from src.app.predict_today import generate_predictions_for_date
+from src.app.predict_today import generate_predictions_for_date, generate_predictions_for_window
 from src.app.run_backtest import run_backtest
 from src.models.predict import PredictionPipeline
 from src.utils.paths import PROCESSED_DIR
@@ -19,12 +19,14 @@ def sample_data():
     """Load a small slice of actual data for integration testing."""
     games = pd.read_parquet(PROCESSED_DIR / "games.parquet")
     logs = pd.read_parquet(PROCESSED_DIR / "team_game_logs" / "team_game_logs.parquet")
-    
+
     # Pick a random date in the middle of 2023-24 season
     test_date = "2024-01-15"
-    
+
     target_games = games[games["date"] == test_date].head(2).copy()
-    target_games = target_games.drop(columns=["home_win", "home_score", "away_score"], errors="ignore")
+    target_games = target_games.drop(
+        columns=["home_win", "home_score", "away_score"], errors="ignore"
+    )
 
     hist_games = games[(games["season"] == "2023-24") & (games["date"] < test_date)].copy()
     hist_logs = logs[(logs["season"] == "2023-24") & (logs["date"] < test_date)].copy()
@@ -44,22 +46,24 @@ class StubPredictionPipeline:
         results = []
         for i, (_, row) in enumerate(target_games.iterrows()):
             prob = 0.65 if i % 2 == 0 else 0.35
-            results.append({
-                "game_id": row["game_id"],
-                "home_team_idx": int(row["home_team_idx"]),
-                "away_team_idx": int(row["away_team_idx"]),
-                "home_win_probability": prob,
-                "away_win_probability": round(1 - prob, 4),
-                "predicted_winner": "home" if prob >= 0.5 else "away",
-                "confidence_bucket": "medium",
-                "component_outputs": {
-                    "elo_probability": prob,
-                    "tabular_probability": prob,
-                    "sequence_probability": prob,
-                    "final_probability": prob,
-                },
-                "top_model_factors": ["Synthetic test factor"],
-            })
+            results.append(
+                {
+                    "game_id": row["game_id"],
+                    "home_team_idx": int(row["home_team_idx"]),
+                    "away_team_idx": int(row["away_team_idx"]),
+                    "home_win_probability": prob,
+                    "away_win_probability": round(1 - prob, 4),
+                    "predicted_winner": "home" if prob >= 0.5 else "away",
+                    "confidence_bucket": "medium",
+                    "component_outputs": {
+                        "elo_probability": prob,
+                        "tabular_probability": prob,
+                        "sequence_probability": prob,
+                        "final_probability": prob,
+                    },
+                    "top_model_factors": ["Synthetic test factor"],
+                }
+            )
         return results
 
 
@@ -70,45 +74,49 @@ def stub_pipeline():
 
 @pytest.fixture
 def synthetic_backtest_data():
-    full_games = pd.DataFrame([
-        {
-            "game_id": "g1",
-            "date": "2024-01-15",
-            "season": "2023-24",
-            "home_team_idx": 1,
-            "away_team_idx": 2,
-            "home_win": 1,
-        },
-        {
-            "game_id": "g2",
-            "date": "2024-01-15",
-            "season": "2023-24",
-            "home_team_idx": 3,
-            "away_team_idx": 4,
-            "home_win": 0,
-        },
-        {
-            "game_id": "g3",
-            "date": "2024-01-16",
-            "season": "2023-24",
-            "home_team_idx": 5,
-            "away_team_idx": 6,
-            "home_win": 1,
-        },
-        {
-            "game_id": "g4",
-            "date": "2024-01-16",
-            "season": "2023-24",
-            "home_team_idx": 7,
-            "away_team_idx": 8,
-            "home_win": 0,
-        },
-    ])
+    full_games = pd.DataFrame(
+        [
+            {
+                "game_id": "g1",
+                "date": "2024-01-15",
+                "season": "2023-24",
+                "home_team_idx": 1,
+                "away_team_idx": 2,
+                "home_win": 1,
+            },
+            {
+                "game_id": "g2",
+                "date": "2024-01-15",
+                "season": "2023-24",
+                "home_team_idx": 3,
+                "away_team_idx": 4,
+                "home_win": 0,
+            },
+            {
+                "game_id": "g3",
+                "date": "2024-01-16",
+                "season": "2023-24",
+                "home_team_idx": 5,
+                "away_team_idx": 6,
+                "home_win": 1,
+            },
+            {
+                "game_id": "g4",
+                "date": "2024-01-16",
+                "season": "2023-24",
+                "home_team_idx": 7,
+                "away_team_idx": 8,
+                "home_win": 0,
+            },
+        ]
+    )
 
-    full_logs = pd.DataFrame([
-        {"game_id": "hist1", "team_idx": 1, "date": "2024-01-10", "season": "2023-24"},
-        {"game_id": "hist1", "team_idx": 2, "date": "2024-01-10", "season": "2023-24"},
-    ])
+    full_logs = pd.DataFrame(
+        [
+            {"game_id": "hist1", "team_idx": 1, "date": "2024-01-10", "season": "2023-24"},
+            {"game_id": "hist1", "team_idx": 2, "date": "2024-01-10", "season": "2023-24"},
+        ]
+    )
 
     return full_games, full_logs
 
@@ -123,7 +131,7 @@ class TestPredictionPipeline:
     def test_predict_single_game(self, sample_predictions):
         """Prediction pipeline returns valid output for one game."""
         assert len(sample_predictions) > 0
-        
+
     def test_prediction_schema(self, sample_predictions):
         """Output JSON matches expected schema."""
         pred = sample_predictions[0]
@@ -173,10 +181,10 @@ class TestPredictionPipeline:
     def test_prediction_deterministic(self, pipeline, sample_data, sample_predictions):
         """Same game predicted twice produces identical output."""
         target_games, hist_games, hist_logs, _ = sample_data
-        
+
         # Predict again
         results2 = pipeline.predict_games(target_games, hist_games, hist_logs)
-        
+
         assert sample_predictions[0]["home_win_probability"] == results2[0]["home_win_probability"]
 
 
@@ -251,3 +259,71 @@ class TestScripts:
             assert data["date"] == test_date
             assert "predictions" in data
             assert data["predictions"] == output["predictions"]
+
+    def test_predict_week_runs(self, tmp_path, stub_pipeline):
+        """Weekly prediction runner aggregates live-like schedule data by date."""
+        hist_games = pd.DataFrame(
+            [
+                {
+                    "game_id": "hist-1",
+                    "date": "2024-01-10",
+                    "season": "2023-24",
+                    "home_team_idx": 1,
+                    "away_team_idx": 2,
+                    "home_win": 1,
+                }
+            ]
+        )
+        hist_logs = pd.DataFrame(
+            [
+                {"game_id": "hist-1", "team_idx": 1, "date": "2024-01-10", "season": "2023-24"},
+                {"game_id": "hist-1", "team_idx": 2, "date": "2024-01-10", "season": "2023-24"},
+            ]
+        )
+        schedules = {
+            "2024-01-15": pd.DataFrame(
+                [
+                    {
+                        "game_id": "g1",
+                        "date": "2024-01-15",
+                        "season": "2023-24",
+                        "home_team_idx": 1,
+                        "away_team_idx": 2,
+                        "game_label": "Regular Season",
+                    }
+                ]
+            ),
+            "2024-01-17": pd.DataFrame(
+                [
+                    {
+                        "game_id": "g2",
+                        "date": "2024-01-17",
+                        "season": "2023-24",
+                        "home_team_idx": 3,
+                        "away_team_idx": 4,
+                        "game_label": "Regular Season",
+                    }
+                ]
+            ),
+        }
+
+        output, out_file = generate_predictions_for_window(
+            start_date="2024-01-15",
+            days=4,
+            output_dir=tmp_path,
+            schedule_fetcher=lambda date_str: schedules.get(date_str, pd.DataFrame()),
+            pipeline=stub_pipeline,
+            historical_games=hist_games,
+            historical_team_logs=hist_logs,
+        )
+
+        assert out_file.exists()
+        assert output["slate_type"] == "week"
+        assert output["window_start"] == "2024-01-15"
+        assert output["window_end"] == "2024-01-18"
+        assert len(output["predictions"]) == 2
+        assert {pred["game_date"] for pred in output["predictions"]} == {"2024-01-15", "2024-01-17"}
+        assert output["dates_with_games"] == [
+            {"date": "2024-01-15", "games_count": 1},
+            {"date": "2024-01-17", "games_count": 1},
+        ]

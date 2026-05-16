@@ -1,4 +1,4 @@
-"""Publish a daily forecast snapshot for deployment consumers."""
+"""Publish a live weekly forecast snapshot for deployment consumers."""
 
 from __future__ import annotations
 
@@ -13,7 +13,10 @@ from pathlib import Path
 from typing import Callable
 from zoneinfo import ZoneInfo
 
-from src.app.predict_today import generate_predictions_for_date
+from src.app.predict_today import (
+    DEFAULT_FORECAST_WINDOW_DAYS,
+    generate_predictions_for_window,
+)
 from src.utils.logging import setup_logging
 from src.utils.paths import PUBLISHED_DIR
 
@@ -93,7 +96,7 @@ def publish_predictions_for_date(
     *,
     timezone_name: str = DEFAULT_TIMEZONE,
     published_root: Path = PUBLISHED_DIR,
-    prediction_generator: PredictionGenerator = generate_predictions_for_date,
+    prediction_generator: PredictionGenerator = generate_predictions_for_window,
 ) -> tuple[dict, list[Path]]:
     """Publish a forecast snapshot for the requested date."""
     publish_root = Path(published_root)
@@ -126,6 +129,9 @@ def publish_predictions_for_date(
                 "published_file": previous_file,
                 "games_count": 0,
                 "model_version": None,
+                "slate_type": "week",
+                "window_start": date_str,
+                "window_end": date_str,
             }
             _write_json_atomic(manifest_path, manifest)
             return manifest, [manifest_path]
@@ -144,6 +150,10 @@ def publish_predictions_for_date(
         "published_file": _repo_relative_path(dated_path, repo_root),
         "games_count": len(payload.get("predictions", [])),
         "model_version": payload.get("model_version"),
+        "slate_type": payload.get("slate_type", "week"),
+        "window_start": payload.get("window_start", date_str),
+        "window_end": payload.get("window_end", date_str),
+        "days_with_games": len(payload.get("dates_with_games", [])),
     }
     _write_json_atomic(manifest_path, manifest)
     return manifest, [dated_path, latest_path, manifest_path]
@@ -152,7 +162,7 @@ def publish_predictions_for_date(
 def main(argv: list[str] | None = None) -> int:
     setup_logging()
 
-    parser = argparse.ArgumentParser(description="Publish today's NBA forecast.")
+    parser = argparse.ArgumentParser(description="Publish this week's NBA forecast.")
     parser.add_argument(
         "--date",
         type=str,
@@ -174,10 +184,11 @@ def main(argv: list[str] | None = None) -> int:
             timezone_name=args.timezone,
         )
         logger.info(
-            "Publish finished with status=%s target_date=%s latest_available=%s",
+            "Publish finished with status=%s target_date=%s latest_available=%s days=%s",
             manifest["status"],
             manifest["target_date"],
             manifest["latest_available_date"],
+            DEFAULT_FORECAST_WINDOW_DAYS,
         )
         return 0
     except Exception:

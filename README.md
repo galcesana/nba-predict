@@ -210,7 +210,7 @@ Automation is defined in `.github/workflows/publish_daily.yml`, which schedules 
 
 The Streamlit app is organized into the following pages:
 
-- `Today's Games` shows the latest prediction slate, game confidence, probability bars, and the top factors behind each forecast.
+- `This Week's Games` shows the live forecast window, date-grouped matchups, confidence bands, probability bars, and the top factors behind each forecast.
 - `Game Detail` lets you inspect one matchup in depth, including component model outputs and recent team form.
 - `Archive` combines local forecasts, published forecasts, and historical backtests into one searchable table.
 - `Performance` summarizes model comparison results, rolling validation trends, and ensemble behavior.
@@ -268,7 +268,7 @@ The project is built in 11 phases. See [docs/phases/all_phases.md](docs/phases/a
 | 9 | Product Dashboard | Complete |
 | 10 | Live Publishing Layer | Complete |
 
-**Current data:** 14,429 games across 12 seasons (2014-2026), Ensemble Model (65.6% acc, 0.615 log loss), daily predictions + published deployment forecasts + dashboard working, 129 tests passing.
+**Current data:** 14,429 games across 12 seasons (2014-2026), Ensemble Model (65.6% acc, 0.615 log loss), daily predictions + weekly published deployment forecasts + dashboard working, 131 tests passing.
 
 ---
 

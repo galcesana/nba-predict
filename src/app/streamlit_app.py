@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import sys
 from pathlib import Path
 from typing import Iterable
@@ -18,7 +19,7 @@ import streamlit as st  # noqa: E402
 from src.app import dashboard_data as data  # noqa: E402
 
 PAGES = [
-    "Today's Games",
+    "This Week's Games",
     "Game Detail",
     "Archive",
     "Performance",
@@ -239,7 +240,7 @@ def _hero() -> None:
           <div class="hero-eyebrow">Forecasts and Diagnostics</div>
           <h1 class="hero-title">NBA Predict</h1>
           <p class="hero-copy">
-            Daily win probabilities, model performance, calibration tracking,
+            Weekly win probabilities, model performance, calibration tracking,
             and matchup context in one place.
           </p>
         </div>
@@ -266,20 +267,20 @@ def _metric_row(items: Iterable[tuple[str, str, str]]) -> None:
 
 def _probability_bar(home_prob: float, home_team: str, away_team: str) -> str:
     away_prob = max(0.0, 1.0 - home_prob)
-    return f"""
-        <div class="prob-header">
-          <span>{away_team}</span>
-          <span>{home_team}</span>
-        </div>
-        <div class="prob-bar">
-          <div class="prob-away" style="width:{away_prob * 100:.1f}%"></div>
-          <div class="prob-home" style="width:{home_prob * 100:.1f}%"></div>
-        </div>
-        <div class="prob-footer">
-          <span>{away_prob * 100:.1f}%</span>
-          <span>{home_prob * 100:.1f}%</span>
-        </div>
-    """
+    return (
+        '<div class="prob-header">'
+        f"<span>{html.escape(away_team)}</span>"
+        f"<span>{html.escape(home_team)}</span>"
+        "</div>"
+        '<div class="prob-bar">'
+        f'<div class="prob-away" style="width:{away_prob * 100:.1f}%"></div>'
+        f'<div class="prob-home" style="width:{home_prob * 100:.1f}%"></div>'
+        "</div>"
+        '<div class="prob-footer">'
+        f"<span>{away_prob * 100:.1f}%</span>"
+        f"<span>{home_prob * 100:.1f}%</span>"
+        "</div>"
+    )
 
 
 def _forecast_status(payload: dict | None, manifest: dict | None) -> dict[str, str]:
@@ -289,6 +290,11 @@ def _forecast_status(payload: dict | None, manifest: dict | None) -> dict[str, s
 def _slate_caption(payload: dict | None, manifest: dict | None) -> str:
     status = _forecast_status(payload, manifest)
     if payload and payload.get("date"):
+        if payload.get("window_start") and payload.get("window_end"):
+            return (
+                f"{status['message']} "
+                f"Forecast window: {payload['window_start']} to {payload['window_end']}"
+            )
         return f"{status['message']} Slate date: {payload['date']}"
     return status["message"]
 
@@ -297,7 +303,7 @@ def _slate_source_notice(payload: dict | None, manifest: dict | None) -> None:
     status = _forecast_status(payload, manifest)
     if status["state"] == "local":
         return
-    if status["state"] == "published_today":
+    if status["state"] == "published_this_week":
         st.success(status["message"])
     elif status["state"] in {"no_games", "bundled"}:
         st.info(status["message"])
@@ -363,30 +369,35 @@ def _news_summary() -> pd.DataFrame:
 def render_today_page() -> None:
     payload = _latest_daily_payload()
     manifest = _publish_manifest()
-    st.subheader("Latest Forecasts")
+    st.subheader("This Week's Forecasts")
     if not payload:
         _slate_source_notice(payload, manifest)
         return
     _slate_source_notice(payload, manifest)
 
     predictions = payload.get("predictions", [])
+    dates_with_games = payload.get("dates_with_games", [])
     avg_edge = 0.0
     if predictions:
-        avg_edge = (
-            sum(abs(float(pred["home_win_probability"]) - 0.5) for pred in predictions)
-            / len(predictions)
-        )
+        avg_edge = sum(
+            abs(float(pred["home_win_probability"]) - 0.5) for pred in predictions
+        ) / len(predictions)
 
     _metric_row(
         [
-            ("Forecast Date", payload.get("date", "Unknown"), "Most recent available slate"),
-            ("Games On Slate", str(len(predictions)), "Matchups in the current slate"),
-            ("Average Edge", f"{avg_edge * 100:.1f}%", "Mean distance from a coin flip"),
             (
-                "High Confidence",
-                str(sum(pred.get("confidence_bucket") == "high" for pred in predictions)),
-                "Games at the strongest confidence tier",
+                "Forecast Window",
+                f"{payload.get('window_start', payload.get('date', 'Unknown'))} → "
+                f"{payload.get('window_end', payload.get('date', 'Unknown'))}",
+                "Upcoming live schedule covered by this slate",
             ),
+            ("Games This Week", str(len(predictions)), "Matchups in the current forecast window"),
+            (
+                "Days With Games",
+                str(len(dates_with_games)),
+                "Scheduled dates included in the slate",
+            ),
+            ("Average Edge", f"{avg_edge * 100:.1f}%", "Mean distance from a coin flip"),
         ]
     )
 
@@ -396,32 +407,55 @@ def render_today_page() -> None:
         f"Model {payload.get('model_version', 'unknown')}"
     )
 
+    grouped_predictions: dict[str, list[dict]] = {}
     for prediction in predictions:
-        home_team = data.team_abbr(prediction["home_team_idx"])
-        away_team = data.team_abbr(prediction["away_team_idx"])
-        badge_class = prediction.get("confidence_bucket", "low")
-        factors_html = "".join(
-            f'<span class="factor-chip">{factor}</span>'
-            for factor in prediction.get("top_model_factors", [])
-        )
-        st.markdown(
-            f"""
-            <div class="game-card">
-              <div class="matchup-row">
-                <div>
-                  <div class="matchup-title">{away_team} at {home_team}</div>
-                  <div class="matchup-subtitle">Game ID {prediction.get("game_id")}</div>
-                </div>
-                <span class="confidence-badge {badge_class}">
-                  {prediction.get("confidence_bucket", "low")}
-                </span>
-              </div>
-              {_probability_bar(float(prediction["home_win_probability"]), home_team, away_team)}
-              <div style="margin-top:0.65rem;">{factors_html}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        grouped_predictions.setdefault(
+            prediction.get("game_date", payload.get("date", "Unknown")),
+            [],
+        ).append(prediction)
+
+    for game_date, day_predictions in grouped_predictions.items():
+        pretty_date = pd.to_datetime(game_date).strftime("%A, %b %d")
+        st.markdown(f"### {pretty_date}")
+        for prediction in day_predictions:
+            home_team = data.team_abbr(prediction["home_team_idx"])
+            away_team = data.team_abbr(prediction["away_team_idx"])
+            badge_class = prediction.get("confidence_bucket", "low")
+            factors_html = "".join(
+                f'<span class="factor-chip">{html.escape(str(factor))}</span>'
+                for factor in prediction.get("top_model_factors", [])
+            )
+            metadata_bits = [f"Game ID {prediction.get('game_id')}"]
+            if prediction.get("game_label"):
+                metadata_bits.append(str(prediction["game_label"]))
+            if prediction.get("game_sub_label"):
+                metadata_bits.append(str(prediction["game_sub_label"]))
+            if prediction.get("series_text"):
+                metadata_bits.append(str(prediction["series_text"]))
+            metadata_line = " | ".join(metadata_bits)
+            matchup_title = f"{html.escape(away_team)} at {html.escape(home_team)}"
+            probability_html = _probability_bar(
+                float(prediction["home_win_probability"]),
+                home_team,
+                away_team,
+            )
+
+            card_html = (
+                '<div class="game-card">'
+                '<div class="matchup-row">'
+                "<div>"
+                f'<div class="matchup-title">{matchup_title}</div>'
+                f'<div class="matchup-subtitle">{html.escape(metadata_line)}</div>'
+                "</div>"
+                f'<span class="confidence-badge {badge_class}">'
+                f"{html.escape(str(prediction.get('confidence_bucket', 'low')))}"
+                "</span>"
+                "</div>"
+                f"{probability_html}"
+                f'<div style="margin-top:0.65rem;">{factors_html}</div>'
+                "</div>"
+            )
+            st.markdown(card_html, unsafe_allow_html=True)
 
 
 def render_game_detail_page() -> None:
@@ -435,6 +469,7 @@ def render_game_detail_page() -> None:
 
     options = {
         (
+            f"{pred.get('game_date', payload.get('date', 'unknown'))} | "
             f"{data.matchup_label(pred['home_team_idx'], pred['away_team_idx'])} "
             f"| {pred['game_id']}"
         ): pred["game_id"]
@@ -727,7 +762,7 @@ def render_dashboard() -> None:
         st.caption(_slate_caption(latest_daily, manifest))
         selected_page = st.radio("Pages", PAGES)
 
-    if selected_page == "Today's Games":
+    if selected_page == "This Week's Games":
         render_today_page()
     elif selected_page == "Game Detail":
         render_game_detail_page()

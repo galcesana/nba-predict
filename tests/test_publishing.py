@@ -14,11 +14,16 @@ from src.app import publish_today
 def _prediction_payload(date_str: str) -> dict:
     return {
         "date": date_str,
+        "slate_type": "week",
+        "window_start": date_str,
+        "window_end": date_str,
         "generated_at": "2026-05-16T12:00:00Z",
         "model_version": "ensemble_v1",
+        "dates_with_games": [{"date": date_str, "games_count": 1}],
         "predictions": [
             {
                 "game_id": "game-1",
+                "game_date": date_str,
                 "home_team_idx": 0,
                 "away_team_idx": 1,
                 "home_win_probability": 0.61,
@@ -62,6 +67,9 @@ def test_publish_success_writes_dated_latest_and_manifest(tmp_path):
     assert manifest["status"] == "published"
     assert manifest["published_file"] == "published/daily/2026-01-15.json"
     assert manifest["games_count"] == 1
+    assert manifest["window_start"] == "2026-01-15"
+    assert manifest["window_end"] == "2026-01-15"
+    assert manifest["slate_type"] == "week"
     assert set(paths) == {dated_path, latest_path, manifest_path}
 
 
@@ -88,6 +96,8 @@ def test_publish_no_games_preserves_latest_and_writes_manifest(tmp_path):
     assert manifest["status"] == "no_games"
     assert manifest["latest_available_date"] == "2026-01-14"
     assert manifest["published_file"] == "published/daily/2026-01-14.json"
+    assert manifest["window_start"] == "2026-01-15"
+    assert manifest["window_end"] == "2026-01-15"
     assert paths == [publish_root / "manifest.json"]
 
 
