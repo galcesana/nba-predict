@@ -146,13 +146,13 @@ The project is built in 10 phases. See [docs/phases/all_phases.md](docs/phases/a
 | 2 | Leakage-Safe Feature Table | ✅ Complete |
 | 3 | Baseline Models | ✅ Complete |
 | 4 | Team Sequence Model | ✅ Complete |
-| 5 | Injury Features | `[ ]` |
-| 6 | LLM News/Sentiment Layer | `[ ]` |
-| 7 | Full Fusion Model | `[ ]` |
+| 5 | Injury Features | ✅ Complete |
+| 6 | LLM News/Sentiment Layer | ✅ Complete |
+| 7 | Full Fusion Model | ✅ Complete |
 | 8 | Daily Prediction System | `[ ]` |
 | 9 | Product Dashboard | `[ ]` |
 
-**Current data:** 14,429 games across 12 seasons (2014–2026), GRU sequence model (65.1% acc), 4 baselines, 73 tests passing.
+**Current data:** 14,429 games across 12 seasons (2014–2026), Ensemble Model (65.6% acc, 0.615 log loss), 4 baselines, 105 tests passing.
 
 ---
 

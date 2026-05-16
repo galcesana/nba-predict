@@ -14,9 +14,9 @@
 | [2](phase_02_feature_table.md) | Leakage-Safe Feature Table | M | 3–5 days | `[x]` Complete | Phase 1 |
 | [3](phase_03_baselines.md) | Baseline Models | M | 3–5 days | `[x]` Complete | Phase 2 |
 | [4](phase_04_sequence_model.md) | Team Sequence Model | L | 1–2 weeks | `[x]` Complete | Phase 3 |
-| [5](phase_05_injury_features.md) | Injury Features | M | 3–5 days | `[ ]` Not Started | Phase 3 |
-| [6](phase_06_llm_sentiment.md) | LLM News/Sentiment Layer | XL | 2–3 weeks | `[ ]` Not Started | Phase 4 |
-| [7](phase_07_fusion_model.md) | Full Fusion Model | L | 1–2 weeks | `[ ]` Not Started | Phase 4 + 5 + 6 |
+| [5](phase_05_injury_features.md) | Injury Features | M | 3–5 days | `[x]` Complete | Phase 3 |
+| [6](phase_06_llm_sentiment.md) | LLM News/Sentiment Layer | XL | 2–3 weeks | `[x]` Complete | Phase 4 |
+| [7](phase_07_fusion_model.md) | Full Fusion Model | L | 1–2 weeks | `[x]` Complete | Phase 4 + 5 + 6 |
 | [8](phase_08_daily_predictions.md) | Daily Prediction System | M | 3–5 days | `[ ]` Not Started | Phase 7 |
 | [9](phase_09_dashboard.md) | Product Dashboard | L | 1–2 weeks | `[ ]` Not Started | Phase 8 |
 

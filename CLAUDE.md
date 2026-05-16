@@ -13,7 +13,10 @@ NBA game outcome prediction system that outputs **calibrated win probabilities**
 - **Phase 2 complete** — leakage-safe rolling features + schedule features + matchup dataset (14,429 rows × 110 cols), 47 tests passing
 - **Phase 3 complete** — Elo, logistic regression, XGBoost baselines trained + evaluated (best: XGBoost 64.5% acc, 0.622 log loss), 59 tests passing
 - **Phase 4 complete** — GRU sequence model trained (65.1% acc, 0.619 log loss, beats all baselines), 73 tests passing
-- **Phase 5 next** — injury features
+- **Phase 5 complete** — Injury proxy features (variance-based) implemented and tested, 83 tests passing
+- **Phase 6 complete** — News/sentiment proxy features (zero-vectors) implemented and tested, 93 tests passing
+- **Phase 7 complete** — Full 4-stream fusion model trained (log loss 0.6169) and logistic ensemble trained (65.6% acc, 0.615 log loss), 105 tests passing
+- **Phase 8 next** — Daily Prediction System
 - See `docs/phases/all_phases.md` for the full phase tracker
 - See `docs/nba_game_prediction_project_plan.md` for the comprehensive project plan
 
