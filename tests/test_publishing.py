@@ -20,6 +20,10 @@ def _prediction_payload(date_str: str) -> dict:
         "generated_at": "2026-05-16T12:00:00Z",
         "model_version": "ensemble_v1",
         "dates_with_games": [{"date": date_str, "games_count": 1}],
+        "context_summary": {
+            "injury_coverage_rate": 0.5,
+            "news_coverage_rate": 1.0,
+        },
         "predictions": [
             {
                 "game_id": "game-1",
@@ -30,6 +34,7 @@ def _prediction_payload(date_str: str) -> dict:
                 "away_win_probability": 0.39,
                 "predicted_winner": "home",
                 "confidence_bucket": "medium",
+                "context_details": {"injury_mode": "partial", "news_mode": "live"},
                 "top_model_factors": ["recent net rating"],
                 "component_outputs": {"ensemble_probability": 0.61},
             }
@@ -70,6 +75,7 @@ def test_publish_success_writes_dated_latest_and_manifest(tmp_path):
     assert manifest["window_start"] == "2026-01-15"
     assert manifest["window_end"] == "2026-01-15"
     assert manifest["slate_type"] == "week"
+    assert manifest["context_summary"]["injury_coverage_rate"] == 0.5
     assert set(paths) == {dated_path, latest_path, manifest_path}
 
 

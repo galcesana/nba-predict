@@ -1,6 +1,6 @@
 # NBA Game Outcome Prediction Model
 
-> Predict calibrated win probabilities for NBA games using historical performance, team sequences, injury impact, and LLM-extracted news/team-spirit signals.
+> Predict calibrated win probabilities for NBA games using historical performance, team sequences, injury impact, and structured live news/team-spirit signals.
 
 ---
 
@@ -22,7 +22,7 @@ The system fuses four signal streams:
 |--------|--------|---------|
 | **Team Performance** | Historical game sequences (last 20 games) | GRU / TCN |
 | **Injury Impact** | Official injury reports / proxy injury signals | MLP |
-| **News / Team Spirit** | LLM-extracted sentiment from news articles | MLP |
+| **News / Team Spirit** | Structured sentiment from recent team articles | MLP |
 | **Schedule Context** | Rest days, back-to-back, travel | MLP |
 
 All streams feed into a **matchup fusion model** -> **calibration layer** -> `P(home_win)`.
@@ -121,7 +121,7 @@ What each step does:
 
 ### 3. Generate Local Predictions
 
-To create a local prediction file for today's slate:
+To create a local prediction file for the current weekly slate:
 
 ```bash
 make predict-today
@@ -197,6 +197,7 @@ This command:
 
 - resolves the target date in `America/New_York` by default
 - runs inference in a temporary workspace
+- attempts to enrich the slate with the latest official injury report snapshot and live team-news context
 - writes `published/daily/YYYY-MM-DD.json`
 - updates `published/daily/latest.json`
 - writes `published/manifest.json`
@@ -210,19 +211,19 @@ Automation is defined in `.github/workflows/publish_daily.yml`, which schedules 
 
 The Streamlit app is organized into the following pages:
 
-- `This Week's Games` shows the live forecast window, date-grouped matchups, confidence bands, probability bars, and the top factors behind each forecast.
+- `This Week's Games` shows the live forecast window, date-grouped matchups, confidence bands, probability bars, top factors, and live context coverage for each publish.
 - `Game Detail` lets you inspect one matchup in depth, including component model outputs and recent team form.
 - `Archive` combines local forecasts, published forecasts, and historical backtests into one searchable table.
 - `Performance` summarizes model comparison results, rolling validation trends, and ensemble behavior.
 - `Calibration` shows how well predicted probabilities line up with actual outcomes, including error by probability bucket.
 - `Team Form` highlights recent record, point differential, and net-rating trends for a selected team.
-- `Injury Impact` displays the available injury feature view for each team. These signals are still proxy-based rather than a full live injury feed.
-- `News Sentiment` shows the current news feature view for each team and makes it clear when fallback news features are in use.
+- `Injury Impact` summarizes the current slate's official injury-report coverage when available and falls back honestly when later-week games do not have reports yet.
+- `News Sentiment` summarizes current live article coverage and makes it clear when fallback news features are still in use.
 
 The dashboard also shows forecast-source status, including:
 
-- `Published today`
-- `No games today`
+- `Published this week`
+- `No games scheduled in this forecast window`
 - `Showing previous published slate`
 - `Showing bundled example slate`
 
@@ -252,7 +253,7 @@ ruff check src/ tests/
 
 ## Implementation Phases
 
-The project is built in 11 phases. See [docs/phases/all_phases.md](docs/phases/all_phases.md) for the full tracker.
+The project is built in 12 phases. See [docs/phases/all_phases.md](docs/phases/all_phases.md) for the full tracker.
 
 | Phase | Name | Status |
 |-------|------|--------|
@@ -267,8 +268,9 @@ The project is built in 11 phases. See [docs/phases/all_phases.md](docs/phases/a
 | 8 | Daily Prediction System | Complete |
 | 9 | Product Dashboard | Complete |
 | 10 | Live Publishing Layer | Complete |
+| 11 | Live Context + Playoff Hardening | Complete |
 
-**Current data:** 14,429 games across 12 seasons (2014-2026), Ensemble Model (65.6% acc, 0.615 log loss), daily predictions + weekly published deployment forecasts + dashboard working, 131 tests passing.
+**Current data:** 14,429 games across 12 seasons (2014-2026), Ensemble Model (65.6% acc, 0.615 log loss), weekly live publishing + deployment dashboard + live context coverage, 140 tests passing.
 
 ---
 
@@ -277,7 +279,7 @@ The project is built in 11 phases. See [docs/phases/all_phases.md](docs/phases/a
 ```text
 Historical team sequences -> Team Performance Encoder (GRU)
 Structured injury reports -> Injury Impact Encoder (MLP)
-LLM-extracted news signals -> News/Spirit Encoder (MLP)
+Structured live article signals -> News/Spirit Encoder (MLP)
 Schedule context (rest, B2B) -> Context Encoder (MLP)
                                -> Matchup Fusion Network
                                -> Calibration Layer
@@ -294,11 +296,11 @@ Schedule context (rest, B2B) -> Context Encoder (MLP)
 | Team identity | Anonymous indices (0-29) | Prevent name memorization |
 | Sequence model | GRU first, then TCN/Transformer | Simpler models first |
 | News backfill | None pre-2023-24 | No reliable historical article corpus |
-| LLM model | GPT-4o-mini (temp=0) | Cost-efficient, deterministic |
+| LLM / sentiment path | Structured article scoring today, LLM-ready schema preserved | Live deployment stays deterministic while keeping the schema extensible |
 | LLM schema | 7 core fields (MVP) | Reduce noise, expand later |
 | Normalization | Per-season StandardScaler | Accounts for era changes |
 | Validation | Time-based + rolling splits | Simulates real forecasting |
-| Playoffs | Excluded from V1 | Different dynamics, small sample |
+| Playoffs | Conservative live publishing only | Training remains regular-season first; live board filters to the next game per series |
 | Ensemble | Logistic regression meta-model | Simple, interpretable |
 
 ---

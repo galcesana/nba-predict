@@ -132,6 +132,10 @@ def publish_predictions_for_date(
                 "slate_type": "week",
                 "window_start": date_str,
                 "window_end": date_str,
+                "context_summary": {
+                    "injury_coverage_rate": 0.0,
+                    "news_coverage_rate": 0.0,
+                },
             }
             _write_json_atomic(manifest_path, manifest)
             return manifest, [manifest_path]
@@ -154,6 +158,7 @@ def publish_predictions_for_date(
         "window_start": payload.get("window_start", date_str),
         "window_end": payload.get("window_end", date_str),
         "days_with_games": len(payload.get("dates_with_games", [])),
+        "context_summary": payload.get("context_summary", {}),
     }
     _write_json_atomic(manifest_path, manifest)
     return manifest, [dated_path, latest_path, manifest_path]

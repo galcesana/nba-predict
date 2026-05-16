@@ -4,7 +4,7 @@
 
 ## Project Summary
 
-NBA game outcome prediction system that outputs **calibrated win probabilities** using historical performance sequences, injury impact, LLM-extracted news sentiment, and schedule context. This is a sports analytics project, not a betting project.
+NBA game outcome prediction system that outputs **calibrated win probabilities** using historical performance sequences, injury impact, structured news sentiment, and schedule context. This is a sports analytics project, not a betting project.
 
 ## Current State
 
@@ -19,6 +19,8 @@ NBA game outcome prediction system that outputs **calibrated win probabilities**
 - **Phase 8 complete** - Daily Prediction System implemented, verified on a historical daily slate and backtest window, 111 tests passing
 - **Phase 9 complete** - Streamlit dashboard implemented and browser-verified, 121 tests passing
 - **Phase 10 complete** - live publishing layer implemented with tracked published forecasts, dashboard source precedence, and GitHub Actions automation, 129 tests passing
+- **Phase 11 complete** - live context ingestion added for official injury reports and team news, weekly playoff publishing hardened, 140 tests passing
+- **Phase 12 next** - API Service Layer
 - See `docs/phases/all_phases.md` for the full phase tracker
 - See `docs/nba_game_prediction_project_plan.md` for the comprehensive project plan
 
@@ -36,7 +38,7 @@ nba-predict/
 |- src/
 |  |- data/providers/            # DataProvider ABC + NbaApiProvider
 |  |- anonymization/             # Team/player -> anonymous ID mapping
-|  |- nlp/                       # LLM sentiment extraction pipeline
+|  |- nlp/                       # Structured article scoring + sentiment pipeline
 |  |- features/                  # Feature engineering (rolling, schedule, injury, news)
 |  |- models/                    # Elo, tabular, neural, ensemble, calibration
 |  |- app/                       # Daily prediction + publishing scripts + Streamlit dashboard
@@ -44,7 +46,7 @@ nba-predict/
 |- models/                       # Saved model artifacts (minimal inference bundle tracked)
 |- predictions/                  # Local output JSONs - gitignored
 |- tests/                        # pytest test suite
-|- docs/phases/                  # Phase implementation guides (11 phases)
+|- docs/phases/                  # Phase implementation guides (12 phases)
 `- notebooks/                    # Exploratory analysis
 ```
 
@@ -86,7 +88,7 @@ nba-predict/
 | LLM schema | 7 core fields MVP | Reduce noise; expand after correlation analysis |
 | Feature normalization | Per-season StandardScaler | Fit on training data only |
 | Validation | Time-based + rolling splits | Never random split - simulates real forecasting |
-| Scope | Regular season only (V1) | Playoffs deferred to future phases |
+| Scope | Regular season model + live playoff publishing safeguards | Model training stays regular-season first; live board now filters playoff series conservatively |
 | Ensemble meta-model | Logistic regression | Simple, interpretable, hard to overfit |
 
 ## Conventions

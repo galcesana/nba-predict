@@ -229,6 +229,22 @@ def load_publish_manifest(path: Path | None = None) -> dict[str, Any] | None:
     return _load_json(source)
 
 
+def latest_context_summary(
+    payload: dict[str, Any] | None,
+    manifest: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Return the best available live-context summary for the current slate."""
+    payload_summary = payload.get("context_summary") if payload else None
+    if isinstance(payload_summary, dict):
+        return payload_summary
+
+    manifest_summary = (manifest or {}).get("context_summary")
+    if isinstance(manifest_summary, dict):
+        return manifest_summary
+
+    return {}
+
+
 def current_publish_date(timezone_name: str = DEFAULT_PUBLISH_TIMEZONE) -> str:
     """Return today's date in the publishing timezone."""
     return datetime.now(ZoneInfo(timezone_name)).date().isoformat()
@@ -608,6 +624,56 @@ def _join_feature_dates(feature_frame: pd.DataFrame) -> pd.DataFrame:
 
 def build_injury_summary(window: int = 15, path: Path | None = None) -> pd.DataFrame:
     """Build a team-level injury summary from the most recent games."""
+    live_payload = load_latest_daily_predictions() if path is None else None
+    live_rows = []
+    if live_payload:
+        for prediction in live_payload.get("predictions", []):
+            details = prediction.get("context_details", {})
+            if not details:
+                continue
+            live_rows.append(
+                {
+                    "team_idx": int(prediction["home_team_idx"]),
+                    "avg_players_out": float(details.get("home_players_out", 0)),
+                    "avg_questionable": float(details.get("home_questionable", 0)),
+                    "avg_estimated_value_missing": float(
+                        details.get("home_estimated_value_missing", 0.0)
+                    ),
+                    "avg_minutes_missing": float(
+                        details.get("home_estimated_value_missing", 0.0) * 24.0
+                    ),
+                    "data_available_rate": 1.0
+                    if details.get("home_injury_data_available")
+                    else 0.0,
+                }
+            )
+            live_rows.append(
+                {
+                    "team_idx": int(prediction["away_team_idx"]),
+                    "avg_players_out": float(details.get("away_players_out", 0)),
+                    "avg_questionable": float(details.get("away_questionable", 0)),
+                    "avg_estimated_value_missing": float(
+                        details.get("away_estimated_value_missing", 0.0)
+                    ),
+                    "avg_minutes_missing": float(
+                        details.get("away_estimated_value_missing", 0.0) * 24.0
+                    ),
+                    "data_available_rate": 1.0
+                    if details.get("away_injury_data_available")
+                    else 0.0,
+                }
+            )
+    if live_rows:
+        summary = (
+            pd.DataFrame(live_rows)
+            .groupby("team_idx", as_index=False)
+            .mean(numeric_only=True)
+        )
+        summary["team"] = summary["team_idx"].map(team_abbr)
+        return summary.sort_values("avg_estimated_value_missing", ascending=False).reset_index(
+            drop=True
+        )
+
     injuries = _join_feature_dates(load_injury_features(path))
     if injuries.empty:
         return pd.DataFrame()
@@ -627,6 +693,42 @@ def build_injury_summary(window: int = 15, path: Path | None = None) -> pd.DataF
 
 def build_news_summary(window: int = 15, path: Path | None = None) -> pd.DataFrame:
     """Build a team-level news summary from the most recent games."""
+    live_payload = load_latest_daily_predictions() if path is None else None
+    live_rows = []
+    if live_payload:
+        for prediction in live_payload.get("predictions", []):
+            details = prediction.get("context_details", {})
+            if not details:
+                continue
+            live_rows.append(
+                {
+                    "team_idx": int(prediction["home_team_idx"]),
+                    "avg_sentiment_24h": float(details.get("home_weighted_sentiment_72h", 0.0)),
+                    "avg_sentiment_72h": float(details.get("home_weighted_sentiment_72h", 0.0)),
+                    "avg_article_volume": float(details.get("home_article_volume_24h", 0)),
+                    "avg_negative_ratio": 0.0,
+                    "coverage_rate": 1.0 if details.get("home_news_available") else 0.0,
+                }
+            )
+            live_rows.append(
+                {
+                    "team_idx": int(prediction["away_team_idx"]),
+                    "avg_sentiment_24h": float(details.get("away_weighted_sentiment_72h", 0.0)),
+                    "avg_sentiment_72h": float(details.get("away_weighted_sentiment_72h", 0.0)),
+                    "avg_article_volume": float(details.get("away_article_volume_24h", 0)),
+                    "avg_negative_ratio": 0.0,
+                    "coverage_rate": 1.0 if details.get("away_news_available") else 0.0,
+                }
+            )
+    if live_rows:
+        summary = (
+            pd.DataFrame(live_rows)
+            .groupby("team_idx", as_index=False)
+            .mean(numeric_only=True)
+        )
+        summary["team"] = summary["team_idx"].map(team_abbr)
+        return summary.sort_values("avg_sentiment_72h", ascending=False).reset_index(drop=True)
+
     news = _join_feature_dates(load_news_features(path))
     if news.empty:
         return pd.DataFrame()

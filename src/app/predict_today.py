@@ -23,6 +23,83 @@ logger = logging.getLogger(__name__)
 DEFAULT_FORECAST_WINDOW_DAYS = 7
 
 
+def _context_summary_from_predictions(predictions: list[dict]) -> dict[str, object]:
+    """Summarize live context coverage across a generated slate."""
+    if not predictions:
+        return {
+            "injury_live_games": 0,
+            "injury_partial_games": 0,
+            "news_live_games": 0,
+            "news_partial_games": 0,
+            "injury_coverage_rate": 0.0,
+            "news_coverage_rate": 0.0,
+            "latest_injury_report_at": None,
+            "latest_news_article_at": None,
+            "latest_news_collection_at": None,
+        }
+
+    injury_live_games = 0
+    injury_partial_games = 0
+    news_live_games = 0
+    news_partial_games = 0
+    latest_injury_report_at = None
+    latest_news_article_at = None
+    latest_news_collection_at = None
+
+    for prediction in predictions:
+        details = prediction.get("context_details", {})
+        injury_mode = details.get("injury_mode")
+        news_mode = details.get("news_mode")
+        if injury_mode == "live":
+            injury_live_games += 1
+        elif injury_mode == "partial":
+            injury_partial_games += 1
+        if news_mode == "live":
+            news_live_games += 1
+        elif news_mode == "partial":
+            news_partial_games += 1
+
+        latest_injury_report_at = (
+            max(
+                latest_injury_report_at or "",
+                str(details.get("injury_report_generated_at") or ""),
+            )
+            or None
+        )
+        latest_news_article_at = (
+            max(
+                latest_news_article_at or "",
+                str(details.get("latest_article_at") or ""),
+            )
+            or None
+        )
+        latest_news_collection_at = (
+            max(
+                latest_news_collection_at or "",
+                str(details.get("news_collected_at") or ""),
+            )
+            or None
+        )
+
+    total_games = len(predictions)
+    return {
+        "injury_live_games": injury_live_games,
+        "injury_partial_games": injury_partial_games,
+        "news_live_games": news_live_games,
+        "news_partial_games": news_partial_games,
+        "injury_coverage_rate": round(
+            (injury_live_games + 0.5 * injury_partial_games) / total_games, 4
+        ),
+        "news_coverage_rate": round(
+            (news_live_games + 0.5 * news_partial_games) / total_games,
+            4,
+        ),
+        "latest_injury_report_at": latest_injury_report_at,
+        "latest_news_article_at": latest_news_article_at,
+        "latest_news_collection_at": latest_news_collection_at,
+    }
+
+
 def _load_team_mapping() -> dict[str, int]:
     with open(DATA_DIR / "mappings" / "team_to_idx.json") as f:
         return json.load(f)
@@ -301,6 +378,7 @@ def generate_predictions_for_date(
         "slate_type": "day",
         "generated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
         "model_version": "ensemble_v1",
+        "context_summary": _context_summary_from_predictions(results),
         "predictions": results,
     }
 
@@ -393,6 +471,8 @@ def generate_predictions_for_window(
         "generated_at": generated_at,
         "model_version": "ensemble_v1",
         "dates_with_games": dates_with_games,
+        "playoff_filtering_mode": "next_game_per_series",
+        "context_summary": _context_summary_from_predictions(all_predictions),
         "predictions": all_predictions,
     }
 

@@ -326,6 +326,10 @@ def _publish_manifest() -> dict | None:
     return data.load_publish_manifest()
 
 
+def _context_summary(payload: dict | None, manifest: dict | None) -> dict:
+    return data.latest_context_summary(payload, manifest)
+
+
 def _archive_frame() -> pd.DataFrame:
     # The archive includes published daily snapshots that can change after deploy.
     return data.build_archive_dataframe()
@@ -356,12 +360,10 @@ def _team_logs() -> pd.DataFrame:
     return data.load_team_logs()
 
 
-@st.cache_data(show_spinner=False)
 def _injury_summary() -> pd.DataFrame:
     return data.build_injury_summary()
 
 
-@st.cache_data(show_spinner=False)
 def _news_summary() -> pd.DataFrame:
     return data.build_news_summary()
 
@@ -377,6 +379,7 @@ def render_today_page() -> None:
 
     predictions = payload.get("predictions", [])
     dates_with_games = payload.get("dates_with_games", [])
+    context_summary = _context_summary(payload, manifest)
     avg_edge = 0.0
     if predictions:
         avg_edge = sum(
@@ -397,6 +400,16 @@ def render_today_page() -> None:
                 str(len(dates_with_games)),
                 "Scheduled dates included in the slate",
             ),
+            (
+                "Injury Coverage",
+                f"{float(context_summary.get('injury_coverage_rate', 0.0)) * 100:.0f}%",
+                "Official report coverage across this slate",
+            ),
+            (
+                "News Coverage",
+                f"{float(context_summary.get('news_coverage_rate', 0.0)) * 100:.0f}%",
+                "Live article coverage across this slate",
+            ),
             ("Average Edge", f"{avg_edge * 100:.1f}%", "Mean distance from a coin flip"),
         ]
     )
@@ -406,6 +419,14 @@ def render_today_page() -> None:
         f"{payload.get('generated_at', 'unknown')} | "
         f"Model {payload.get('model_version', 'unknown')}"
     )
+    if context_summary.get("latest_injury_report_at") or context_summary.get(
+        "latest_news_article_at"
+    ):
+        st.caption(
+            "Latest live context: "
+            f"injury report {context_summary.get('latest_injury_report_at', 'n/a')} | "
+            f"news article {context_summary.get('latest_news_article_at', 'n/a')}"
+        )
 
     grouped_predictions: dict[str, list[dict]] = {}
     for prediction in predictions:
@@ -504,6 +525,25 @@ def render_game_detail_page() -> None:
         st.markdown("#### Top Model Factors")
         for factor in prediction.get("top_model_factors", []):
             st.markdown(f"- {factor}")
+        context_details = prediction.get("context_details", {})
+        if context_details:
+            st.markdown("#### Live Context")
+            st.dataframe(
+                pd.DataFrame(
+                    [
+                        {
+                            "injury_mode": context_details.get("injury_mode"),
+                            "news_mode": context_details.get("news_mode"),
+                            "home_players_out": context_details.get("home_players_out"),
+                            "away_players_out": context_details.get("away_players_out"),
+                            "home_articles_24h": context_details.get("home_article_volume_24h"),
+                            "away_articles_24h": context_details.get("away_article_volume_24h"),
+                        }
+                    ]
+                ),
+                width="stretch",
+                hide_index=True,
+            )
 
     with right:
         st.markdown("#### Recent Team Form")
@@ -710,6 +750,9 @@ def render_team_form_page() -> None:
 
 def render_injury_page() -> None:
     summary = _injury_summary()
+    payload = _latest_daily_payload()
+    manifest = _publish_manifest()
+    context_summary = _context_summary(payload, manifest)
     st.subheader("Injury Impact")
     if summary.empty:
         st.info("Injury context is not available in this deployment yet.")
@@ -718,8 +761,14 @@ def render_injury_page() -> None:
     availability_rate = summary["data_available_rate"].mean()
     if availability_rate == 0:
         st.warning(
-            "Current injury inputs are still proxy-based. This view is useful for relative "
-            "team instability, but not yet for live player-level status."
+            "Official injury reports are not available for the current forecast window yet, "
+            "so this view is still reflecting fallback injury context."
+        )
+    else:
+        st.info(
+            "Official injury report coverage is available for "
+            f"{float(context_summary.get('injury_coverage_rate', availability_rate)) * 100:.0f}% "
+            "of the current slate."
         )
 
     st.bar_chart(
@@ -731,6 +780,9 @@ def render_injury_page() -> None:
 
 def render_news_page() -> None:
     summary = _news_summary()
+    payload = _latest_daily_payload()
+    manifest = _publish_manifest()
+    context_summary = _context_summary(payload, manifest)
     st.subheader("News Sentiment")
     if summary.empty:
         st.info("News context is not available in this deployment yet.")
@@ -739,8 +791,14 @@ def render_news_page() -> None:
     coverage_rate = summary["coverage_rate"].mean()
     if coverage_rate == 0:
         st.info(
-            "Live pregame news coverage is not populated in the current artifact set, "
+            "Live team-news coverage has not been detected for the current slate yet, "
             "so this view is reflecting the fallback news features."
+        )
+    else:
+        st.info(
+            "Live team-news coverage is available for "
+            f"{float(context_summary.get('news_coverage_rate', coverage_rate)) * 100:.0f}% "
+            "of the current slate."
         )
 
     st.bar_chart(

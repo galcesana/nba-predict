@@ -66,6 +66,10 @@ class StubPredictionPipeline:
                         "sequence_probability": prob,
                         "final_probability": prob,
                     },
+                    "context_details": {
+                        "injury_mode": "fallback",
+                        "news_mode": "fallback",
+                    },
                     "top_model_factors": ["Synthetic test factor"],
                 }
             )
@@ -148,6 +152,7 @@ class TestPredictionPipeline:
         assert "predicted_winner" in pred
         assert "confidence_bucket" in pred
         assert "component_outputs" in pred
+        assert "context_details" in pred
         assert "top_model_factors" in pred
 
     def test_probabilities_sum_to_one(self, sample_predictions):
@@ -388,6 +393,7 @@ class TestScripts:
         assert output["window_end"] == "2024-01-18"
         assert len(output["predictions"]) == 2
         assert {pred["game_date"] for pred in output["predictions"]} == {"2024-01-15", "2024-01-17"}
+        assert "context_summary" in output
         assert output["dates_with_games"] == [
             {"date": "2024-01-15", "games_count": 1},
             {"date": "2024-01-17", "games_count": 1},

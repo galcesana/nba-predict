@@ -19,6 +19,10 @@ def _payload_for_date(date_str: str, game_id: str = "game-1") -> dict:
         "slate_type": "day",
         "generated_at": "2026-05-16T12:00:00Z",
         "model_version": "ensemble_v1",
+        "context_summary": {
+            "injury_coverage_rate": 0.5,
+            "news_coverage_rate": 1.0,
+        },
         "predictions": [
             {
                 "game_id": game_id,
@@ -29,6 +33,22 @@ def _payload_for_date(date_str: str, game_id: str = "game-1") -> dict:
                 "away_win_probability": 0.39,
                 "predicted_winner": "home",
                 "confidence_bucket": "medium",
+                "context_details": {
+                    "injury_mode": "partial",
+                    "news_mode": "live",
+                    "home_injury_data_available": True,
+                    "away_injury_data_available": False,
+                    "home_players_out": 2,
+                    "away_players_out": 0,
+                    "home_estimated_value_missing": 1.5,
+                    "away_estimated_value_missing": 0.0,
+                    "home_news_available": True,
+                    "away_news_available": True,
+                    "home_article_volume_24h": 3,
+                    "away_article_volume_24h": 2,
+                    "home_weighted_sentiment_72h": 0.2,
+                    "away_weighted_sentiment_72h": -0.1,
+                },
                 "top_model_factors": ["recent net rating"],
                 "component_outputs": {"ensemble_probability": 0.61},
             }
@@ -147,6 +167,33 @@ def test_news_debug_view():
         "avg_article_volume",
         "coverage_rate",
     }.issubset(summary.columns)
+
+
+def test_live_context_summary_prefers_payload():
+    """Context summary prefers the loaded payload over the manifest fallback."""
+    payload = _payload_for_date("2026-05-16")
+    manifest = {"context_summary": {"injury_coverage_rate": 0.0}}
+
+    summary = dashboard_data.latest_context_summary(payload, manifest)
+
+    assert summary["injury_coverage_rate"] == 0.5
+    assert summary["news_coverage_rate"] == 1.0
+
+
+def test_live_summaries_use_current_payload(monkeypatch):
+    """Injury and news summary pages can render from live payload context details."""
+    payload = _payload_for_date("2026-05-16")
+    monkeypatch.setattr(
+        dashboard_data, "load_latest_daily_predictions", lambda directory=None: payload
+    )
+
+    injury_summary = dashboard_data.build_injury_summary()
+    news_summary = dashboard_data.build_news_summary()
+
+    assert not injury_summary.empty
+    assert not news_summary.empty
+    assert injury_summary["avg_players_out"].max() == 2
+    assert news_summary["avg_article_volume"].max() == 3
 
 
 def test_prediction_source_precedence(monkeypatch, tmp_path):

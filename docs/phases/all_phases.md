@@ -20,8 +20,9 @@
 | [8](phase_08_daily_predictions.md) | Daily Prediction System | M | 3-5 days | `[x]` Complete | Phase 7 |
 | [9](phase_09_dashboard.md) | Product Dashboard | L | 1-2 weeks | `[x]` Complete | Phase 8 |
 | [10](phase_10_live_publishing.md) | Live Publishing Layer | M | 2-4 days | `[x]` Complete | Phase 9 |
+| [11](phase_11_live_context_playoff_hardening.md) | Live Context + Playoff Hardening | L | 4-7 days | `[x]` Complete | Phase 10 |
 
-**Total estimated: ~11-15 weeks**
+**Total estimated: ~12-16 weeks**
 
 ---
 
@@ -45,7 +46,7 @@ Phase 0 -> Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 ----+
                                  |                       |
                                  +-> Phase 6 -----------|
                                                          v
-                                                    Phase 7 -> Phase 8 -> Phase 9 -> Phase 10
+                                                    Phase 7 -> Phase 8 -> Phase 9 -> Phase 10 -> Phase 11
 ```
 
 ---

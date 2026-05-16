@@ -3,7 +3,7 @@
   "slate_type": "week",
   "window_start": "2026-05-16",
   "window_end": "2026-05-22",
-  "generated_at": "2026-05-16T18:20:34Z",
+  "generated_at": "2026-05-16T21:05:15Z",
   "model_version": "ensemble_v1",
   "dates_with_games": [
     {
@@ -15,20 +15,55 @@
       "games_count": 1
     }
   ],
+  "playoff_filtering_mode": "next_game_per_series",
+  "context_summary": {
+    "injury_live_games": 0,
+    "injury_partial_games": 0,
+    "news_live_games": 1,
+    "news_partial_games": 0,
+    "injury_coverage_rate": 0.0,
+    "news_coverage_rate": 0.5,
+    "latest_injury_report_at": null,
+    "latest_news_article_at": "2026-05-16T20:03:45Z",
+    "latest_news_collection_at": "2026-05-16T21:01:07Z"
+  },
   "predictions": [
     {
       "game_id": "0042500207",
       "home_team_idx": 8,
       "away_team_idx": 5,
-      "home_win_probability": 0.6659,
-      "away_win_probability": 0.3341,
+      "home_win_probability": 0.666,
+      "away_win_probability": 0.334,
       "predicted_winner": "home",
       "confidence_bucket": "medium",
       "component_outputs": {
         "elo_probability": 0.6842,
         "tabular_probability": 0.6175000071525574,
-        "sequence_probability": 0.7454000115394592,
-        "final_probability": 0.6659
+        "sequence_probability": 0.7459999918937683,
+        "final_probability": 0.666
+      },
+      "context_details": {
+        "injury_mode": "fallback",
+        "news_mode": "live",
+        "home_injury_data_available": false,
+        "away_injury_data_available": false,
+        "home_players_out": 0,
+        "away_players_out": 0,
+        "home_estimated_value_missing": 0.0,
+        "away_estimated_value_missing": 2.031999999999994,
+        "home_questionable": 0,
+        "away_questionable": 0,
+        "injury_report_generated_at": null,
+        "home_news_available": true,
+        "away_news_available": true,
+        "home_article_volume_24h": 0,
+        "away_article_volume_24h": 0,
+        "home_weighted_sentiment_72h": 0.0318573379556676,
+        "away_weighted_sentiment_72h": 0.054267823794353506,
+        "home_article_count_72h": 17,
+        "away_article_count_72h": 14,
+        "latest_article_at": "2026-05-16T20:03:45Z",
+        "news_collected_at": "2026-05-16T21:01:07Z"
       },
       "top_model_factors": [
         "Home team has significantly better recent net rating",
@@ -56,6 +91,29 @@
         "tabular_probability": 0.5773000121116638,
         "sequence_probability": 0.6039000153541565,
         "final_probability": 0.6278
+      },
+      "context_details": {
+        "injury_mode": "fallback",
+        "news_mode": "fallback",
+        "home_injury_data_available": false,
+        "away_injury_data_available": false,
+        "home_players_out": 0,
+        "away_players_out": 0,
+        "home_estimated_value_missing": 4.417000000000007,
+        "away_estimated_value_missing": 3.1226666666666922,
+        "home_questionable": 0,
+        "away_questionable": 0,
+        "injury_report_generated_at": null,
+        "home_news_available": false,
+        "away_news_available": false,
+        "home_article_volume_24h": 0,
+        "away_article_volume_24h": 0,
+        "home_weighted_sentiment_72h": 0.0,
+        "away_weighted_sentiment_72h": 0.0,
+        "home_article_count_72h": 0,
+        "away_article_count_72h": 0,
+        "latest_article_at": null,
+        "news_collected_at": null
       },
       "top_model_factors": [
         "Matchup appears statistically balanced"
