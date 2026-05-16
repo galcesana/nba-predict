@@ -309,18 +309,19 @@ def _slate_source_notice(payload: dict | None, manifest: dict | None) -> None:
         st.info(status["message"])
 
 
-@st.cache_data(show_spinner=False)
 def _latest_daily_payload() -> dict | None:
+    # Published forecast files are updated outside the Streamlit process,
+    # so this loader must read from disk on every rerun.
     return data.load_latest_daily_predictions()
 
 
-@st.cache_data(show_spinner=False)
 def _publish_manifest() -> dict | None:
+    # Keep the publish status banner in sync with the latest tracked manifest.
     return data.load_publish_manifest()
 
 
-@st.cache_data(show_spinner=False)
 def _archive_frame() -> pd.DataFrame:
+    # The archive includes published daily snapshots that can change after deploy.
     return data.build_archive_dataframe()
 
 
