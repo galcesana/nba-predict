@@ -18,7 +18,7 @@
 | [6](phase_06_llm_sentiment.md) | LLM News/Sentiment Layer | XL | 2–3 weeks | `[x]` Complete | Phase 4 |
 | [7](phase_07_fusion_model.md) | Full Fusion Model | L | 1–2 weeks | `[x]` Complete | Phase 4 + 5 + 6 |
 | [8](phase_08_daily_predictions.md) | Daily Prediction System | M | 3–5 days | `[x]` Complete | Phase 7 |
-| [9](phase_09_dashboard.md) | Product Dashboard | L | 1–2 weeks | `[ ]` Not Started | Phase 8 |
+| [9](phase_09_dashboard.md) | Product Dashboard | L | 1–2 weeks | `[x]` Complete | Phase 8 |
 
 **Total estimated: ~10–14 weeks**
 
@@ -75,8 +75,8 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 ─┬→ Phase 4 ──┐
 | 6 | 10 | News proxy features, availability flags, aggregation logic |
 | 7 | 6 | Fusion forward pass plus ensemble training coverage |
 | 8 | 12 | Prediction pipeline, output format, backtest |
-| 9 | 10 + 8 manual (planned) | Dashboard pages, rendering, browser |
-| **Total** | **111 current + 10 planned + 8 manual** | |
+| 9 | 10 + 8 manual | Dashboard pages, rendering, browser |
+| **Total** | **121 automated + 8 manual** | |
 
 ---
 

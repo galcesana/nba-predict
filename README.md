@@ -69,7 +69,7 @@ nba-outcome-model/
 │   ├── nlp/                      # LLM sentiment extraction pipeline
 │   ├── features/                 # Feature engineering (rolling, schedule, injury, news)
 │   ├── models/                   # Elo, tabular, neural, ensemble, calibration
-│   ├── app/                      # Daily prediction scripts (dashboard planned in Phase 9)
+│   ├── app/                      # Daily prediction scripts + Streamlit dashboard
 │   └── utils/                    # Logging, paths, validation
 │
 ├── models/                       # Saved model artifacts
@@ -130,9 +130,15 @@ python -m src.app.run_backtest --start-date 2024-01-15 --end-date 2024-01-16
 make test
 ```
 
-### Dashboard Status
+### Launch Dashboard
 
-The Streamlit dashboard is planned for **Phase 9**. The current product surface is the daily prediction and backtest CLI in `src/app/`.
+```bash
+streamlit run src/app/streamlit_app.py
+```
+
+Dashboard screenshots:
+- `docs/screenshots/dashboard_today.png`
+- `docs/screenshots/dashboard_calibration.png`
 
 ---
 
@@ -150,10 +156,10 @@ The project is built in 10 phases. See [docs/phases/all_phases.md](docs/phases/a
 | 5 | Injury Features | ✅ Complete |
 | 6 | LLM News/Sentiment Layer | ✅ Complete |
 | 7 | Full Fusion Model | ✅ Complete |
-| 8 | Daily Prediction System | `Complete` |
-| 9 | Product Dashboard | `[ ]` |
+| 8 | Daily Prediction System | ג… Complete |
+| 9 | Product Dashboard | ג… Complete |
 
-**Current data:** 14,429 games across 12 seasons (2014–2026), Ensemble Model (65.6% acc, 0.615 log loss), historical daily predictions + backtests working, 111 tests passing.
+**Current data:** 14,429 games across 12 seasons (2014–2026), Ensemble Model (65.6% acc, 0.615 log loss), daily predictions + backtests + dashboard working, 121 tests passing.
 
 ---
 

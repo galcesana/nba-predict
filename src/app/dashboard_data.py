@@ -1,0 +1,430 @@
+"""Data loaders and view-model helpers for the Phase 9 dashboard."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import pandas as pd
+
+from src.anonymization.team_mapping import load_idx_to_team
+from src.utils.paths import MODELS_DIR, PREDICTIONS_DIR, PROCESSED_DIR
+
+DAILY_PREDICTIONS_DIR = PREDICTIONS_DIR / "daily"
+BACKTEST_DIR = PREDICTIONS_DIR / "historical_backtests"
+
+
+def team_abbr(team_idx: Any) -> str:
+    """Return a team abbreviation for a team index."""
+    try:
+        idx = int(team_idx)
+    except (TypeError, ValueError):
+        return "UNK"
+    return load_idx_to_team().get(idx, f"TEAM_{idx}")
+
+
+def matchup_label(home_team_idx: Any, away_team_idx: Any) -> str:
+    """Return a display label for a matchup."""
+    return f"{team_abbr(away_team_idx)} at {team_abbr(home_team_idx)}"
+
+
+def _json_files(directory: Path) -> list[Path]:
+    if not directory.exists():
+        return []
+    return sorted(path for path in directory.glob("*.json") if path.is_file())
+
+
+def _load_json(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_games_table(path: Path | None = None) -> pd.DataFrame:
+    """Load the processed games table."""
+    source = path or (PROCESSED_DIR / "games.parquet")
+    if not source.exists():
+        return pd.DataFrame()
+    games = pd.read_parquet(source)
+    games["date"] = pd.to_datetime(games["date"])
+    return games
+
+
+def load_team_logs(path: Path | None = None) -> pd.DataFrame:
+    """Load processed team game logs."""
+    source = path or (PROCESSED_DIR / "team_game_logs" / "team_game_logs.parquet")
+    if not source.exists():
+        return pd.DataFrame()
+    logs = pd.read_parquet(source)
+    logs["date"] = pd.to_datetime(logs["date"])
+    return logs
+
+
+def load_injury_features(path: Path | None = None) -> pd.DataFrame:
+    """Load processed injury features."""
+    source = path or (PROCESSED_DIR / "injury_features" / "injury_features.parquet")
+    if not source.exists():
+        return pd.DataFrame()
+    return pd.read_parquet(source)
+
+
+def load_news_features(path: Path | None = None) -> pd.DataFrame:
+    """Load processed news features."""
+    source = path or (PROCESSED_DIR / "news_features" / "news_features.parquet")
+    if not source.exists():
+        return pd.DataFrame()
+    return pd.read_parquet(source)
+
+
+def load_latest_daily_predictions(directory: Path | None = None) -> dict[str, Any] | None:
+    """Load the most recent daily prediction payload."""
+    files = _json_files(directory or DAILY_PREDICTIONS_DIR)
+    if not files:
+        return None
+    payload = _load_json(files[-1])
+    payload["source_file"] = str(files[-1])
+    return payload
+
+
+def load_backtest_reports(directory: Path | None = None) -> list[dict[str, Any]]:
+    """Load all saved backtest reports."""
+    reports = []
+    for path in _json_files(directory or BACKTEST_DIR):
+        report = _load_json(path)
+        report["source_file"] = str(path)
+        reports.append(report)
+    return reports
+
+
+def get_prediction_detail(payload: dict[str, Any] | None, game_id: str) -> dict[str, Any] | None:
+    """Return a single prediction entry from a payload."""
+    if not payload:
+        return None
+    for prediction in payload.get("predictions", []):
+        if prediction.get("game_id") == game_id:
+            return prediction
+    return None
+
+
+def build_component_output_frame(prediction: dict[str, Any]) -> pd.DataFrame:
+    """Convert component model outputs into a display table."""
+    outputs = prediction.get("component_outputs", {})
+    rows = []
+    for model_name, probability in outputs.items():
+        label = model_name.replace("_", " ").replace("probability", "prob").title()
+        rows.append({"model": label, "probability": float(probability)})
+    return pd.DataFrame(rows)
+
+
+def _prediction_record(
+    prediction: dict[str, Any],
+    *,
+    date: Any,
+    source: str,
+    generated_at: str | None = None,
+    actual_home_win: Any | None = None,
+) -> dict[str, Any]:
+    home_prob = float(prediction.get("home_win_probability", np.nan))
+    away_prob = float(prediction.get("away_win_probability", 1.0 - home_prob))
+    record = {
+        "date": pd.to_datetime(date),
+        "source": source,
+        "game_id": prediction.get("game_id"),
+        "matchup": matchup_label(prediction.get("home_team_idx"), prediction.get("away_team_idx")),
+        "home_team": team_abbr(prediction.get("home_team_idx")),
+        "away_team": team_abbr(prediction.get("away_team_idx")),
+        "home_team_idx": int(prediction.get("home_team_idx")),
+        "away_team_idx": int(prediction.get("away_team_idx")),
+        "home_win_probability": home_prob,
+        "away_win_probability": away_prob,
+        "predicted_winner": prediction.get("predicted_winner"),
+        "confidence_bucket": prediction.get("confidence_bucket"),
+        "generated_at": generated_at,
+        "actual_home_win": actual_home_win,
+        "top_model_factors": ", ".join(prediction.get("top_model_factors", [])),
+    }
+    if actual_home_win in (0, 1):
+        record["actual_winner"] = "home" if int(actual_home_win) == 1 else "away"
+    else:
+        record["actual_winner"] = None
+    return record
+
+
+def build_archive_dataframe(
+    daily_dir: Path | None = None,
+    backtest_dir: Path | None = None,
+    games_path: Path | None = None,
+) -> pd.DataFrame:
+    """Build a combined archive frame from daily predictions and backtests."""
+    rows: list[dict[str, Any]] = []
+
+    latest_daily_files = _json_files(daily_dir or DAILY_PREDICTIONS_DIR)
+    for path in latest_daily_files:
+        payload = _load_json(path)
+        for prediction in payload.get("predictions", []):
+            rows.append(
+                _prediction_record(
+                    prediction,
+                    date=payload.get("date"),
+                    source="daily",
+                    generated_at=payload.get("generated_at"),
+                )
+            )
+
+    games = load_games_table(games_path)
+    if {"game_id", "date"}.issubset(games.columns):
+        game_dates = games[["game_id", "date"]]
+        date_lookup = dict(zip(game_dates["game_id"], game_dates["date"]))
+    else:
+        date_lookup = {}
+
+    for report in load_backtest_reports(backtest_dir or BACKTEST_DIR):
+        for prediction in report.get("predictions", []):
+            rows.append(
+                _prediction_record(
+                    prediction,
+                    date=date_lookup.get(prediction.get("game_id"), report.get("start_date")),
+                    source="backtest",
+                    actual_home_win=prediction.get("actual_home_win"),
+                )
+            )
+
+    if not rows:
+        return pd.DataFrame(
+            columns=[
+                "date",
+                "source",
+                "game_id",
+                "matchup",
+                "home_win_probability",
+                "away_win_probability",
+                "predicted_winner",
+                "actual_winner",
+                "confidence_bucket",
+            ]
+        )
+
+    archive = pd.DataFrame(rows).sort_values(
+        ["date", "game_id", "source"],
+        ascending=[False, True, True],
+    )
+    archive["date"] = pd.to_datetime(archive["date"])
+    return archive.reset_index(drop=True)
+
+
+def build_model_performance_table(
+    baseline_path: Path | None = None,
+    ensemble_path: Path | None = None,
+    neural_path: Path | None = None,
+    ablation_path: Path | None = None,
+) -> pd.DataFrame:
+    """Build a unified model comparison table for dashboard display."""
+    rows: list[dict[str, Any]] = []
+
+    baseline_source = baseline_path or (MODELS_DIR / "baselines" / "evaluation_results.json")
+    if baseline_source.exists():
+        baseline_results = _load_json(baseline_source)
+        for name, metrics in baseline_results.items():
+            if not name.endswith("_test") or not isinstance(metrics, dict):
+                continue
+            rows.append({
+                "family": "baseline",
+                "model": name.replace("_test", ""),
+                **metrics,
+            })
+
+    ensemble_source = ensemble_path or (MODELS_DIR / "ensembles" / "ensemble_results.json")
+    if ensemble_source.exists():
+        ensemble_results = _load_json(ensemble_source)
+        for name in ("ensemble_raw", "ensemble_calibrated"):
+            if name in ensemble_results:
+                rows.append({
+                    "family": "ensemble",
+                    "model": name,
+                    **ensemble_results[name],
+                })
+
+    neural_source = neural_path or (MODELS_DIR / "neural" / "test_results.json")
+    if neural_source.exists():
+        neural_results = _load_json(neural_source)
+        rows.append({
+            "family": "neural",
+            "model": "full_fusion",
+            "accuracy": neural_results.get("test_accuracy"),
+            "log_loss": neural_results.get("test_loss"),
+            "brier_score": np.nan,
+            "roc_auc": np.nan,
+            "calibration_error": np.nan,
+        })
+
+    ablation_source = ablation_path or (MODELS_DIR / "neural" / "ablation_results.json")
+    if ablation_source.exists():
+        ablations = _load_json(ablation_source)
+        for name, metrics in ablations.items():
+            rows.append({
+                "family": "ablation",
+                "model": name,
+                "accuracy": metrics.get("test_accuracy"),
+                "log_loss": metrics.get("test_loss"),
+                "brier_score": np.nan,
+                "roc_auc": np.nan,
+                "calibration_error": np.nan,
+            })
+
+    if not rows:
+        return pd.DataFrame()
+
+    frame = pd.DataFrame(rows)
+    numeric_cols = ["accuracy", "log_loss", "brier_score", "roc_auc", "calibration_error"]
+    for column in numeric_cols:
+        if column in frame.columns:
+            frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    return (
+        frame.sort_values(["log_loss", "accuracy"], ascending=[True, False])
+        .reset_index(drop=True)
+    )
+
+
+def build_rolling_validation_frame(path: Path | None = None) -> pd.DataFrame:
+    """Load rolling validation metrics from the baseline results file."""
+    source = path or (MODELS_DIR / "baselines" / "evaluation_results.json")
+    if not source.exists():
+        return pd.DataFrame()
+    payload = _load_json(source)
+    rolling = pd.DataFrame(payload.get("rolling_validation", []))
+    return rolling
+
+
+def build_ensemble_weights_frame(path: Path | None = None) -> pd.DataFrame:
+    """Build a display frame for ensemble weights."""
+    source = path or (MODELS_DIR / "ensembles" / "ensemble_results.json")
+    if not source.exists():
+        return pd.DataFrame()
+    payload = _load_json(source)
+    weights = payload.get("model_weights", {})
+    if not weights:
+        return pd.DataFrame()
+    frame = pd.DataFrame(
+        [{"model": name, "weight": float(weight)} for name, weight in weights.items()]
+    )
+    return frame.sort_values("weight", ascending=False).reset_index(drop=True)
+
+
+def build_calibration_frame(path: Path | None = None, n_bins: int = 10) -> pd.DataFrame:
+    """Build calibration bins from ensemble test predictions."""
+    source = path or (MODELS_DIR / "ensembles" / "ensemble_predictions_test.parquet")
+    if not source.exists():
+        return pd.DataFrame(
+            columns=["bin_mid", "avg_pred", "actual_rate", "count", "ideal", "abs_gap"]
+        )
+
+    predictions = pd.read_parquet(source)
+    if predictions.empty:
+        return pd.DataFrame(
+            columns=["bin_mid", "avg_pred", "actual_rate", "count", "ideal", "abs_gap"]
+        )
+
+    bins = np.linspace(0.0, 1.0, n_bins + 1)
+    calibration = predictions.copy()
+    calibration["bin"] = pd.cut(
+        calibration["ensemble_prob"],
+        bins=bins,
+        include_lowest=True,
+        duplicates="drop",
+    )
+    grouped = (
+        calibration.groupby("bin", observed=True)
+        .agg(
+            avg_pred=("ensemble_prob", "mean"),
+            actual_rate=("actual_home_win", "mean"),
+            count=("game_id", "size"),
+        )
+        .reset_index()
+    )
+    grouped["bin_mid"] = grouped["bin"].apply(
+        lambda interval: float((interval.left + interval.right) / 2)
+    )
+    grouped["ideal"] = grouped["bin_mid"]
+    grouped["abs_gap"] = (grouped["avg_pred"] - grouped["actual_rate"]).abs()
+    return grouped[["bin_mid", "avg_pred", "actual_rate", "count", "ideal", "abs_gap"]]
+
+
+def compute_expected_calibration_error(calibration_frame: pd.DataFrame) -> float:
+    """Compute expected calibration error from a calibration frame."""
+    if calibration_frame.empty:
+        return float("nan")
+    total = calibration_frame["count"].sum()
+    if total == 0:
+        return float("nan")
+    return float((calibration_frame["abs_gap"] * calibration_frame["count"]).sum() / total)
+
+
+def build_team_form_frame(
+    team_idx: int,
+    logs_path: Path | None = None,
+    window: int = 10,
+) -> pd.DataFrame:
+    """Build a recent form frame for a single team."""
+    logs = load_team_logs(logs_path)
+    if logs.empty:
+        return pd.DataFrame()
+    team_logs = logs[logs["team_idx"] == int(team_idx)].sort_values("date").tail(window).copy()
+    if team_logs.empty:
+        return pd.DataFrame()
+    team_logs["opponent"] = team_logs["opponent_team_idx"].map(team_abbr)
+    team_logs["result"] = np.where(team_logs["won"] == 1, "W", "L")
+    team_logs["location"] = np.where(team_logs["is_home"] == 1, "Home", "Away")
+    return team_logs.reset_index(drop=True)
+
+
+def _join_feature_dates(feature_frame: pd.DataFrame) -> pd.DataFrame:
+    """Attach date/season columns from team logs to team-level feature frames."""
+    if feature_frame.empty:
+        return feature_frame
+    logs = load_team_logs()[["game_id", "team_idx", "date", "season"]].drop_duplicates()
+    merged = feature_frame.merge(logs, on=["game_id", "team_idx"], how="left")
+    merged["date"] = pd.to_datetime(merged["date"])
+    return merged
+
+
+def build_injury_summary(window: int = 15, path: Path | None = None) -> pd.DataFrame:
+    """Build a team-level injury summary from the most recent games."""
+    injuries = _join_feature_dates(load_injury_features(path))
+    if injuries.empty:
+        return pd.DataFrame()
+    recent = injuries.sort_values("date").groupby("team_idx", as_index=False).tail(window)
+    summary = (
+        recent.groupby("team_idx", as_index=False)
+        .agg(
+            avg_players_out=("players_out_count", "mean"),
+            avg_questionable=("players_questionable_count", "mean"),
+            avg_estimated_value_missing=("estimated_value_missing", "mean"),
+            avg_minutes_missing=("minutes_missing", "mean"),
+            data_available_rate=("injury_data_available", "mean"),
+        )
+    )
+    summary["team"] = summary["team_idx"].map(team_abbr)
+    return (
+        summary.sort_values("avg_estimated_value_missing", ascending=False)
+        .reset_index(drop=True)
+    )
+
+
+def build_news_summary(window: int = 15, path: Path | None = None) -> pd.DataFrame:
+    """Build a team-level news summary from the most recent games."""
+    news = _join_feature_dates(load_news_features(path))
+    if news.empty:
+        return pd.DataFrame()
+    recent = news.sort_values("date").groupby("team_idx", as_index=False).tail(window)
+    summary = (
+        recent.groupby("team_idx", as_index=False)
+        .agg(
+            avg_sentiment_24h=("weighted_sentiment_24h", "mean"),
+            avg_sentiment_72h=("weighted_sentiment_72h", "mean"),
+            avg_article_volume=("article_volume_24h", "mean"),
+            avg_negative_ratio=("negative_ratio_72h", "mean"),
+            coverage_rate=("news_available", "mean"),
+        )
+    )
+    summary["team"] = summary["team_idx"].map(team_abbr)
+    return summary.sort_values("avg_sentiment_72h", ascending=False).reset_index(drop=True)

@@ -17,7 +17,7 @@ NBA game outcome prediction system that outputs **calibrated win probabilities**
 - **Phase 6 complete** — News/sentiment proxy features (zero-vectors) implemented and tested, 93 tests passing
 - **Phase 7 complete** — Full 4-stream fusion model trained (log loss 0.6169) and logistic ensemble trained (65.6% acc, 0.615 log loss), 105 tests passing
 - **Phase 8 complete** — Daily Prediction System implemented, verified on a historical daily slate and backtest window, 111 tests passing
-- **Phase 9 next** — Product Dashboard
+- **Phase 9 complete** — Streamlit dashboard implemented and browser-verified, 121 tests passing
 - See `docs/phases/all_phases.md` for the full phase tracker
 - See `docs/nba_game_prediction_project_plan.md` for the comprehensive project plan
 
@@ -37,7 +37,7 @@ nba-predict/
 │   ├── nlp/                      # LLM sentiment extraction pipeline
 │   ├── features/                 # Feature engineering (rolling, schedule, injury, news)
 │   ├── models/                   # Elo, tabular, neural, ensemble, calibration
-│   ├── app/                      # Daily prediction scripts; dashboard lands in Phase 9
+│   ├── app/                      # Daily prediction scripts + Streamlit dashboard
 │   └── utils/                    # paths.py, logging.py
 ├── models/                       # Saved model artifacts — gitignored
 ├── predictions/                  # Output JSONs — gitignored
