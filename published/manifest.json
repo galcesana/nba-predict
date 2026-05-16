@@ -1,13 +1,13 @@
 {
   "status": "published",
   "target_date": "2026-05-16",
-  "attempted_at": "2026-05-16T18:13:44Z",
+  "attempted_at": "2026-05-16T18:20:34Z",
   "latest_available_date": "2026-05-16",
   "published_file": "published/daily/2026-05-16.json",
-  "games_count": 4,
+  "games_count": 2,
   "model_version": "ensemble_v1",
   "slate_type": "week",
   "window_start": "2026-05-16",
   "window_end": "2026-05-22",
-  "days_with_games": 4
+  "days_with_games": 2
 }

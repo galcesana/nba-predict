@@ -3,7 +3,7 @@
   "slate_type": "week",
   "window_start": "2026-05-16",
   "window_end": "2026-05-22",
-  "generated_at": "2026-05-16T18:13:44Z",
+  "generated_at": "2026-05-16T18:20:34Z",
   "model_version": "ensemble_v1",
   "dates_with_games": [
     {
@@ -12,14 +12,6 @@
     },
     {
       "date": "2026-05-18",
-      "games_count": 1
-    },
-    {
-      "date": "2026-05-20",
-      "games_count": 1
-    },
-    {
-      "date": "2026-05-22",
       "games_count": 1
     }
   ],
@@ -76,58 +68,6 @@
       "game_sub_label": "Game 1",
       "series_text": "Series tied 0-0",
       "game_code": "20260518/SASOKC"
-    },
-    {
-      "game_id": "0042500312",
-      "home_team_idx": 20,
-      "away_team_idx": 26,
-      "home_win_probability": 0.628,
-      "away_win_probability": 0.372,
-      "predicted_winner": "home",
-      "confidence_bucket": "medium",
-      "component_outputs": {
-        "elo_probability": 0.6915,
-        "tabular_probability": 0.5773000121116638,
-        "sequence_probability": 0.6047999858856201,
-        "final_probability": 0.628
-      },
-      "top_model_factors": [
-        "Matchup appears statistically balanced"
-      ],
-      "game_date": "2026-05-20",
-      "game_time_utc": "2026-05-21T00:30:00Z",
-      "game_time_et": "2026-05-20T20:30:00Z",
-      "game_status_text": "8:30 pm ET",
-      "game_label": "West Conf. Finals",
-      "game_sub_label": "Game 2",
-      "series_text": "Series tied 0-0",
-      "game_code": "20260520/SASOKC"
-    },
-    {
-      "game_id": "0042500313",
-      "home_team_idx": 26,
-      "away_team_idx": 20,
-      "home_win_probability": 0.5883,
-      "away_win_probability": 0.4117,
-      "predicted_winner": "home",
-      "confidence_bucket": "low",
-      "component_outputs": {
-        "elo_probability": 0.5852,
-        "tabular_probability": 0.6087999939918518,
-        "sequence_probability": 0.539900004863739,
-        "final_probability": 0.5883
-      },
-      "top_model_factors": [
-        "Matchup appears statistically balanced"
-      ],
-      "game_date": "2026-05-22",
-      "game_time_utc": "2026-05-23T00:30:00Z",
-      "game_time_et": "2026-05-22T20:30:00Z",
-      "game_status_text": "8:30 pm ET",
-      "game_label": "West Conf. Finals",
-      "game_sub_label": "Game 3",
-      "series_text": "Series tied 0-0",
-      "game_code": "20260522/OKCSAS"
     }
   ]
 }

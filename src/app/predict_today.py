@@ -51,6 +51,49 @@ def _filter_confirmed_schedule(schedule: pd.DataFrame) -> pd.DataFrame:
     return confirmed
 
 
+def _playoff_series_key(row: pd.Series) -> str | None:
+    """Return a stable series key for playoff games, otherwise None."""
+    game_label = str(row.get("game_label") or "")
+    game_sub_label = str(row.get("game_sub_label") or "")
+    series_text = str(row.get("series_text") or "")
+
+    is_playoff_series = bool(series_text) or game_sub_label.startswith("Game ")
+    if not is_playoff_series:
+        return None
+
+    teams = sorted([int(row["home_team_idx"]), int(row["away_team_idx"])])
+    return f"{game_label}|{teams[0]}|{teams[1]}"
+
+
+def _filter_to_next_playoff_games(
+    target_games: pd.DataFrame,
+    seen_series_keys: set[str] | None = None,
+) -> tuple[pd.DataFrame, set[str]]:
+    """Keep only the next scheduled game for each playoff series."""
+    if target_games.empty:
+        return target_games, seen_series_keys or set()
+
+    seen = set(seen_series_keys or set())
+    keep_indices: list[int] = []
+    skipped = 0
+
+    ordered = target_games.sort_values(["date", "game_id"]).copy()
+    for index, row in ordered.iterrows():
+        series_key = _playoff_series_key(row)
+        if series_key and series_key in seen:
+            skipped += 1
+            continue
+
+        keep_indices.append(index)
+        if series_key:
+            seen.add(series_key)
+
+    if skipped > 0:
+        logger.info("Filtered out %d later playoff games from already-listed series.", skipped)
+
+    return target_games.loc[keep_indices].copy(), seen
+
+
 def _fetch_schedule_v3(date_str: str, team_mapping: dict[str, int]) -> pd.DataFrame:
     sb = scoreboardv3.ScoreboardV3(game_date=date_str)
     scoreboard = sb.get_dict().get("scoreboard", {})
@@ -303,9 +346,17 @@ def generate_predictions_for_window(
 
     all_predictions: list[dict] = []
     dates_with_games: list[dict[str, int | str]] = []
+    seen_series_keys: set[str] = set()
 
     for date_str in forecast_dates:
         target_games = schedule_fetcher(date_str)
+        if target_games.empty:
+            continue
+
+        target_games, seen_series_keys = _filter_to_next_playoff_games(
+            target_games,
+            seen_series_keys,
+        )
         if target_games.empty:
             continue
 

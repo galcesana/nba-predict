@@ -10,6 +10,7 @@ import pytest
 
 from src.app.predict_today import (
     _filter_confirmed_schedule,
+    _filter_to_next_playoff_games,
     generate_predictions_for_date,
     generate_predictions_for_window,
 )
@@ -217,6 +218,41 @@ class TestScripts:
         filtered = _filter_confirmed_schedule(schedule)
 
         assert filtered["game_id"].tolist() == ["g2"]
+
+    def test_later_playoff_games_in_same_series_are_filtered(self):
+        """Only the next scheduled game from a playoff series stays in the weekly slate."""
+        day_one = pd.DataFrame(
+            [
+                {
+                    "game_id": "g1",
+                    "date": "2026-05-18",
+                    "home_team_idx": 20,
+                    "away_team_idx": 26,
+                    "game_label": "West Conf. Finals",
+                    "game_sub_label": "Game 1",
+                    "series_text": "Series tied 0-0",
+                }
+            ]
+        )
+        day_two = pd.DataFrame(
+            [
+                {
+                    "game_id": "g2",
+                    "date": "2026-05-20",
+                    "home_team_idx": 20,
+                    "away_team_idx": 26,
+                    "game_label": "West Conf. Finals",
+                    "game_sub_label": "Game 2",
+                    "series_text": "Series tied 0-0",
+                }
+            ]
+        )
+
+        filtered_day_one, seen = _filter_to_next_playoff_games(day_one)
+        filtered_day_two, _ = _filter_to_next_playoff_games(day_two, seen)
+
+        assert filtered_day_one["game_id"].tolist() == ["g1"]
+        assert filtered_day_two.empty
 
     def test_backtest_on_known_date(self, tmp_path, stub_pipeline, synthetic_backtest_data):
         """Backtest runner saves a valid report."""
