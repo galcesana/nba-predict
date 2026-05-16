@@ -64,7 +64,7 @@ nba-predict/
 |  |- nlp/                       # LLM sentiment extraction pipeline
 |  |- features/                  # Rolling, schedule, injury, news features
 |  |- models/                    # Elo, tabular, neural, ensemble, calibration
-|  |- app/                       # Daily prediction + publishing scripts + Streamlit dashboard
+|  |- app/                       # Daily prediction, publishing, Streamlit dashboard, FastAPI service
 |  `- utils/                     # Logging, paths, validation
 |- tests/                        # Comprehensive test suite
 `- docs/phases/                  # Phase-by-phase implementation guides
@@ -205,6 +205,26 @@ This command:
 
 Automation is defined in `.github/workflows/publish_daily.yml`, which schedules the publish job daily at `15:05 UTC` and also supports `workflow_dispatch`.
 
+### 7. Launch the API Service
+
+```bash
+make serve-api
+```
+
+Or run it directly:
+
+```bash
+uvicorn src.app.api:app --reload
+```
+
+The API serves:
+
+- `GET /health`
+- `GET /manifest`
+- `GET /forecast/week`
+- `GET /forecast/game/{game_id}`
+- `GET /metrics`
+
 ---
 
 ## App Features
@@ -219,6 +239,14 @@ The Streamlit app is organized into the following pages:
 - `Team Form` highlights recent record, point differential, and net-rating trends for a selected team.
 - `Injury Impact` summarizes the current slate's official injury-report coverage when available and falls back honestly when later-week games do not have reports yet.
 - `News Sentiment` summarizes current live article coverage and makes it clear when fallback news features are still in use.
+
+The repo also now includes a FastAPI service layer:
+
+- `GET /health` returns service health plus forecast freshness and coverage
+- `GET /manifest` exposes the tracked publish manifest used by deployment consumers
+- `GET /forecast/week` returns the current weekly slate and date buckets
+- `GET /forecast/game/{game_id}` returns one matchup with derived team labels
+- `GET /metrics` returns model comparison, calibration, ensemble weights, and rolling validation
 
 The dashboard also shows forecast-source status, including:
 
@@ -239,6 +267,7 @@ For day-to-day use, the simplest flow is:
 4. Publish a deployment-ready slate with `python -m src.app.publish_today`.
 5. Optionally run backtests for past date ranges.
 6. Launch `streamlit run streamlit_app.py` to explore predictions and diagnostics.
+7. Launch `uvicorn src.app.api:app --reload` when you want programmatic access to the same published slate.
 
 ---
 
@@ -253,7 +282,7 @@ ruff check src/ tests/
 
 ## Implementation Phases
 
-The project is built in 12 phases. See [docs/phases/all_phases.md](docs/phases/all_phases.md) for the full tracker.
+The project is built in 13 phases. See [docs/phases/all_phases.md](docs/phases/all_phases.md) for the full tracker.
 
 | Phase | Name | Status |
 |-------|------|--------|
@@ -269,8 +298,9 @@ The project is built in 12 phases. See [docs/phases/all_phases.md](docs/phases/a
 | 9 | Product Dashboard | Complete |
 | 10 | Live Publishing Layer | Complete |
 | 11 | Live Context + Playoff Hardening | Complete |
+| 12 | API Service Layer | Complete |
 
-**Current data:** 14,429 games across 12 seasons (2014-2026), Ensemble Model (65.6% acc, 0.615 log loss), weekly live publishing + deployment dashboard + live context coverage, 140 tests passing.
+**Current data:** 14,429 games across 12 seasons (2014-2026), Ensemble Model (65.6% acc, 0.615 log loss), weekly live publishing + deployment dashboard + live context coverage + API delivery, 148 tests passing.
 
 ---
 

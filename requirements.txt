@@ -23,6 +23,8 @@ PyMuPDF>=1.24
 
 # App / Dashboard
 streamlit>=1.30
+fastapi>=0.115
+uvicorn>=0.30
 
 # Dev
 pytest>=7.0

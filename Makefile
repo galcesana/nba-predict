@@ -1,4 +1,4 @@
-.PHONY: setup fetch-data build-features train-baseline train-model evaluate predict-today test lint clean
+.PHONY: setup fetch-data build-features train-baseline train-model evaluate predict-today serve-api test lint clean
 
 # ---- Setup ----
 setup:
@@ -30,6 +30,9 @@ evaluate:
 # ---- Prediction ----
 predict-today:
 	python -m src.app.predict_today
+
+serve-api:
+	uvicorn src.app.api:app --reload
 
 # ---- Quality ----
 test:

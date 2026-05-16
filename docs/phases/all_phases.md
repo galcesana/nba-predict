@@ -21,8 +21,9 @@
 | [9](phase_09_dashboard.md) | Product Dashboard | L | 1-2 weeks | `[x]` Complete | Phase 8 |
 | [10](phase_10_live_publishing.md) | Live Publishing Layer | M | 2-4 days | `[x]` Complete | Phase 9 |
 | [11](phase_11_live_context_playoff_hardening.md) | Live Context + Playoff Hardening | L | 4-7 days | `[x]` Complete | Phase 10 |
+| [12](phase_12_api_service_layer.md) | API Service Layer | M | 2-4 days | `[x]` Complete | Phase 11 |
 
-**Total estimated: ~12-16 weeks**
+**Total estimated: ~13-17 weeks**
 
 ---
 
@@ -46,7 +47,7 @@ Phase 0 -> Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 ----+
                                  |                       |
                                  +-> Phase 6 -----------|
                                                          v
-                                                    Phase 7 -> Phase 8 -> Phase 9 -> Phase 10 -> Phase 11
+                                                    Phase 7 -> Phase 8 -> Phase 9 -> Phase 10 -> Phase 11 -> Phase 12
 ```
 
 ---
@@ -76,7 +77,9 @@ Phase 0 -> Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 ----+
 | 8 | 12 | Prediction pipeline, output format, backtest |
 | 9 | 10 + 8 manual | Dashboard pages, rendering, browser |
 | 10 | 8 | Publishing, manifest state, dashboard source precedence |
-| **Total** | **129 automated + 8 manual** | |
+| 11 | 11 | Live injury/news context overlays, coverage summaries, playoff filtering |
+| 12 | 8 | API health, manifest, forecast, game detail, and metrics endpoints |
+| **Total** | **148 automated + 8 manual** | |
 
 ---
 

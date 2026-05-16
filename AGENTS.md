@@ -20,7 +20,7 @@ NBA game outcome prediction system that outputs **calibrated win probabilities**
 - **Phase 9 complete** - Streamlit dashboard implemented and browser-verified, 121 tests passing
 - **Phase 10 complete** - live publishing layer implemented with tracked published forecasts, dashboard source precedence, and GitHub Actions automation, 129 tests passing
 - **Phase 11 complete** - live context ingestion added for official injury reports and team news, weekly playoff publishing hardened, 140 tests passing
-- **Phase 12 next** - API Service Layer
+- **Phase 12 complete** - FastAPI service layer implemented for health, manifest, weekly forecast, game detail, and metrics access, 148 tests passing
 - See `docs/phases/all_phases.md` for the full phase tracker
 - See `docs/nba_game_prediction_project_plan.md` for the comprehensive project plan
 
@@ -41,12 +41,12 @@ nba-predict/
 |  |- nlp/                       # Structured article scoring + sentiment pipeline
 |  |- features/                  # Feature engineering (rolling, schedule, injury, news)
 |  |- models/                    # Elo, tabular, neural, ensemble, calibration
-|  |- app/                       # Daily prediction + publishing scripts + Streamlit dashboard
+|  |- app/                       # Daily prediction, publishing, Streamlit dashboard, FastAPI service
 |  `- utils/                     # paths.py, logging.py
 |- models/                       # Saved model artifacts (minimal inference bundle tracked)
 |- predictions/                  # Local output JSONs - gitignored
 |- tests/                        # pytest test suite
-|- docs/phases/                  # Phase implementation guides (12 phases)
+|- docs/phases/                  # Phase implementation guides (13 phases)
 `- notebooks/                    # Exploratory analysis
 ```
 
@@ -76,6 +76,7 @@ nba-predict/
 - `nba_api` for data (behind `DataProvider` interface)
 - GPT-4o-mini (temp=0) for sentiment extraction
 - Streamlit for dashboard
+- FastAPI + Uvicorn for service delivery
 - pytest for testing
 
 ## Key Technical Decisions
@@ -112,6 +113,7 @@ make train-model                 # train neural model
 make predict-today               # generate today's predictions
 python -m src.app.publish_today  # publish deployment forecast JSONs
 streamlit run streamlit_app.py   # launch dashboard
+make serve-api                   # launch FastAPI service
 ```
 
 ## Architecture (Target)
