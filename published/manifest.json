@@ -1,9 +1,9 @@
 {
   "status": "published",
-  "target_date": "2024-01-15",
-  "attempted_at": "2026-05-16T14:05:26Z",
-  "latest_available_date": "2024-01-15",
-  "published_file": "published/daily/2024-01-15.json",
-  "games_count": 11,
+  "target_date": "2026-05-16",
+  "attempted_at": "2026-05-16T17:22:44Z",
+  "latest_available_date": "2026-05-16",
+  "published_file": "published/daily/2026-05-16.json",
+  "games_count": 1,
   "model_version": "ensemble_v1"
 }
