@@ -1,13 +1,12 @@
 """Prediction inference pipeline.
 
 Generates predictions for a set of target games using all trained models.
-Handles feature extraction for both tabular and neural models.
+Builds the same context/injury/news streams used during training, falling back
+to proxy defaults when raw daily inputs are unavailable.
 """
 
 import json
 import logging
-from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 import joblib
@@ -18,12 +17,12 @@ import xgboost as xgb
 import yaml
 
 from src.features.build_matchup_dataset import build_matchup_dataset
-from src.features.injury_features import INJURY_FEATURE_COLS
-from src.features.news_features import NEWS_FEATURE_COLS
+from src.features.injury_features import INJURY_FEATURE_COLS, build_injury_features
+from src.features.news_features import NEWS_FEATURE_COLS, build_news_features
 from src.features.sequence_builder import build_context_features, build_team_sequences
 from src.models.elo import EloModel
 from src.models.matchup_fusion_model import MatchupFusionModel
-from src.utils.paths import CONFIGS_DIR, MODELS_DIR
+from src.utils.paths import CONFIGS_DIR, MODELS_DIR, PROCESSED_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -92,10 +91,116 @@ class PredictionPipeline:
         self.meta_model = joblib.load(ENSEMBLE_DIR / "meta_model.joblib")
         self.calibrator = joblib.load(ENSEMBLE_DIR / "calibrator.joblib")
 
-    def _get_top_factors(self, matchup_row: pd.Series) -> list[str]:
+    def _build_auxiliary_feature_arrays(
+        self,
+        combined_logs: pd.DataFrame,
+        target_games: pd.DataFrame,
+        target_matchups: pd.DataFrame,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Build injury/news inputs for the requested target games."""
+        injury_cols = [c for c in INJURY_FEATURE_COLS if c != "injury_data_available"]
+        news_cols = [c for c in NEWS_FEATURE_COLS if c != "news_available"]
+        target_game_ids = set(target_matchups["game_id"])
+
+        injury_frames = []
+        injury_path = PROCESSED_DIR / "injury_features" / "injury_features.parquet"
+        if injury_path.exists():
+            precomputed_injury = pd.read_parquet(injury_path)
+            injury_frames.append(precomputed_injury[precomputed_injury["game_id"].isin(target_game_ids)])
+
+        injury_game_ids = set()
+        for frame in injury_frames:
+            injury_game_ids.update(frame["game_id"].tolist())
+        missing_injury_games = target_games[target_games["game_id"].isin(target_game_ids - injury_game_ids)]
+        if not missing_injury_games.empty:
+            injury_frames.append(build_injury_features(missing_injury_games, combined_logs))
+
+        injury_df = (
+            pd.concat(injury_frames, ignore_index=True).drop_duplicates(["game_id", "team_idx"], keep="last")
+            if injury_frames else pd.DataFrame()
+        )
+
+        news_frames = []
+        news_path = PROCESSED_DIR / "news_features" / "news_features.parquet"
+        if news_path.exists():
+            precomputed_news = pd.read_parquet(news_path)
+            news_frames.append(precomputed_news[precomputed_news["game_id"].isin(target_game_ids)])
+
+        news_game_ids = set()
+        for frame in news_frames:
+            news_game_ids.update(frame["game_id"].tolist())
+        missing_news_games = target_games[target_games["game_id"].isin(target_game_ids - news_game_ids)]
+        if not missing_news_games.empty:
+            news_frames.append(build_news_features(missing_news_games))
+
+        news_df = (
+            pd.concat(news_frames, ignore_index=True).drop_duplicates(["game_id", "team_idx"], keep="last")
+            if news_frames else pd.DataFrame()
+        )
+
+        injury_lookup = injury_df.set_index(["game_id", "team_idx"]) if not injury_df.empty else None
+        news_lookup = news_df.set_index(["game_id", "team_idx"]) if not news_df.empty else None
+
+        home_injury = []
+        away_injury = []
+        home_news = []
+        away_news = []
+        news_available = []
+
+        for _, row in target_matchups.iterrows():
+            game_id = row["game_id"]
+            home_idx = int(row["home_team_idx"])
+            away_idx = int(row["away_team_idx"])
+
+            home_key = (game_id, home_idx)
+            away_key = (game_id, away_idx)
+
+            if injury_lookup is not None and home_key in injury_lookup.index:
+                home_injury.append(injury_lookup.loc[home_key, injury_cols].to_numpy(dtype=np.float32))
+            else:
+                home_injury.append(np.zeros(len(injury_cols), dtype=np.float32))
+
+            if injury_lookup is not None and away_key in injury_lookup.index:
+                away_injury.append(injury_lookup.loc[away_key, injury_cols].to_numpy(dtype=np.float32))
+            else:
+                away_injury.append(np.zeros(len(injury_cols), dtype=np.float32))
+
+            if news_lookup is not None and home_key in news_lookup.index:
+                home_news_row = news_lookup.loc[home_key]
+                home_news.append(home_news_row[news_cols].to_numpy(dtype=np.float32))
+                availability = float(home_news_row["news_available"])
+            else:
+                home_news.append(np.zeros(len(news_cols), dtype=np.float32))
+                availability = 0.0
+
+            if news_lookup is not None and away_key in news_lookup.index:
+                away_news_row = news_lookup.loc[away_key]
+                away_news.append(away_news_row[news_cols].to_numpy(dtype=np.float32))
+                availability = max(availability, float(away_news_row["news_available"]))
+            else:
+                away_news.append(np.zeros(len(news_cols), dtype=np.float32))
+
+            news_available.append([availability])
+
+        return (
+            np.array(home_injury, dtype=np.float32),
+            np.array(away_injury, dtype=np.float32),
+            np.array(home_news, dtype=np.float32),
+            np.array(away_news, dtype=np.float32),
+            np.array(news_available, dtype=np.float32),
+        )
+
+    def _get_top_factors(
+        self,
+        matchup_row: pd.Series,
+        home_injury: np.ndarray,
+        away_injury: np.ndarray,
+        home_news: np.ndarray,
+        away_news: np.ndarray,
+        news_available: float,
+    ) -> list[str]:
         """Generate human-readable factors based on z-scores or thresholds."""
         factors = []
-        # Simple heuristic factors for UI
         if matchup_row.get("diff_last_10_net_rating", 0) > 5:
             factors.append("Home team has significantly better recent net rating")
         elif matchup_row.get("diff_last_10_net_rating", 0) < -5:
@@ -105,11 +210,24 @@ class PredictionPipeline:
             factors.append("Home team is on a back-to-back")
         if matchup_row.get("away_rest_days", 1) == 0:
             factors.append("Away team is on a back-to-back")
-            
+
+        injury_gap = float(away_injury[-1] - home_injury[-1])
+        if injury_gap > 1.5:
+            factors.append("Away team projects as more shorthanded")
+        elif injury_gap < -1.5:
+            factors.append("Home team projects as more shorthanded")
+
+        if news_available > 0:
+            sentiment_gap = float(home_news[1] - away_news[1])
+            if sentiment_gap > 0.15:
+                factors.append("Home team has more positive recent news sentiment")
+            elif sentiment_gap < -0.15:
+                factors.append("Away team has more positive recent news sentiment")
+
         if not factors:
             factors.append("Matchup appears statistically balanced")
-            
-        return factors
+
+        return factors[:3]
 
     def predict_games(
         self,
@@ -183,16 +301,15 @@ class PredictionPipeline:
         a_mask = torch.from_numpy(sequences["away_masks"][seq_indices]).to(self.device)
         ctx_tensor = torch.from_numpy(context).to(self.device)
         
-        # Injury and News (proxy defaults for now)
-        n = len(target_matchups)
-        injury_dim = len(INJURY_FEATURE_COLS) - 1
-        news_dim = len(NEWS_FEATURE_COLS) - 1
-        
-        h_inj = torch.zeros((n, injury_dim)).to(self.device)
-        a_inj = torch.zeros((n, injury_dim)).to(self.device)
-        h_news = torch.zeros((n, news_dim)).to(self.device)
-        a_news = torch.zeros((n, news_dim)).to(self.device)
-        news_avail = torch.zeros((n, 1)).to(self.device)
+        home_injury_arr, away_injury_arr, home_news_arr, away_news_arr, news_avail_arr = (
+            self._build_auxiliary_feature_arrays(combined_logs, target_games, target_matchups)
+        )
+
+        h_inj = torch.from_numpy(home_injury_arr).to(self.device)
+        a_inj = torch.from_numpy(away_injury_arr).to(self.device)
+        h_news = torch.from_numpy(home_news_arr).to(self.device)
+        a_news = torch.from_numpy(away_news_arr).to(self.device)
+        news_avail = torch.from_numpy(news_avail_arr).to(self.device)
         
         # 5. Neural predictions
         with torch.no_grad():
@@ -243,7 +360,14 @@ class PredictionPipeline:
                     "sequence_probability": float(round(neural_probs[i], 4)),
                     "final_probability": float(round(final_prob, 4)),
                 },
-                "top_model_factors": self._get_top_factors(row)
+                "top_model_factors": self._get_top_factors(
+                    row,
+                    home_injury_arr[i],
+                    away_injury_arr[i],
+                    home_news_arr[i],
+                    away_news_arr[i],
+                    float(news_avail_arr[i, 0]),
+                ),
             })
             
         return results

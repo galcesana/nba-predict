@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 > Context file for AI assistants working on this project.
 
@@ -57,7 +57,7 @@ nba-predict/
 
 1. `docs/phases/all_phases.md` — update the Status column for the completed phase
 2. `docs/phases/phase_XX_*.md` — check off all deliverables, fill in Notes & Learnings
-3. `CLAUDE.md` — update the "Current State" section
+3. `AGENTS.md` — update the "Current State" section
 4. Commit and push the tracking updates
 
 **This is not optional. Do not start the next phase until tracking is updated.**

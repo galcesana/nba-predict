@@ -29,7 +29,7 @@ evaluate:
 
 # ---- Prediction ----
 predict-today:
-	python -m src.models.predict
+	python -m src.app.predict_today
 
 # ---- Quality ----
 test:
