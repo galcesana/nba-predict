@@ -124,16 +124,20 @@ player-aware tables:
 
 ```bash
 python -m src.data.fetch_player_logs
+python -m src.features.player_value_features
 python -m src.features.projected_availability
 python -m src.features.lineup_features
+make build-m1-features
 ```
 
 These write:
 
 - `data/processed/player_game_logs/player_game_logs.parquet`
+- `data/processed/player_value_features/player_value_features.parquet`
 - `data/processed/projected_availability/projected_availability.parquet`
 - `data/processed/projected_availability/unresolved_injury_entities.parquet`
 - `data/processed/lineup_features/lineup_features.parquet`
+- `data/processed/matchup_rows/matchup_dataset_enriched.parquet`
 
 They are not yet part of the deployed model's main inference stack, but they are the active
 foundation for the next-generation roadmap.
@@ -329,7 +333,7 @@ Historical implementation history is preserved in:
 | 11 | Live Context + Playoff Hardening | Complete |
 | 12 | API Service Layer | Complete |
 
-**Current data:** 14,429 games across 12 seasons (2014-2026), Ensemble Model (65.6% acc, 0.615 log loss), weekly live publishing + deployment dashboard + live context coverage + API delivery, M1 player foundation plus projected availability and lineup-feature scaffolding, 163 tests passing.
+**Current data:** 14,429 games across 12 seasons (2014-2026), Ensemble Model (65.6% acc, 0.615 log loss), weekly live publishing + deployment dashboard + live context coverage + API delivery, M1 player foundation plus player-value features, projected availability, lineup features, and enriched matchup rows, 168 tests passing.
 
 ---
 

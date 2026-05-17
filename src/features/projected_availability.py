@@ -8,6 +8,7 @@ import pandas as pd
 
 from src.data.player_metadata import resolve_player_name
 from src.data.providers.nba_api_provider import NbaApiProvider
+from src.features.player_value_features import build_player_value_features
 from src.utils.logging import setup_logging
 from src.utils.paths import PROCESSED_DIR, RAW_DIR
 
@@ -53,6 +54,10 @@ AVAILABILITY_COLUMNS = [
     "report_reason",
     "recent_games_played",
     "expected_minutes",
+    "player_value_score",
+    "minutes_share_recent",
+    "starter_rate_recent",
+    "recent_role_stability",
     "role_score",
     "resolved_from_name",
 ]
@@ -176,6 +181,10 @@ def _fallback_role_snapshot(
         return {
             "recent_games_played": 0,
             "expected_minutes": 0.0,
+            "player_value_score": 0.0,
+            "minutes_share_recent": 0.0,
+            "starter_rate_recent": 0.0,
+            "recent_role_stability": 0.0,
             "role_score": 0.0,
             "projection_confidence": 0.35,
             "source_timestamp": None,
@@ -200,6 +209,12 @@ def _fallback_role_snapshot(
     return {
         "recent_games_played": recent_games_played,
         "expected_minutes": float(recent_history["minutes"].mean()),
+        "player_value_score": weighted_minutes + 0.15 * avg_fantasy_points,
+        "minutes_share_recent": float(
+            recent_history["minutes"].sum() / max(recent_team_games * 240, 1)
+        ),
+        "starter_rate_recent": float(min(recent_games_played, 5) / max(recent_team_games, 1)),
+        "recent_role_stability": float(recent_games_played / max(recent_team_games, 1)),
         "role_score": weighted_minutes + 0.15 * avg_fantasy_points,
         "projection_confidence": projection_confidence,
         "source_timestamp": pd.Timestamp(recent_history["date"].max()).strftime(
@@ -214,6 +229,7 @@ def _enrich_resolved_report_rows(
     games_by_id: pd.DataFrame,
     player_logs: pd.DataFrame,
     recent_team_games: int,
+    player_value_lookup: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     if resolved_reports.empty:
         return resolved_reports
@@ -224,6 +240,25 @@ def _enrich_resolved_report_rows(
 
     snapshots = []
     for _, row in enriched.iterrows():
+        if player_value_lookup is not None:
+            key = (row["game_id"], int(row["team_idx"]), int(row["player_id"]))
+            if key in player_value_lookup.index:
+                snapshot = player_value_lookup.loc[key]
+                snapshots.append(
+                    {
+                        "recent_games_played": int(snapshot["recent_games_played"]),
+                        "expected_minutes": float(snapshot["recent_minutes_avg"]),
+                        "player_value_score": float(snapshot["player_value_score"]),
+                        "minutes_share_recent": float(snapshot["recent_minutes_share"]),
+                        "starter_rate_recent": float(snapshot["recent_starter_rate"]),
+                        "recent_role_stability": float(snapshot["recent_role_stability"]),
+                        "role_score": float(snapshot["player_value_score"]),
+                        "projection_confidence": None,
+                        "source_timestamp": None,
+                    }
+                )
+                continue
+
         snapshots.append(
             _fallback_role_snapshot(
                 player_logs,
@@ -238,6 +273,10 @@ def _enrich_resolved_report_rows(
     for column in [
         "recent_games_played",
         "expected_minutes",
+        "player_value_score",
+        "minutes_share_recent",
+        "starter_rate_recent",
+        "recent_role_stability",
         "role_score",
         "projection_confidence",
         "source_timestamp",
@@ -332,6 +371,7 @@ def build_projected_availability(
     *,
     injury_reports: pd.DataFrame | None = None,
     metadata_by_season: dict[str, pd.DataFrame] | None = None,
+    player_value_features: pd.DataFrame | None = None,
     recent_team_games: int = 10,
     max_players: int = 12,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -344,12 +384,70 @@ def build_projected_availability(
     games = games.copy()
     games["date"] = pd.to_datetime(games["date"])
     games_by_id = games.set_index("game_id")[["date", "season"]]
+    if player_value_features is None:
+        player_value_features = build_player_value_features(
+            games,
+            logs,
+            recent_team_games=recent_team_games,
+            max_players=max_players,
+        )
+    player_value_lookup = None
+    player_value_groups: dict[tuple[str, int], pd.DataFrame] = {}
+    if player_value_features is not None and not player_value_features.empty:
+        player_values = player_value_features.copy()
+        player_values["date"] = pd.to_datetime(player_values["date"])
+        player_value_lookup = player_values.set_index(["game_id", "team_idx", "player_id"])
+        for (game_id, team_idx), group in player_values.groupby(
+            ["game_id", "team_idx"],
+            sort=False,
+        ):
+            player_value_groups[(str(game_id), int(team_idx))] = group.copy()
 
     availability_rows: list[dict[str, object]] = []
     for _, game in games.sort_values("date").iterrows():
         game_id = str(game["game_id"])
         game_date = pd.Timestamp(game["date"])
         for team_idx in (int(game["home_team_idx"]), int(game["away_team_idx"])):
+            value_pool = player_value_groups.get((game_id, team_idx))
+            if value_pool is not None and not value_pool.empty:
+                baseline_rows = []
+                for _, player in value_pool.sort_values(
+                    ["rotation_rank", "player_value_score", "player_id"]
+                ).iterrows():
+                    baseline_rows.append(
+                        {
+                            "game_id": game_id,
+                            "date": game_date,
+                            "season": str(game["season"]),
+                            "team_idx": team_idx,
+                            "player_id": int(player["player_id"]),
+                            "player_idx": int(player["player_idx"]),
+                            "player_name": str(player["player_name"]),
+                            "status": "AVAILABLE",
+                            "availability_score": 1.0,
+                            "projection_confidence": float(
+                                0.3 + 0.6 * player["recent_role_stability"]
+                            ),
+                            "source_type": "historical_recent_role",
+                            "source_timestamp": (
+                                pd.Timestamp(player["last_game_date"]).strftime("%Y-%m-%dT%H:%M:%SZ")
+                                if pd.notna(player["last_game_date"])
+                                else None
+                            ),
+                            "report_reason": None,
+                            "recent_games_played": int(player["recent_games_played"]),
+                            "expected_minutes": float(player["recent_minutes_avg"]),
+                            "player_value_score": float(player["player_value_score"]),
+                            "minutes_share_recent": float(player["recent_minutes_share"]),
+                            "starter_rate_recent": float(player["recent_starter_rate"]),
+                            "recent_role_stability": float(player["recent_role_stability"]),
+                            "role_score": float(player["player_value_score"]),
+                            "resolved_from_name": None,
+                        }
+                    )
+                availability_rows.extend(baseline_rows)
+                continue
+
             recent_pool = _recent_team_pool(
                 logs,
                 team_idx=team_idx,
@@ -378,6 +476,12 @@ def build_projected_availability(
                         "report_reason": None,
                         "recent_games_played": int(player["recent_games_played"]),
                         "expected_minutes": float(player["avg_minutes"]),
+                        "player_value_score": float(player["role_score"]),
+                        "minutes_share_recent": 0.0,
+                        "starter_rate_recent": 0.0,
+                        "recent_role_stability": float(
+                            player["recent_games_played"] / max(recent_team_games, 1)
+                        ),
                         "role_score": float(player["role_score"]),
                         "resolved_from_name": None,
                     }
@@ -401,6 +505,7 @@ def build_projected_availability(
             games_by_id=games_by_id,
             player_logs=logs,
             recent_team_games=recent_team_games,
+            player_value_lookup=player_value_lookup,
         )
 
         if not resolved_reports.empty:
@@ -430,6 +535,12 @@ def build_projected_availability(
                 ].copy()
                 if not new_rows.empty:
                     new_rows["expected_minutes"] = new_rows["expected_minutes"].fillna(0.0)
+                    new_rows["player_value_score"] = new_rows["player_value_score"].fillna(0.0)
+                    new_rows["minutes_share_recent"] = new_rows["minutes_share_recent"].fillna(0.0)
+                    new_rows["starter_rate_recent"] = new_rows["starter_rate_recent"].fillna(0.0)
+                    new_rows["recent_role_stability"] = new_rows[
+                        "recent_role_stability"
+                    ].fillna(0.0)
                     new_rows["role_score"] = new_rows["role_score"].fillna(0.0)
                     availability = pd.concat([availability, new_rows], axis=0)
 
@@ -444,6 +555,18 @@ def build_projected_availability(
         ).fillna(0.4)
         availability["expected_minutes"] = pd.to_numeric(
             availability["expected_minutes"], errors="coerce"
+        ).fillna(0.0)
+        availability["player_value_score"] = pd.to_numeric(
+            availability["player_value_score"], errors="coerce"
+        ).fillna(0.0)
+        availability["minutes_share_recent"] = pd.to_numeric(
+            availability["minutes_share_recent"], errors="coerce"
+        ).fillna(0.0)
+        availability["starter_rate_recent"] = pd.to_numeric(
+            availability["starter_rate_recent"], errors="coerce"
+        ).fillna(0.0)
+        availability["recent_role_stability"] = pd.to_numeric(
+            availability["recent_role_stability"], errors="coerce"
         ).fillna(0.0)
         availability["role_score"] = pd.to_numeric(
             availability["role_score"],
@@ -479,6 +602,7 @@ def main() -> None:
     projected, unresolved = build_projected_availability(
         games,
         player_logs,
+        player_value_features=build_player_value_features(games, player_logs),
         injury_reports=injury_reports,
     )
 

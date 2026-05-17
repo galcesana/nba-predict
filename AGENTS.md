@@ -21,7 +21,7 @@ NBA game outcome prediction system that outputs **calibrated win probabilities**
 - **Phase 10 complete** - live publishing layer implemented with tracked published forecasts, dashboard source precedence, and GitHub Actions automation, 129 tests passing
 - **Phase 11 complete** - live context ingestion added for official injury reports and team news, weekly playoff publishing hardened, 140 tests passing
 - **Phase 12 complete** - FastAPI service layer implemented for health, manifest, weekly forecast, game detail, and metrics access, 148 tests passing
-- **Active milestone** - M1 Player + Lineup Foundation in progress; player mapping, season roster metadata, historical player-log ingestion, projected availability, and lineup/rotation feature builders added, 163 tests passing
+- **Active milestone** - M1 Player + Lineup Foundation in progress; player mapping, season roster metadata, historical player-log ingestion, player-value features, projected availability, lineup/rotation features, and enriched matchup rows added, 168 tests passing
 - See `docs/phases/all_phases.md` for the full phase tracker
 - See `docs/current_system_implementation_summary.md` for the current implementation reference
 - See `docs/next_generation_model_roadmap.md` for the active forward roadmap
@@ -119,8 +119,10 @@ python -m src.app.publish_today  # publish deployment forecast JSONs
 streamlit run streamlit_app.py   # launch dashboard
 make serve-api                   # launch FastAPI service
 python -m src.data.fetch_player_logs       # build player-game logs for M1
+python -m src.features.player_value_features  # build pregame player-value rows
 python -m src.features.projected_availability  # build projected availability rows
 python -m src.features.lineup_features         # build lineup/rotation feature rows
+make build-m1-features                         # refresh the full M1 feature stack
 ```
 
 ## Architecture (Target)

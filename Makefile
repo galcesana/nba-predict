@@ -1,4 +1,4 @@
-.PHONY: setup fetch-data build-features train-baseline train-model evaluate predict-today serve-api test lint clean
+.PHONY: setup fetch-data build-features build-m1-features train-baseline train-model evaluate predict-today serve-api test lint clean
 
 # ---- Setup ----
 setup:
@@ -13,6 +13,13 @@ build-features:
 	python -m src.features.build_team_game_logs
 	python -m src.features.rolling_features
 	python -m src.features.schedule_features
+	python -m src.features.build_matchup_dataset
+
+build-m1-features:
+	python -m src.data.fetch_player_logs
+	python -m src.features.player_value_features
+	python -m src.features.projected_availability
+	python -m src.features.lineup_features
 	python -m src.features.build_matchup_dataset
 
 # ---- Training ----

@@ -26,6 +26,12 @@ LINEUP_FEATURE_COLS = [
 ]
 
 
+def _projection_value_column(projected_availability: pd.DataFrame) -> str:
+    if "player_value_score" in projected_availability.columns:
+        return "player_value_score"
+    return "role_score"
+
+
 def _top_players_from_game(
     player_logs: pd.DataFrame,
     *,
@@ -65,6 +71,7 @@ def build_lineup_features(
     availability = projected_availability.copy()
     if "date" in availability.columns:
         availability["date"] = pd.to_datetime(availability["date"])
+    value_column = _projection_value_column(availability)
 
     rows: list[dict[str, object]] = []
     for _, game in games.sort_values("date").iterrows():
@@ -78,13 +85,13 @@ def build_lineup_features(
                 continue
 
             team_projection["effective_role_value"] = (
-                team_projection["role_score"] * team_projection["availability_score"]
+                team_projection[value_column] * team_projection["availability_score"]
             )
             team_projection["effective_minutes"] = (
                 team_projection["expected_minutes"] * team_projection["availability_score"]
             )
             team_projection = team_projection.sort_values(
-                ["effective_role_value", "role_score", "player_id"],
+                ["effective_role_value", value_column, "player_id"],
                 ascending=[False, False, True],
             )
 
@@ -152,10 +159,10 @@ def build_lineup_features(
                 else 0.0
             )
             expected_missing_starter_value = float(
-                (starters["role_score"] * (1.0 - starters["availability_score"])).sum()
+                (starters[value_column] * (1.0 - starters["availability_score"])).sum()
             )
             expected_missing_rotation_value = float(
-                (rotation["role_score"] * (1.0 - rotation["availability_score"])).sum()
+                (rotation[value_column] * (1.0 - rotation["availability_score"])).sum()
             )
             available_top8_players = int((rotation["availability_score"] >= 0.5).sum())
 

@@ -44,8 +44,10 @@ New M1 foundation code now also exists for:
 - player identity mapping
 - season roster metadata loading
 - processed player-game log building
+- player-value feature building
 - projected player availability snapshots
 - lineup and rotation feature building
+- enriched matchup-row generation
 
 These utilities are present, but they are not yet fully integrated into the deployed forecasting model.
 
@@ -162,17 +164,21 @@ The repo now also includes the current M1 foundation files:
 - [src/data/player_metadata.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/data/player_metadata.py>)
 - [src/data/fetch_player_logs.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/data/fetch_player_logs.py>)
 
+- player-value feature builders
 - projected availability builders
 - lineup and rotation feature builders
+- enriched matchup-row builders
 
 These provide:
 
 - stable anonymous player indices
 - season roster metadata normalization
 - processed historical player-game logs
+- leakage-safe pregame player-value estimates
 - team-aware player-name resolution for injury-style aliases
 - leakage-safe projected availability rows with explicit source type, timestamp, and confidence
 - lineup continuity, depth, and missing-value features derived from those projected rows
+- a parallel enriched matchup dataset for future model experiments
 
 They are the first real player-and-lineup feature slice of the new roadmap, but they do not yet change the deployed forecast representation.
 
@@ -334,6 +340,7 @@ Current output fields include:
 - `report_reason`
 - `recent_games_played`
 - `expected_minutes`
+- `player_value_score`
 - `role_score`
 
 ### 8.2 Lineup and rotation feature foundation
@@ -350,6 +357,50 @@ Current behavior:
 - computes leakage-safe team-game features such as starter continuity, top-8 continuity, minutes concentration, bench depth quality, rotation stability, lineup familiarity, and missing value
 
 These new M1 outputs are not yet joined into the deployed training and inference rows, but the historical feature layer now exists and is test-covered.
+
+### 8.3 Player-value foundation
+
+Builder:
+
+- [src/features/player_value_features.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/features/player_value_features.py>)
+
+Current behavior:
+
+- builds one pregame player-value row per candidate rotation player and team-game
+- uses only prior games before the target date
+- estimates role/value from recent minutes, minutes share, fantasy production, plus-minus, starter-rate proxy, and role stability
+- ranks players within each team-game by a simple composite `player_value_score`
+
+Current output fields include:
+
+- `recent_minutes_avg`
+- `recent_minutes_share`
+- `recent_fantasy_points_avg`
+- `recent_plus_minus_avg`
+- `recent_starter_rate`
+- `recent_role_stability`
+- `player_value_score`
+- `rotation_rank`
+
+This layer is still heuristic, but it is materially richer than treating all missing players as equal.
+
+### 8.4 Enriched matchup rows
+
+Builder:
+
+- [src/features/build_matchup_dataset.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/features/build_matchup_dataset.py>)
+
+Current behavior:
+
+- still writes the legacy team-level `matchup_dataset.parquet`
+- now also writes a parallel `matchup_dataset_enriched.parquet`
+- merges in home/away lineup features and projected player-value summaries
+- computes diff columns for the new player-aware team aggregates
+
+Important note:
+
+- the deployed models do not use this enriched dataset yet
+- it exists specifically to support the next model-experiment phase without breaking the current production stack
 
 ---
 
@@ -413,6 +464,13 @@ Local-only outputs:
 - `predictions/daily/`
 - `predictions/historical_backtests/`
 
+Additional M1 processed outputs:
+
+- `data/processed/player_value_features/player_value_features.parquet`
+- `data/processed/projected_availability/projected_availability.parquet`
+- `data/processed/lineup_features/lineup_features.parquet`
+- `data/processed/matchup_rows/matchup_dataset_enriched.parquet`
+
 ---
 
 ## 11. Current Strengths
@@ -434,11 +492,12 @@ These are the most important limitations to remember before extending the system
 
 1. **The model is still mostly team-level.**
 2. **The new player foundation is not yet integrated into training or inference.**
-3. **Injury value is still heuristic in many cases.**
-4. **News coverage is still sparse and often fallback-heavy.**
-5. **Playoff handling is stronger in publishing logic than in model design.**
-6. **Displayed explanations are still partly heuristic rather than fully learned attribution.**
-7. **The ensemble is simple and not yet context-aware or regime-aware.**
+3. **The new player-value layer is still heuristic and not yet learned end-to-end.**
+4. **Injury value is still heuristic in many cases.**
+5. **News coverage is still sparse and often fallback-heavy.**
+6. **Playoff handling is stronger in publishing logic than in model design.**
+7. **Displayed explanations are still partly heuristic rather than fully learned attribution.**
+8. **The ensemble is simple and not yet context-aware or regime-aware.**
 
 ---
 
