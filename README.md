@@ -119,6 +119,25 @@ What each step does:
 - `make train-model` trains the fusion model and ensemble artifacts.
 - `make evaluate` writes the evaluation outputs used by the dashboard.
 
+For the active M1 player-and-lineup foundation work, there are also standalone builders for the new
+player-aware tables:
+
+```bash
+python -m src.data.fetch_player_logs
+python -m src.features.projected_availability
+python -m src.features.lineup_features
+```
+
+These write:
+
+- `data/processed/player_game_logs/player_game_logs.parquet`
+- `data/processed/projected_availability/projected_availability.parquet`
+- `data/processed/projected_availability/unresolved_injury_entities.parquet`
+- `data/processed/lineup_features/lineup_features.parquet`
+
+They are not yet part of the deployed model's main inference stack, but they are the active
+foundation for the next-generation roadmap.
+
 ### 3. Generate Local Predictions
 
 To create a local prediction file for the current weekly slate:
@@ -310,7 +329,7 @@ Historical implementation history is preserved in:
 | 11 | Live Context + Playoff Hardening | Complete |
 | 12 | API Service Layer | Complete |
 
-**Current data:** 14,429 games across 12 seasons (2014-2026), Ensemble Model (65.6% acc, 0.615 log loss), weekly live publishing + deployment dashboard + live context coverage + API delivery, early M1 player-foundation scaffolding, 155 tests passing.
+**Current data:** 14,429 games across 12 seasons (2014-2026), Ensemble Model (65.6% acc, 0.615 log loss), weekly live publishing + deployment dashboard + live context coverage + API delivery, M1 player foundation plus projected availability and lineup-feature scaffolding, 163 tests passing.
 
 ---
 

@@ -1,0 +1,234 @@
+"""Tests for projected availability building."""
+
+from __future__ import annotations
+
+import pandas as pd
+
+from src.features import projected_availability
+
+
+def _games() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "game_id": "game-2",
+                "date": "2026-05-17",
+                "season": "2025-26",
+                "home_team_idx": 8,
+                "away_team_idx": 5,
+            }
+        ]
+    )
+
+
+def _player_logs() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "game_id": "hist-1",
+                "date": "2026-05-10",
+                "season": "2025-26",
+                "team_idx": 5,
+                "opponent_team_idx": 8,
+                "player_id": 101,
+                "player_idx": 1,
+                "player_name": "Donovan Mitchell",
+                "minutes": 36,
+                "fantasy_points": 48.0,
+                "plus_minus": 8,
+            },
+            {
+                "game_id": "hist-1",
+                "date": "2026-05-10",
+                "season": "2025-26",
+                "team_idx": 5,
+                "opponent_team_idx": 8,
+                "player_id": 102,
+                "player_idx": 2,
+                "player_name": "Jarrett Allen",
+                "minutes": 32,
+                "fantasy_points": 38.0,
+                "plus_minus": 5,
+            },
+            {
+                "game_id": "hist-2",
+                "date": "2026-05-12",
+                "season": "2025-26",
+                "team_idx": 5,
+                "opponent_team_idx": 8,
+                "player_id": 101,
+                "player_idx": 1,
+                "player_name": "Donovan Mitchell",
+                "minutes": 34,
+                "fantasy_points": 46.0,
+                "plus_minus": 6,
+            },
+            {
+                "game_id": "hist-3",
+                "date": "2026-05-13",
+                "season": "2025-26",
+                "team_idx": 5,
+                "opponent_team_idx": 8,
+                "player_id": 103,
+                "player_idx": 4,
+                "player_name": "Darius Garland",
+                "minutes": 35,
+                "fantasy_points": 41.0,
+                "plus_minus": 4,
+            },
+            {
+                "game_id": "hist-3",
+                "date": "2026-05-13",
+                "season": "2025-26",
+                "team_idx": 8,
+                "opponent_team_idx": 5,
+                "player_id": 201,
+                "player_idx": 3,
+                "player_name": "Cade Cunningham",
+                "minutes": 37,
+                "fantasy_points": 49.0,
+                "plus_minus": 7,
+            },
+        ]
+    )
+
+
+def _season_metadata() -> dict[str, pd.DataFrame]:
+    return {
+        "2025-26": pd.DataFrame(
+            [
+                {
+                    "player_id": 101,
+                    "player_idx": 1,
+                    "player_name": "Donovan Mitchell",
+                    "team_idx": 5,
+                    "aliases": ["DONOVAN MITCHELL", "MITCHELL, DONOVAN"],
+                },
+                {
+                    "player_id": 201,
+                    "player_idx": 3,
+                    "player_name": "Cade Cunningham",
+                    "team_idx": 8,
+                    "aliases": ["CADE CUNNINGHAM", "CUNNINGHAM, CADE"],
+                },
+                {
+                    "player_id": 103,
+                    "player_idx": 4,
+                    "player_name": "Darius Garland",
+                    "team_idx": 5,
+                    "aliases": ["DARIUS GARLAND", "GARLAND, DARIUS"],
+                },
+            ]
+        )
+    }
+
+
+def test_build_projected_availability_resolves_official_injury_rows():
+    """Official report names should resolve to player ids and override availability."""
+    reports = pd.DataFrame(
+        [
+            {
+                "game_id": "game-2",
+                "team_idx": 5,
+                "player_name": "Mitchell, Donovan",
+                "status": "Questionable",
+                "reason": "Left ankle sprain",
+                "report_generated_at": "2026-05-16T16:30:00-0400",
+            }
+        ]
+    )
+
+    projected, unresolved = projected_availability.build_projected_availability(
+        _games(),
+        _player_logs(),
+        injury_reports=reports,
+        metadata_by_season=_season_metadata(),
+        recent_team_games=5,
+        max_players=5,
+    )
+
+    mitchell = projected[projected["player_id"] == 101].iloc[0]
+    assert mitchell["status"] == "QUESTIONABLE"
+    assert mitchell["availability_score"] == 0.5
+    assert mitchell["source_type"] == "official_injury_report"
+    assert unresolved.empty
+
+
+def test_build_projected_availability_keeps_recent_role_baseline_without_reports():
+    """Recent player roles should seed availability even when no report exists."""
+    projected, unresolved = projected_availability.build_projected_availability(
+        _games(),
+        _player_logs(),
+        injury_reports=pd.DataFrame(),
+        metadata_by_season=_season_metadata(),
+        recent_team_games=5,
+        max_players=5,
+    )
+
+    assert unresolved.empty
+    assert not projected.empty
+    cavs = projected[projected["team_idx"] == 5]
+    assert set(cavs["player_id"]) == {101, 102, 103}
+    assert cavs["availability_score"].eq(1.0).all()
+
+
+def test_build_projected_availability_records_unmatched_injury_names():
+    """Unmatched report names should be surfaced in an audit table."""
+    reports = pd.DataFrame(
+        [
+            {
+                "game_id": "game-2",
+                "team_idx": 5,
+                "player_name": "Unknown, Player",
+                "status": "Out",
+                "reason": "Not on roster",
+                "report_generated_at": "2026-05-16T16:30:00-0400",
+            }
+        ]
+    )
+
+    projected, unresolved = projected_availability.build_projected_availability(
+        _games(),
+        _player_logs(),
+        injury_reports=reports,
+        metadata_by_season=_season_metadata(),
+        recent_team_games=5,
+        max_players=5,
+    )
+
+    assert not projected.empty
+    assert len(unresolved) == 1
+    assert unresolved.iloc[0]["resolution_status"] == "unmatched_name"
+
+
+def test_build_projected_availability_adds_report_only_players_with_role_context():
+    """Resolved report-only players should keep historical role value when added fresh."""
+    reports = pd.DataFrame(
+        [
+            {
+                "game_id": "game-2",
+                "team_idx": 5,
+                "player_name": "Garland, Darius",
+                "status": "Out",
+                "reason": "Toe sprain",
+                "report_generated_at": "2026-05-16T16:30:00-0400",
+            }
+        ]
+    )
+
+    projected, _ = projected_availability.build_projected_availability(
+        _games(),
+        _player_logs(),
+        injury_reports=reports,
+        metadata_by_season=_season_metadata(),
+        recent_team_games=2,
+        max_players=2,
+    )
+
+    garland = projected[projected["player_id"] == 103].iloc[0]
+
+    assert garland["status"] == "OUT"
+    assert garland["availability_score"] == 0.0
+    assert garland["recent_games_played"] == 1
+    assert garland["expected_minutes"] > 0
+    assert garland["role_score"] > 0

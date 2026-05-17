@@ -9,6 +9,7 @@ import pandas as pd
 from nba_api.stats.static import players as nba_players
 
 from src.anonymization.player_mapping import normalize_player_name, player_id_to_idx
+from src.anonymization.team_mapping import team_abbr_to_idx
 
 
 class PlayerInfoProvider(Protocol):
@@ -66,6 +67,7 @@ def build_player_metadata_for_season(
         how="left",
     )
     merged["player_name"] = merged["player_name"].fillna(merged["full_name"])
+    merged["team_idx"] = merged["team_abbr"].map(team_abbr_to_idx)
     merged["normalized_name"] = merged["player_name"].map(normalize_player_name)
     merged["aliases"] = merged.apply(
         lambda row: sorted(
@@ -88,7 +90,18 @@ def build_player_name_lookup(metadata: pd.DataFrame) -> dict[str, int]:
     return lookup
 
 
-def resolve_player_name(name: str, metadata: pd.DataFrame) -> int | None:
+def resolve_player_name(
+    name: str,
+    metadata: pd.DataFrame,
+    *,
+    team_idx: int | None = None,
+) -> int | None:
     """Resolve a raw player name to player_id using season-aware aliases."""
-    lookup = build_player_name_lookup(metadata)
+    candidate_metadata = metadata
+    if team_idx is not None and "team_idx" in metadata.columns:
+        candidate_metadata = metadata[metadata["team_idx"] == int(team_idx)]
+        if candidate_metadata.empty:
+            candidate_metadata = metadata
+
+    lookup = build_player_name_lookup(candidate_metadata)
     return lookup.get(normalize_player_name(name))

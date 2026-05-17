@@ -79,6 +79,27 @@ def test_resolve_player_name_accepts_last_first_alias():
     assert player_metadata.resolve_player_name("Horford, Al", metadata) == 201143
 
 
+def test_resolve_player_name_prefers_team_filtered_roster():
+    """Team-aware resolution should disambiguate shared aliases across rosters."""
+    metadata = pd.DataFrame(
+        [
+            {
+                "player_id": 101,
+                "team_idx": 5,
+                "aliases": ["J WILLIAMS", "WILLIAMS, J"],
+            },
+            {
+                "player_id": 202,
+                "team_idx": 8,
+                "aliases": ["J WILLIAMS", "WILLIAMS, J"],
+            },
+        ]
+    )
+
+    assert player_metadata.resolve_player_name("Williams, J", metadata, team_idx=5) == 101
+    assert player_metadata.resolve_player_name("Williams, J", metadata, team_idx=8) == 202
+
+
 def test_fetch_player_info_normalizes_team_roster_rows(monkeypatch, tmp_path):
     """The provider should normalize CommonTeamRoster output into the project schema."""
 

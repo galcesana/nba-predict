@@ -39,11 +39,13 @@ Core historical processed tables:
 - `data/processed/injury_features/injury_features.parquet`
 - `data/processed/news_features/news_features.parquet`
 
-New early M1 foundation code now also exists for:
+New M1 foundation code now also exists for:
 
 - player identity mapping
 - season roster metadata loading
 - processed player-game log building
+- projected player availability snapshots
+- lineup and rotation feature building
 
 These utilities are present, but they are not yet fully integrated into the deployed forecasting model.
 
@@ -152,21 +154,27 @@ The current deployed inference pipeline still loads:
 - XGBoost model
 - scaler artifact
 
-### 4.1.1 Early player foundation utilities
+### 4.1.1 Player foundation utilities
 
-The repo now also includes early M1 foundation files:
+The repo now also includes the current M1 foundation files:
 
 - [src/anonymization/player_mapping.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/anonymization/player_mapping.py>)
 - [src/data/player_metadata.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/data/player_metadata.py>)
 - [src/data/fetch_player_logs.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/data/fetch_player_logs.py>)
+
+- projected availability builders
+- lineup and rotation feature builders
 
 These provide:
 
 - stable anonymous player indices
 - season roster metadata normalization
 - processed historical player-game logs
+- team-aware player-name resolution for injury-style aliases
+- leakage-safe projected availability rows with explicit source type, timestamp, and confidence
+- lineup continuity, depth, and missing-value features derived from those projected rows
 
-They are the first live code slice of the new player-and-lineup roadmap, but they do not yet change the deployed forecast representation.
+They are the first real player-and-lineup feature slice of the new roadmap, but they do not yet change the deployed forecast representation.
 
 ### 4.2 Neural model
 
@@ -295,6 +303,53 @@ The dashboard and manifest expose whether a prediction used:
 - `fallback`
 
 for both injury and news context.
+
+### 8.1 Projected availability foundation
+
+Builder:
+
+- [src/features/projected_availability.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/features/projected_availability.py>)
+
+Current behavior:
+
+- seeds each team-game from a recent-role baseline built only from prior player logs
+- resolves official injury-report names to player IDs using season-aware aliases and team-aware filtering
+- overlays official statuses onto those baseline rows without losing the player's historical role context
+- writes unresolved names to an audit table instead of silently dropping them
+
+Current output fields include:
+
+- `game_id`
+- `date`
+- `season`
+- `team_idx`
+- `player_id`
+- `player_idx`
+- `player_name`
+- `status`
+- `availability_score`
+- `projection_confidence`
+- `source_type`
+- `source_timestamp`
+- `report_reason`
+- `recent_games_played`
+- `expected_minutes`
+- `role_score`
+
+### 8.2 Lineup and rotation feature foundation
+
+Builder:
+
+- [src/features/lineup_features.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/features/lineup_features.py>)
+
+Current behavior:
+
+- ranks projected players by effective role value after availability discounts
+- infers projected starters and top-8 rotations
+- compares those projected groups against the last prior game and recent prior games only
+- computes leakage-safe team-game features such as starter continuity, top-8 continuity, minutes concentration, bench depth quality, rotation stability, lineup familiarity, and missing value
+
+These new M1 outputs are not yet joined into the deployed training and inference rows, but the historical feature layer now exists and is test-covered.
 
 ---
 
