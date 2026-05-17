@@ -22,6 +22,7 @@
 - `src/models/run_nextgen_ensemble.py` now trains enriched CatBoost/LightGBM input models and evaluates expanded meta-ensembles that add those probabilities to the current `neural + xgboost + elo` stack.
 - `src/models/run_nextgen_validation.py` now runs a promotion gate across aggregate, per-season, schedule-stress, context-confidence, playoff, and missing-player slices before any live model promotion.
 - `src/data/fetch_games.py` and `src/data/fetch_player_logs.py` now support configured `Regular Season` + `Playoffs` ingestion and preserve `season_type` into processed rows for regime-aware evaluation.
+- `src/models/run_enriched_experiments.py` now detects stale cached matchup/player feature artifacts when the game universe changes, so adding playoff rows forces the enriched stack to rebuild instead of silently reusing regular-season-only caches.
 - Current best candidate: `nextgen_full / raw` at `0.6137` log loss, beating the saved production raw ensemble at `0.6152` on the current held-out split.
 - Current promotion status: blocked, because the held-out evaluation has 0 playoff games and 0 nonzero missing-player-impact games.
 

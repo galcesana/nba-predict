@@ -121,6 +121,47 @@ def test_build_test_slice_masks_includes_playoff_and_context_slices():
     assert not bool(slice_masks["playoffs"].loc["0022400002"])
 
 
+def test_artifact_game_universe_check_rejects_stale_regular_season_cache():
+    """Cached matchup artifacts should rebuild when games gain playoff rows."""
+    games = pd.DataFrame(
+        {
+            "game_id": ["0022400001", "0042400002"],
+            "season_type": ["Regular Season", "Playoffs"],
+        }
+    )
+    stale_artifact = pd.DataFrame({"game_id": ["0022400001"]})
+
+    assert not run_enriched_experiments._artifact_matches_game_universe(
+        stale_artifact,
+        games,
+        label="test artifact",
+        exact_game_ids=True,
+    )
+
+
+def test_artifact_game_universe_check_accepts_multiraw_cache_with_all_regimes():
+    """Multi-row feature artifacts need regime coverage, not exact game-id equality."""
+    games = pd.DataFrame(
+        {
+            "game_id": ["0022400001", "0042400002"],
+            "season_type": ["Regular Season", "Playoffs"],
+        }
+    )
+    feature_artifact = pd.DataFrame(
+        {
+            "game_id": ["0022400001", "0022400001", "0042400002"],
+            "player_id": [1, 2, 1],
+        }
+    )
+
+    assert run_enriched_experiments._artifact_matches_game_universe(
+        feature_artifact,
+        games,
+        label="test features",
+        exact_game_ids=False,
+    )
+
+
 def test_build_summary_markdown_mentions_best_model_and_unavailable_models():
     """The markdown summary should reflect leaderboard, slices, and missing libs."""
     results = {

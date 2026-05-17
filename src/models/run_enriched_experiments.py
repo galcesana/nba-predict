@@ -131,6 +131,78 @@ def _load_if_exists(path: pd.io.common.FilePath) -> pd.DataFrame | None:
     return None
 
 
+def _game_id_set(frame: pd.DataFrame) -> set[str]:
+    if "game_id" not in frame.columns:
+        return set()
+    return set(frame["game_id"].astype(str))
+
+
+def _artifact_matches_game_universe(
+    artifact: pd.DataFrame,
+    games: pd.DataFrame,
+    *,
+    label: str,
+    exact_game_ids: bool,
+) -> bool:
+    """Return whether a cached artifact matches the current game universe."""
+    if artifact.empty or "game_id" not in artifact.columns:
+        logger.info("Cached %s is stale because it has no game_id rows.", label)
+        return False
+
+    expected_ids = _game_id_set(games)
+    actual_ids = _game_id_set(artifact)
+    if exact_game_ids and actual_ids != expected_ids:
+        logger.info(
+            "Cached %s is stale: expected %d game ids, found %d.",
+            label,
+            len(expected_ids),
+            len(actual_ids),
+        )
+        return False
+
+    if "season_type" not in games.columns:
+        return True
+
+    game_types = games[["game_id", "season_type"]].copy()
+    game_types["game_id"] = game_types["game_id"].astype(str)
+    expected_types = set(game_types["season_type"].dropna().astype(str))
+    actual_types = set(
+        game_types[game_types["game_id"].isin(actual_ids)]["season_type"]
+        .dropna()
+        .astype(str)
+    )
+    missing_types = expected_types - actual_types
+    if missing_types:
+        logger.info(
+            "Cached %s is stale because it has no rows for season types: %s",
+            label,
+            sorted(missing_types),
+        )
+        return False
+
+    return True
+
+
+def _load_current_artifact(
+    path: pd.io.common.FilePath,
+    games: pd.DataFrame,
+    *,
+    label: str,
+    exact_game_ids: bool = False,
+) -> pd.DataFrame | None:
+    artifact = _load_if_exists(path)
+    if artifact is None:
+        return None
+    if _artifact_matches_game_universe(
+        artifact,
+        games,
+        label=label,
+        exact_game_ids=exact_game_ids,
+    ):
+        return artifact
+    return None
+
+
 def ensure_experiment_datasets() -> tuple[pd.DataFrame, pd.DataFrame]:
     """Load or build the legacy and enriched matchup datasets used in experiments."""
     games = pd.read_parquet(_processed_path("games.parquet"))
@@ -138,16 +210,25 @@ def ensure_experiment_datasets() -> tuple[pd.DataFrame, pd.DataFrame]:
     legacy_path = _processed_path("matchup_rows", "matchup_dataset.parquet")
     enriched_path = _processed_path("matchup_rows", "matchup_dataset_enriched.parquet")
 
-    if legacy_path.exists():
-        legacy_df = pd.read_parquet(legacy_path)
-    else:
+    legacy_df = _load_current_artifact(
+        legacy_path,
+        games,
+        label="legacy matchup dataset",
+        exact_game_ids=True,
+    )
+    if legacy_df is None:
         logger.info("Legacy matchup dataset missing; rebuilding it.")
         legacy_df = build_matchup_dataset(games, team_logs)
         legacy_path.parent.mkdir(parents=True, exist_ok=True)
         legacy_df.to_parquet(legacy_path, index=False)
 
-    if enriched_path.exists():
-        enriched_df = pd.read_parquet(enriched_path)
+    enriched_df = _load_current_artifact(
+        enriched_path,
+        games,
+        label="enriched matchup dataset",
+        exact_game_ids=True,
+    )
+    if enriched_df is not None:
         return legacy_df, enriched_df
 
     logger.info("Enriched matchup dataset missing; building full M1 feature stack.")
@@ -165,7 +246,11 @@ def ensure_experiment_datasets() -> tuple[pd.DataFrame, pd.DataFrame]:
     )
 
     stage_start = perf_counter()
-    player_value_features = _load_if_exists(player_value_path)
+    player_value_features = _load_current_artifact(
+        player_value_path,
+        games,
+        label="player value features",
+    )
     if player_value_features is None:
         logger.info("Building player value features...")
         player_value_features = build_player_value_features(games, player_logs)
@@ -183,8 +268,12 @@ def ensure_experiment_datasets() -> tuple[pd.DataFrame, pd.DataFrame]:
         )
 
     stage_start = perf_counter()
-    projected_availability = _load_if_exists(projected_path)
-    unresolved = _load_if_exists(unresolved_path)
+    projected_availability = _load_current_artifact(
+        projected_path,
+        games,
+        label="projected availability",
+    )
+    unresolved = _load_if_exists(unresolved_path) if projected_availability is not None else None
     if projected_availability is None:
         logger.info("Building projected availability...")
         projected_availability, unresolved = build_projected_availability(
@@ -209,7 +298,11 @@ def ensure_experiment_datasets() -> tuple[pd.DataFrame, pd.DataFrame]:
         )
 
     stage_start = perf_counter()
-    lineup_features_df = _load_if_exists(lineup_path)
+    lineup_features_df = _load_current_artifact(
+        lineup_path,
+        games,
+        label="lineup features",
+    )
     if lineup_features_df is None:
         logger.info("Building lineup features...")
         lineup_features_df = build_lineup_features(games, player_logs, projected_availability)

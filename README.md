@@ -212,6 +212,9 @@ The gate scores production vs next-gen across regular-season, per-season, schedu
 playoff, and missing-player slices. Promotion is intentionally blocked until the historical evaluation includes
 enough playoff games and real nonzero missing-player impact rows.
 
+If `games.parquet` changes after a new fetch, the enriched experiment runner checks cached
+matchup/player artifacts and rebuilds stale regular-season-only caches automatically.
+
 ### 3. Generate Local Predictions
 
 To create a local prediction file for the current weekly slate:
