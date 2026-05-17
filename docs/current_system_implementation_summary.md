@@ -501,6 +501,20 @@ As of the first run, `nextgen_full / raw` is the best candidate on the current h
 `0.6137` log loss, `0.6550` accuracy, and `0.7261` ROC-AUC. The saved production raw ensemble
 remains the comparison baseline at `0.6152` log loss.
 
+Next-generation promotion gate outputs:
+
+- `docs/experiments/nextgen_promotion_gate.json`
+- `docs/experiments/nextgen_promotion_gate.md`
+
+The promotion gate runner lives at `src/models/run_nextgen_validation.py`. It compares production
+raw ensemble probabilities against next-gen raw probabilities across aggregate, per-season,
+schedule-stress, context-confidence, playoff, and missing-player-impact slices.
+
+Current promotion status is `blocked`: the next-gen candidate clears the aggregate log-loss check,
+but the held-out historical evaluation has 0 playoff games and 0 nonzero missing-player-impact games.
+Do not promote the next-gen ensemble into live inference until those coverage gates are fixed and the
+gate reports `ready`.
+
 ---
 
 ## 11. Current Strengths
@@ -528,6 +542,7 @@ These are the most important limitations to remember before extending the system
 6. **Playoff handling is stronger in publishing logic than in model design.**
 7. **Displayed explanations are still partly heuristic rather than fully learned attribution.**
 8. **The ensemble is simple and not yet context-aware or regime-aware.**
+9. **The next-gen candidate is blocked from promotion until playoff and real missing-player validation exist.**
 
 ---
 

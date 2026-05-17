@@ -184,6 +184,21 @@ That writes tracked reports to:
 Generated next-gen model artifacts are stored under `models/ensembles_nextgen/` and are ignored by
 git.
 
+Before promoting that candidate into live inference, run the promotion gate:
+
+```bash
+python -m src.models.run_nextgen_validation
+```
+
+That writes:
+
+- `docs/experiments/nextgen_promotion_gate.json`
+- `docs/experiments/nextgen_promotion_gate.md`
+
+The gate scores production vs next-gen across regular-season, per-season, schedule-stress, context-confidence,
+playoff, and missing-player slices. Promotion is intentionally blocked until the historical evaluation includes
+enough playoff games and real nonzero missing-player impact rows.
+
 ### 3. Generate Local Predictions
 
 To create a local prediction file for the current weekly slate:

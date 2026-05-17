@@ -20,9 +20,12 @@
 - `src/models/run_enriched_experiments.py` now runs a round-two leaderboard over the enriched matchup dataset, including M1 family ablations, optional LightGBM/CatBoost slots, Platt-calibrated tree variants, and playoff/context slice evaluation.
 - `src/models/run_production_showdown.py` now compares the saved enriched benchmark winners against the shipped neural full-fusion and production ensemble artifacts on the same held-out split.
 - `src/models/run_nextgen_ensemble.py` now trains enriched CatBoost/LightGBM input models and evaluates expanded meta-ensembles that add those probabilities to the current `neural + xgboost + elo` stack.
+- `src/models/run_nextgen_validation.py` now runs a promotion gate across aggregate, per-season, schedule-stress, context-confidence, playoff, and missing-player slices before any live model promotion.
 - Current best candidate: `nextgen_full / raw` at `0.6137` log loss, beating the saved production raw ensemble at `0.6152` on the current held-out split.
+- Current promotion status: blocked, because the held-out evaluation has 0 playoff games and 0 nonzero missing-player-impact games.
 
 ## Next Slice
 
-- Promote the next-gen ensemble into the production training/inference path only after adding a hard validation round for playoffs and real nonzero injury/missing-player cases.
-- Build a regime-aware split/report next, because the current held-out split still does not stress playoff games or meaningful missing-player rows.
+- Add historical playoff rows to the training/evaluation dataset instead of relying only on live playoff schedule publishing.
+- Add real availability/inactive history so missing-player value is nonzero and can be validated before promotion.
+- Rerun `python -m src.models.run_nextgen_ensemble` and `python -m src.models.run_nextgen_validation`; promote only after the gate status changes from `blocked` to `ready`.

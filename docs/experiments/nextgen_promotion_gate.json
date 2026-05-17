@@ -1,0 +1,282 @@
+{
+  "generated_at_utc": "2026-05-17T14:20:34.359867+00:00",
+  "test_rows": 2455,
+  "criteria": {
+    "min_overall_log_loss_gain": 0.001,
+    "min_playoff_games": 100,
+    "min_missing_player_games": 100,
+    "max_allowed_slice_log_loss_regression": 0.005
+  },
+  "slice_results": {
+    "all_test": {
+      "status": "scored",
+      "game_count": 2455,
+      "positive_rate": 0.5437881873727087,
+      "production": {
+        "accuracy": 0.6562118126272912,
+        "log_loss": 0.6151888250768539,
+        "brier_score": 0.21327146089673396,
+        "calibration_error": 0.05329806192810594,
+        "roc_auc": 0.7249846174424825
+      },
+      "nextgen": {
+        "accuracy": 0.654989816700611,
+        "log_loss": 0.6136999012211825,
+        "brier_score": 0.21261036838893332,
+        "calibration_error": 0.04764837760050412,
+        "roc_auc": 0.7261456661316212
+      },
+      "delta": {
+        "log_loss": -0.0014889238556714535,
+        "accuracy": -0.0012219959266802638,
+        "brier_score": -0.0006610925078006369,
+        "calibration_error": -0.005649684327601823
+      }
+    },
+    "regular_season": {
+      "status": "scored",
+      "game_count": 2455,
+      "positive_rate": 0.5437881873727087,
+      "production": {
+        "accuracy": 0.6562118126272912,
+        "log_loss": 0.6151888250768539,
+        "brier_score": 0.21327146089673396,
+        "calibration_error": 0.05329806192810594,
+        "roc_auc": 0.7249846174424825
+      },
+      "nextgen": {
+        "accuracy": 0.654989816700611,
+        "log_loss": 0.6136999012211825,
+        "brier_score": 0.21261036838893332,
+        "calibration_error": 0.04764837760050412,
+        "roc_auc": 0.7261456661316212
+      },
+      "delta": {
+        "log_loss": -0.0014889238556714535,
+        "accuracy": -0.0012219959266802638,
+        "brier_score": -0.0006610925078006369,
+        "calibration_error": -0.005649684327601823
+      }
+    },
+    "playoffs": {
+      "status": "no_data",
+      "game_count": 0,
+      "reason": "No held-out games matched this validation slice."
+    },
+    "season_2023_24": {
+      "status": "scored",
+      "game_count": 1230,
+      "positive_rate": 0.5430894308943089,
+      "production": {
+        "accuracy": 0.6504065040650406,
+        "log_loss": 0.6160106137047213,
+        "brier_score": 0.21373248574568254,
+        "calibration_error": 0.05804975944454864,
+        "roc_auc": 0.7217566646067297
+      },
+      "nextgen": {
+        "accuracy": 0.6479674796747967,
+        "log_loss": 0.6153155822877938,
+        "brier_score": 0.21343503424874236,
+        "calibration_error": 0.0581932255429289,
+        "roc_auc": 0.7219138235983549
+      },
+      "delta": {
+        "log_loss": -0.0006950314169275051,
+        "accuracy": -0.0024390243902439046,
+        "brier_score": -0.0002974514969401876,
+        "calibration_error": 0.00014346609838025715
+      }
+    },
+    "season_2024_25": {
+      "status": "scored",
+      "game_count": 1225,
+      "positive_rate": 0.5444897959183673,
+      "production": {
+        "accuracy": 0.6620408163265306,
+        "log_loss": 0.6143636822096893,
+        "brier_score": 0.21280855431370804,
+        "calibration_error": 0.04971073931653395,
+        "roc_auc": 0.7271955420139392
+      },
+      "nextgen": {
+        "accuracy": 0.6620408163265306,
+        "log_loss": 0.6120776255379726,
+        "brier_score": 0.21178233654602294,
+        "calibration_error": 0.0425530000418388,
+        "roc_auc": 0.7296405560660528
+      },
+      "delta": {
+        "log_loss": -0.002286056671716663,
+        "accuracy": 0.0,
+        "brier_score": -0.0010262177676851059,
+        "calibration_error": -0.007157739274695152
+      }
+    },
+    "missing_player_impact": {
+      "status": "no_data",
+      "game_count": 0,
+      "reason": "No held-out games matched this validation slice."
+    },
+    "high_missing_value": {
+      "status": "no_data",
+      "game_count": 0,
+      "reason": "No held-out games matched this validation slice."
+    },
+    "high_context_confidence": {
+      "status": "scored",
+      "game_count": 703,
+      "positive_rate": 0.5376955903271693,
+      "production": {
+        "accuracy": 0.6372688477951636,
+        "log_loss": 0.631627788250611,
+        "brier_score": 0.22092563048601913,
+        "calibration_error": 0.04463602017036478,
+        "roc_auc": 0.6984615384615385
+      },
+      "nextgen": {
+        "accuracy": 0.6330014224751067,
+        "log_loss": 0.631281780135556,
+        "brier_score": 0.22077873771076698,
+        "calibration_error": 0.045045887279466124,
+        "roc_auc": 0.6976556776556776
+      },
+      "delta": {
+        "log_loss": -0.0003460081150550298,
+        "accuracy": -0.004267425320056861,
+        "brier_score": -0.00014689277525214983,
+        "calibration_error": 0.00040986710910134033
+      }
+    },
+    "low_context_confidence": {
+      "status": "scored",
+      "game_count": 660,
+      "positive_rate": 0.543939393939394,
+      "production": {
+        "accuracy": 0.6439393939393939,
+        "log_loss": 0.6179818658661684,
+        "brier_score": 0.21459064276768533,
+        "calibration_error": 0.051607077010456644,
+        "roc_auc": 0.7198659991301048
+      },
+      "nextgen": {
+        "accuracy": 0.65,
+        "log_loss": 0.616367535328036,
+        "brier_score": 0.21386393794090194,
+        "calibration_error": 0.03867540322835248,
+        "roc_auc": 0.7220962622271166
+      },
+      "delta": {
+        "log_loss": -0.0016143305381324247,
+        "accuracy": 0.0060606060606061,
+        "brier_score": -0.0007267048267833864,
+        "calibration_error": -0.012931673782104164
+      }
+    },
+    "home_back_to_back": {
+      "status": "scored",
+      "game_count": 424,
+      "positive_rate": 0.47641509433962265,
+      "production": {
+        "accuracy": 0.6084905660377359,
+        "log_loss": 0.6316616591091166,
+        "brier_score": 0.22140806506800995,
+        "calibration_error": 0.11707534937466887,
+        "roc_auc": 0.7381812505574882
+      },
+      "nextgen": {
+        "accuracy": 0.6202830188679245,
+        "log_loss": 0.6298770308381184,
+        "brier_score": 0.22054771774366297,
+        "calibration_error": 0.12252822904294887,
+        "roc_auc": 0.7378244581214878
+      },
+      "delta": {
+        "log_loss": -0.0017846282709982342,
+        "accuracy": 0.011792452830188593,
+        "brier_score": -0.0008603473243469772,
+        "calibration_error": 0.005452879668279995
+      }
+    },
+    "away_back_to_back": {
+      "status": "scored",
+      "game_count": 448,
+      "positive_rate": 0.5870535714285714,
+      "production": {
+        "accuracy": 0.6875,
+        "log_loss": 0.5965272983738411,
+        "brier_score": 0.20417755920757294,
+        "calibration_error": 0.059075756717186345,
+        "roc_auc": 0.7370876580002055
+      },
+      "nextgen": {
+        "accuracy": 0.6785714285714286,
+        "log_loss": 0.5972320864789445,
+        "brier_score": 0.204522339907299,
+        "calibration_error": 0.055809375123767505,
+        "roc_auc": 0.734765183434385
+      },
+      "delta": {
+        "log_loss": 0.0007047881051034377,
+        "accuracy": -0.008928571428571397,
+        "brier_score": 0.0003447806997260716,
+        "calibration_error": -0.0032663815934188406
+      }
+    },
+    "dense_schedule": {
+      "status": "scored",
+      "game_count": 1108,
+      "positive_rate": 0.5451263537906137,
+      "production": {
+        "accuracy": 0.6471119133574007,
+        "log_loss": 0.6150764075913882,
+        "brier_score": 0.213286540880346,
+        "calibration_error": 0.052307432809054664,
+        "roc_auc": 0.7236084831283506
+      },
+      "nextgen": {
+        "accuracy": 0.6498194945848376,
+        "log_loss": 0.6138757862552779,
+        "brier_score": 0.2127331548480814,
+        "calibration_error": 0.05042250418692661,
+        "roc_auc": 0.7244100178702828
+      },
+      "delta": {
+        "log_loss": -0.001200621336110208,
+        "accuracy": 0.0027075812274368616,
+        "brier_score": -0.0005533860322645967,
+        "calibration_error": -0.0018849286221280515
+      }
+    }
+  },
+  "verdict": {
+    "status": "blocked",
+    "checks": [
+      {
+        "name": "overall_log_loss_gain",
+        "status": "pass",
+        "passed": true,
+        "detail": "Next-gen must beat production by at least 0.001 log loss; observed -0.0015."
+      },
+      {
+        "name": "playoff_coverage",
+        "status": "block",
+        "passed": false,
+        "detail": "Need at least 100 held-out playoff games; found 0."
+      },
+      {
+        "name": "missing_player_coverage",
+        "status": "block",
+        "passed": false,
+        "detail": "Need at least 100 held-out games with nonzero missing-player value; found 0."
+      },
+      {
+        "name": "critical_slice_regression",
+        "status": "pass",
+        "passed": true,
+        "detail": "No critical slice exceeded the allowed regression threshold."
+      }
+    ],
+    "recommendation": "Promote only after playoff and missing-player coverage gates pass."
+  }
+}
