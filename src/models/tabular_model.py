@@ -8,7 +8,6 @@ Usage:
 
 import json
 import logging
-from pathlib import Path
 
 import joblib
 import numpy as np
@@ -34,13 +33,21 @@ def _load_split_config() -> dict:
 
 
 def get_feature_columns(df: pd.DataFrame) -> list[str]:
-    """Get feature columns from matchup dataset (exclude metadata and target)."""
+    """Get numeric model feature columns from a matchup dataset."""
     exclude = {
-        "game_id", "date", "season",
-        "home_team_idx", "away_team_idx",
+        "game_id",
+        "date",
+        "season",
+        "season_type",
+        "home_team_idx",
+        "away_team_idx",
         "target_home_win",
     }
-    return [c for c in df.columns if c not in exclude]
+    return [
+        column
+        for column in df.columns
+        if column not in exclude and pd.api.types.is_numeric_dtype(df[column])
+    ]
 
 
 def split_by_season(
@@ -145,8 +152,6 @@ def main():
     y_train = train_df["target_home_win"].values
     X_val = val_df[feature_cols].fillna(0).values
     y_val = val_df["target_home_win"].values
-    X_test = test_df[feature_cols].fillna(0).values
-    y_test = test_df["target_home_win"].values
 
     # Fit scaler on training data only
     scaler = StandardScaler()

@@ -14,10 +14,12 @@ def _legacy_df() -> pd.DataFrame:
                 "game_id": "0022300001",
                 "date": "2024-01-01",
                 "season": "2023-24",
+                "season_type": "Regular Season",
                 "home_team_idx": 1,
                 "away_team_idx": 2,
                 "home_metric": 1.0,
                 "away_metric": 0.5,
+                "debug_label": "not-a-feature",
                 "target_home_win": 1,
             }
         ]
@@ -31,10 +33,12 @@ def _enriched_df() -> pd.DataFrame:
                 "game_id": "0022300001",
                 "date": "2024-01-01",
                 "season": "2023-24",
+                "season_type": "Regular Season",
                 "home_team_idx": 1,
                 "away_team_idx": 2,
                 "home_metric": 1.0,
                 "away_metric": 0.5,
+                "debug_label": "not-a-feature",
                 "home_expected_starter_continuity": 0.8,
                 "away_expected_starter_continuity": 0.7,
                 "diff_expected_starter_continuity": 0.1,
@@ -99,6 +103,8 @@ def test_get_experiment_feature_sets_builds_round_two_ablations():
     _, no_conf_cols = feature_sets["enriched_no_confidence"]
 
     assert "home_metric" in legacy_cols
+    assert "season_type" not in legacy_cols
+    assert "debug_label" not in legacy_cols
     assert "home_projected_player_value_available" in enriched_cols
     assert "home_projected_player_value_available" in m1_only_cols
     assert "home_metric" not in m1_only_cols
