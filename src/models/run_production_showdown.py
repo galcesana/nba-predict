@@ -122,10 +122,33 @@ def _load_test_slice_masks() -> tuple[pd.DataFrame, dict[str, pd.Series]]:
     return test_df.reset_index(drop=True), build_test_slice_masks(enriched_df)
 
 
+def _covered_test_game_ids(
+    expected_game_ids: pd.Series,
+    *prediction_frames: pd.DataFrame,
+) -> pd.Series:
+    """Return expected game ids covered by all supplied prediction frames."""
+    covered_ids = set(expected_game_ids.astype(str))
+    for frame in prediction_frames:
+        if "game_id" not in frame.columns:
+            return pd.Series(dtype=str)
+        covered_ids &= set(frame["game_id"].astype(str))
+    return expected_game_ids[expected_game_ids.astype(str).isin(covered_ids)].reset_index(
+        drop=True
+    )
+
+
+def _coverage_summary(expected_game_ids: pd.Series, covered_game_ids: pd.Series) -> dict[str, int]:
+    return {
+        "expected_test_game_count": int(len(expected_game_ids)),
+        "scored_game_count": int(len(covered_game_ids)),
+        "missing_game_count": int(len(expected_game_ids) - len(covered_game_ids)),
+    }
+
+
 def load_production_stack_predictions() -> dict[str, dict[str, Any]]:
     """Load saved production model probabilities and score them on test slices."""
     test_df, slice_masks = _load_test_slice_masks()
-    test_game_ids = test_df["game_id"].astype(str).reset_index(drop=True)
+    expected_test_game_ids = test_df["game_id"].astype(str).reset_index(drop=True)
 
     neural_path = NEURAL_DIR / "neural_predictions_test.parquet"
     if not neural_path.exists():
@@ -137,6 +160,21 @@ def load_production_stack_predictions() -> dict[str, dict[str, Any]]:
     neural_df["game_id"] = neural_df["game_id"].astype(str)
     neural_df = neural_df.rename(columns={"pred_home_win": "probability"})
     neural_df = neural_df.sort_values("game_id").reset_index(drop=True)
+
+    val_preds = load_model_predictions("val")
+    test_preds = load_model_predictions("test")
+    test_preds["game_id"] = test_preds["game_id"].astype(str)
+    test_game_ids = _covered_test_game_ids(expected_test_game_ids, neural_df, test_preds)
+    coverage = _coverage_summary(expected_test_game_ids, test_game_ids)
+    if test_game_ids.empty:
+        raise ValueError("No enriched test rows are covered by saved production predictions.")
+    if coverage["missing_game_count"] > 0:
+        logger.warning(
+            "Saved production artifacts cover %d/%d enriched test games; %d rows are skipped.",
+            coverage["scored_game_count"],
+            coverage["expected_test_game_count"],
+            coverage["missing_game_count"],
+        )
 
     production: dict[str, dict[str, Any]] = {}
     aligned_neural = test_game_ids.to_frame(name="game_id").merge(
@@ -152,6 +190,7 @@ def load_production_stack_predictions() -> dict[str, dict[str, Any]]:
     production["production_neural_full_fusion"] = {
         "status": "scored",
         "source": "models/neural/neural_predictions_test.parquet",
+        "coverage": coverage,
         "metrics": evaluate_probabilities(neural_actuals, neural_probs),
         "test_slices": _evaluate_slice_metrics(
             neural_actuals,
@@ -161,8 +200,6 @@ def load_production_stack_predictions() -> dict[str, dict[str, Any]]:
         ),
     }
 
-    val_preds = load_model_predictions("val")
-    test_preds = load_model_predictions("test")
     prob_cols = [column for column in val_preds.columns if column.endswith("_prob")]
     meta_model = joblib.load(ENSEMBLE_DIR / "meta_model.joblib")
     calibrator = joblib.load(ENSEMBLE_DIR / "calibrator.joblib")
@@ -195,6 +232,7 @@ def load_production_stack_predictions() -> dict[str, dict[str, Any]]:
         production[model_name] = {
             "status": "scored",
             "source": source,
+            "coverage": coverage,
             "metrics": evaluate_probabilities(y_test, probabilities),
             "test_slices": _evaluate_slice_metrics(
                 y_test,

@@ -45,6 +45,42 @@ def test_assemble_meta_frames_merges_production_and_enriched_inputs():
     assert not val_frame[run_nextgen_ensemble.ENRICHED_INPUT_COLS].isna().any().any()
 
 
+def test_prediction_cache_matches_split_rejects_stale_game_ids():
+    """Enriched input prediction caches should rebuild when split ids change."""
+    split_df = pd.DataFrame({"game_id": ["g1", "g2"]})
+    stale_predictions = pd.DataFrame(
+        {
+            "game_id": ["g1"],
+            "enriched_catboost_prob": [0.6],
+            "enriched_lightgbm_prob": [0.55],
+        }
+    )
+
+    assert not run_nextgen_ensemble._prediction_cache_matches_split(
+        stale_predictions,
+        split_df,
+        label="test cache",
+    )
+
+
+def test_prediction_cache_matches_split_accepts_current_input_columns():
+    """Current enriched prediction caches should match exact split ids and columns."""
+    split_df = pd.DataFrame({"game_id": ["g1", "g2"]})
+    predictions = pd.DataFrame(
+        {
+            "game_id": ["g1", "g2"],
+            "enriched_catboost_prob": [0.6, 0.4],
+            "enriched_lightgbm_prob": [0.55, 0.45],
+        }
+    )
+
+    assert run_nextgen_ensemble._prediction_cache_matches_split(
+        predictions,
+        split_df,
+        label="test cache",
+    )
+
+
 def test_build_variant_leaderboard_ranks_nextgen_and_production_rows():
     """Leaderboard should mix saved production rows with next-gen variants."""
     production_results = {

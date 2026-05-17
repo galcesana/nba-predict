@@ -106,9 +106,49 @@ def load_or_train_enriched_input_predictions(
     val_path = NEXTGEN_DIR / "enriched_input_predictions_val.parquet"
     test_path = NEXTGEN_DIR / "enriched_input_predictions_test.parquet"
     if not refresh and val_path.exists() and test_path.exists():
-        logger.info("Loading cached enriched ensemble input predictions from %s", NEXTGEN_DIR)
-        return pd.read_parquet(val_path), pd.read_parquet(test_path)
+        val_predictions = pd.read_parquet(val_path)
+        test_predictions = pd.read_parquet(test_path)
+        _, val_df, test_df = split_by_season(enriched_df)
+        if _prediction_cache_matches_split(
+            val_predictions,
+            val_df,
+            label="validation enriched input predictions",
+        ) and _prediction_cache_matches_split(
+            test_predictions,
+            test_df,
+            label="test enriched input predictions",
+        ):
+            logger.info("Loading cached enriched ensemble input predictions from %s", NEXTGEN_DIR)
+            return val_predictions, test_predictions
+        logger.info("Cached enriched input predictions are stale; retraining input models.")
     return train_enriched_input_models(enriched_df)
+
+
+def _prediction_cache_matches_split(
+    predictions: pd.DataFrame,
+    split_df: pd.DataFrame,
+    *,
+    label: str,
+) -> bool:
+    """Return whether cached prediction rows match the current split game ids."""
+    if predictions.empty or "game_id" not in predictions.columns:
+        logger.info("Cached %s are stale because no game_id rows exist.", label)
+        return False
+    expected_ids = set(split_df["game_id"].astype(str))
+    actual_ids = set(predictions["game_id"].astype(str))
+    if actual_ids != expected_ids:
+        logger.info(
+            "Cached %s are stale: expected %d game ids, found %d.",
+            label,
+            len(expected_ids),
+            len(actual_ids),
+        )
+        return False
+    missing_cols = [col for col in ENRICHED_INPUT_COLS if col not in predictions.columns]
+    if missing_cols:
+        logger.info("Cached %s are stale; missing columns: %s", label, missing_cols)
+        return False
+    return True
 
 
 def assemble_meta_frames(
