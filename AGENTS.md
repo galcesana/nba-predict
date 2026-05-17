@@ -21,7 +21,7 @@ NBA game outcome prediction system that outputs **calibrated win probabilities**
 - **Phase 10 complete** - live publishing layer implemented with tracked published forecasts, dashboard source precedence, and GitHub Actions automation, 129 tests passing
 - **Phase 11 complete** - live context ingestion added for official injury reports and team news, weekly playoff publishing hardened, 140 tests passing
 - **Phase 12 complete** - FastAPI service layer implemented for health, manifest, weekly forecast, game detail, and metrics access, 148 tests passing
-- **Active milestone** - M1 Player + Lineup Foundation in progress; player mapping, season roster metadata, historical player-log ingestion, player-value features, projected availability, lineup/rotation features, enriched matchup rows, next-gen ensemble experiments, a promotion gate, and playoff-capable ingestion are added. Current gate status: blocked until rebuilt playoff rows and nonzero missing-player validation coverage exist.
+- **Active milestone** - M1 Player + Lineup Foundation in progress; player mapping, season roster metadata, historical player-log ingestion, player-value features, projected availability, lineup/rotation features, enriched matchup rows, next-gen ensemble experiments, a promotion gate, and playoff-capable ingestion are added. Current gate status: playoff coverage passes; promotion is blocked until nonzero missing-player validation coverage exists.
 - See `docs/phases/all_phases.md` for the full phase tracker
 - See `docs/current_system_implementation_summary.md` for the current implementation reference
 - See `docs/next_generation_model_roadmap.md` for the active forward roadmap
@@ -93,7 +93,7 @@ nba-predict/
 | LLM schema | 7 core fields MVP | Reduce noise; expand after correlation analysis |
 | Feature normalization | Per-season StandardScaler | Fit on training data only |
 | Validation | Time-based + rolling splits | Never random split - simulates real forecasting |
-| Scope | Regular season model + live playoff publishing safeguards | Model training stays regular-season first; live board now filters playoff series conservatively |
+| Scope | Regular season + playoff-aware evaluation | Historical playoff rows are included; live board filters playoff series conservatively |
 | Ensemble meta-model | Logistic regression | Simple, interpretable, hard to overfit |
 
 ## Conventions
@@ -128,8 +128,8 @@ python -m src.models.run_nextgen_ensemble      # train expanded next-gen ensembl
 python -m src.models.run_nextgen_validation    # run promotion gate before live promotion
 ```
 
-`configs/data_sources.yaml` includes `Regular Season` and `Playoffs`; a full refetch/rebuild is needed
-before playoff rows appear in the promotion gate.
+`configs/data_sources.yaml` includes `Regular Season` and `Playoffs`; the rebuilt promotion gate now
+includes held-out playoff rows.
 
 ## Architecture (Target)
 

@@ -98,6 +98,26 @@ def test_build_promotion_verdict_blocks_without_required_coverage():
     assert "missing_player_coverage" in blocked_checks
 
 
+def test_build_promotion_verdict_names_missing_player_only_blocker():
+    """Once playoffs pass, recommendation should point at the remaining blocker."""
+    slice_results = {
+        "all_test": {
+            "status": "scored",
+            "game_count": 200,
+            "delta": {"log_loss": -0.004},
+        },
+        "playoffs": {"status": "scored", "game_count": 150},
+        "missing_player_impact": {"status": "no_data", "game_count": 0},
+    }
+
+    verdict = run_nextgen_validation.build_promotion_verdict(slice_results)
+
+    assert verdict["status"] == "blocked"
+    assert verdict["recommendation"] == (
+        "Promote only after real missing-player coverage is validated."
+    )
+
+
 def test_build_summary_markdown_reports_blocked_gate():
     """The markdown summary should be readable for the experiment log."""
     results = {

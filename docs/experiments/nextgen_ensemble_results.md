@@ -1,37 +1,37 @@
 # Next-Generation Ensemble Results
 
-Generated at `2026-05-17T14:11:41.876020+00:00`.
+Generated at `2026-05-17T18:49:11.453901+00:00`.
 
 ## Leaderboard
 
 | Rank | Family | Label | Accuracy | Log Loss | Brier | ROC-AUC | ECE |
 |---:|---|---|---:|---:|---:|---:|---:|
-| 1 | nextgen_ensemble | nextgen_full / raw | 0.6550 | 0.6137 | 0.2126 | 0.7261 | 0.0476 |
-| 2 | nextgen_ensemble | nextgen_lightgbm / raw | 0.6550 | 0.6137 | 0.2126 | 0.7263 | 0.0500 |
-| 3 | nextgen_ensemble | nextgen_catboost / raw | 0.6587 | 0.6147 | 0.2131 | 0.7254 | 0.0528 |
-| 4 | production_stack | production ensemble raw | 0.6562 | 0.6152 | 0.2133 | 0.7250 | 0.0533 |
-| 5 | nextgen_ensemble | production_retrained / raw | 0.6562 | 0.6152 | 0.2133 | 0.7250 | 0.0533 |
-| 6 | production_stack | production neural full fusion | 0.6485 | 0.6170 | 0.2142 | 0.7151 | 0.0264 |
-| 7 | nextgen_ensemble | nextgen_lightgbm / calibrated | 0.6542 | 0.6195 | 0.2149 | 0.7263 | 0.0650 |
-| 8 | nextgen_ensemble | nextgen_full / calibrated | 0.6534 | 0.6197 | 0.2150 | 0.7261 | 0.0661 |
-| 9 | nextgen_ensemble | nextgen_catboost / calibrated | 0.6591 | 0.6206 | 0.2154 | 0.7254 | 0.0657 |
-| 10 | production_stack | production ensemble calibrated | 0.6570 | 0.6207 | 0.2155 | 0.7250 | 0.0640 |
-| 11 | nextgen_ensemble | production_retrained / calibrated | 0.6570 | 0.6207 | 0.2155 | 0.7250 | 0.0640 |
+| 1 | nextgen_ensemble | nextgen_full / raw | 0.6501 | 0.6161 | 0.2137 | 0.7212 | 0.0483 |
+| 2 | nextgen_ensemble | nextgen_catboost / raw | 0.6520 | 0.6166 | 0.2139 | 0.7216 | 0.0509 |
+| 3 | nextgen_ensemble | nextgen_lightgbm / raw | 0.6486 | 0.6174 | 0.2143 | 0.7194 | 0.0450 |
+| 4 | production_stack | production ensemble raw | 0.6482 | 0.6196 | 0.2152 | 0.7177 | 0.0481 |
+| 5 | nextgen_ensemble | production_retrained / raw | 0.6482 | 0.6196 | 0.2152 | 0.7177 | 0.0481 |
+| 6 | nextgen_ensemble | nextgen_full / calibrated | 0.6524 | 0.6215 | 0.2159 | 0.7212 | 0.0642 |
+| 7 | nextgen_ensemble | nextgen_catboost / calibrated | 0.6520 | 0.6219 | 0.2160 | 0.7216 | 0.0670 |
+| 8 | nextgen_ensemble | nextgen_lightgbm / calibrated | 0.6490 | 0.6224 | 0.2163 | 0.7194 | 0.0625 |
+| 9 | production_stack | production neural full fusion | 0.6482 | 0.6232 | 0.2169 | 0.7096 | 0.0417 |
+| 10 | production_stack | production ensemble calibrated | 0.6482 | 0.6245 | 0.2172 | 0.7177 | 0.0604 |
+| 11 | nextgen_ensemble | production_retrained / calibrated | 0.6482 | 0.6245 | 0.2172 | 0.7177 | 0.0604 |
 
 ## Verdict
 
 - Best overall: `nextgen_full / raw`
 - Best next-gen entry: `nextgen_full / raw`
 - Production baseline: `production ensemble raw`
-- Next-gen minus production log-loss gap: `-0.0015`
+- Next-gen minus production log-loss gap: `-0.0035`
 
 ## Next-Gen Full Weights
 
-- `elo_prob`: `1.3337`
-- `xgboost_prob`: `0.8877`
-- `enriched_lightgbm_prob`: `0.8764`
-- `neural_prob`: `0.7565`
-- `enriched_catboost_prob`: `0.4052`
+- `elo_prob`: `1.3052`
+- `enriched_catboost_prob`: `1.0806`
+- `enriched_lightgbm_prob`: `1.0790`
+- `neural_prob`: `0.4292`
+- `xgboost_prob`: `0.2887`
 
 ## Notes
 

@@ -501,9 +501,9 @@ The next-gen ensemble runner lives at `src/models/run_nextgen_ensemble.py`. It t
 CatBoost/LightGBM input models, merges those probabilities with the current production
 `neural + xgboost + elo` inputs, and scores expanded logistic meta-model variants.
 
-As of the first run, `nextgen_full / raw` is the best candidate on the current held-out split:
-`0.6137` log loss, `0.6550` accuracy, and `0.7261` ROC-AUC. The saved production raw ensemble
-remains the comparison baseline at `0.6152` log loss.
+After rebuilding with playoff rows, `nextgen_full / raw` is the best candidate on the current
+held-out split: `0.6161` log loss, `0.6501` accuracy, and `0.7212` ROC-AUC. The saved production
+raw ensemble remains the comparison baseline at `0.6196` log loss.
 
 Next-generation promotion gate outputs:
 
@@ -514,14 +514,14 @@ The promotion gate runner lives at `src/models/run_nextgen_validation.py`. It co
 raw ensemble probabilities against next-gen raw probabilities across aggregate, per-season,
 schedule-stress, context-confidence, playoff, and missing-player-impact slices.
 
-Current promotion status is `blocked`: the next-gen candidate clears the aggregate log-loss check,
-but the held-out historical evaluation has 0 playoff games and 0 nonzero missing-player-impact games.
-Do not promote the next-gen ensemble into live inference until those coverage gates are fixed and the
-gate reports `ready`.
+Current promotion status is `blocked`: the next-gen candidate clears the aggregate log-loss check and
+the playoff coverage gate, but the held-out historical evaluation still has 0 nonzero
+missing-player-impact games. Do not promote the next-gen ensemble into live inference until real
+availability/inactive coverage exists and the gate reports `ready`.
 
-The first coverage fix is implemented at the ingestion-code level: historical game and player-log
-fetchers can now request playoff rows and carry `season_type` forward. The local processed/parquet
-artifacts still need a full rebuild before the promotion gate will have playoff coverage.
+The first coverage fix is complete: historical game and player-log fetchers request playoff rows,
+carry `season_type` forward, and the rebuilt evaluation now includes 166 held-out playoff games.
+The remaining coverage fix is historical availability/inactive signal.
 
 ---
 
@@ -550,7 +550,7 @@ These are the most important limitations to remember before extending the system
 6. **Playoff handling is stronger in publishing logic than in model design.**
 7. **Displayed explanations are still partly heuristic rather than fully learned attribution.**
 8. **The ensemble is simple and not yet context-aware or regime-aware.**
-9. **The next-gen candidate is blocked from promotion until playoff and real missing-player validation exist.**
+9. **The next-gen candidate is blocked from promotion until real missing-player validation exists.**
 
 ---
 

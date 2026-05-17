@@ -24,11 +24,10 @@
 - `src/data/fetch_games.py` and `src/data/fetch_player_logs.py` now support configured `Regular Season` + `Playoffs` ingestion and preserve `season_type` into processed rows for regime-aware evaluation.
 - `src/models/run_enriched_experiments.py` now detects stale cached matchup/player feature artifacts when the game universe changes, so adding playoff rows forces the enriched stack to rebuild instead of silently reusing regular-season-only caches.
 - `src/models/run_nextgen_ensemble.py` now also invalidates stale enriched input prediction caches, and `src/models/run_production_showdown.py` reports saved-production coverage when old artifacts do not cover every enriched test row.
-- Current best candidate: `nextgen_full / raw` at `0.6137` log loss, beating the saved production raw ensemble at `0.6152` on the current held-out split.
-- Current promotion status: blocked, because the held-out evaluation has 0 playoff games and 0 nonzero missing-player-impact games.
+- Current best candidate after rebuilding with playoff rows: `nextgen_full / raw` at `0.6161` log loss, beating the saved production raw ensemble at `0.6196` on the current held-out split.
+- Current promotion status: blocked only by missing-player coverage. Playoff coverage now passes with 166 held-out playoff games; missing-player-impact coverage is still 0 games.
 
 ## Next Slice
 
-- Rebuild historical processed data with the new playoff-aware fetch path, then rebuild matchup rows and rerun the next-gen ensemble/gate.
 - Add real availability/inactive history so missing-player value is nonzero and can be validated before promotion.
 - Rerun `python -m src.models.run_nextgen_ensemble` and `python -m src.models.run_nextgen_validation`; promote only after the gate status changes from `blocked` to `ready`.

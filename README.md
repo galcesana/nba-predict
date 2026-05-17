@@ -209,8 +209,8 @@ That writes:
 - `docs/experiments/nextgen_promotion_gate.md`
 
 The gate scores production vs next-gen across regular-season, per-season, schedule-stress, context-confidence,
-playoff, and missing-player slices. Promotion is intentionally blocked until the historical evaluation includes
-enough playoff games and real nonzero missing-player impact rows.
+playoff, and missing-player slices. The rebuilt evaluation now includes playoff coverage; promotion remains
+blocked until the historical evaluation includes real nonzero missing-player impact rows.
 
 If `games.parquet` changes after a new fetch, the enriched experiment runner checks cached
 matchup/player artifacts and rebuilds stale regular-season-only caches automatically.
@@ -406,7 +406,7 @@ Historical implementation history is preserved in:
 | 11 | Live Context + Playoff Hardening | Complete |
 | 12 | API Service Layer | Complete |
 
-**Current data:** 14,429 games across 12 seasons (2014-2026), Ensemble Model (65.6% acc, 0.615 log loss), weekly live publishing + deployment dashboard + live context coverage + API delivery, M1 player foundation plus player-value features, projected availability, lineup features, and enriched matchup rows, 168 tests passing.
+**Current data:** 15,412 games across 12 seasons (2014-2026), including 983 playoff games. The current next-gen experiment candidate is `nextgen_full / raw` at 0.6161 log loss on the playoff-aware held-out split, with promotion still blocked until real missing-player validation coverage exists.
 
 ---
 
@@ -436,7 +436,7 @@ Schedule context (rest, B2B) -> Context Encoder (MLP)
 | LLM schema | 7 core fields (MVP) | Reduce noise, expand later |
 | Normalization | Per-season StandardScaler | Accounts for era changes |
 | Validation | Time-based + rolling splits | Simulates real forecasting |
-| Playoffs | Conservative live publishing only | Training remains regular-season first; live board filters to the next game per series |
+| Playoffs | Included in historical evaluation | Live board filters to the next game per series; promotion gate tracks playoff slices |
 | Ensemble | Logistic regression meta-model | Simple, interpretable |
 
 ---

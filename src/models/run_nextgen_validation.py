@@ -360,11 +360,15 @@ def build_promotion_verdict(slice_results: dict[str, dict[str, Any]]) -> dict[st
     )
 
     status = "ready" if all(bool(check["passed"]) for check in checks) else "blocked"
-    recommendation = (
-        "Promote only after playoff and missing-player coverage gates pass."
-        if status == "blocked"
-        else "Candidate is ready for a shadow/live promotion review."
-    )
+    failed_checks = [str(check["name"]) for check in checks if not bool(check["passed"])]
+    if status == "ready":
+        recommendation = "Candidate is ready for a shadow/live promotion review."
+    elif failed_checks == ["missing_player_coverage"]:
+        recommendation = "Promote only after real missing-player coverage is validated."
+    elif failed_checks == ["playoff_coverage"]:
+        recommendation = "Promote only after playoff coverage is validated."
+    else:
+        recommendation = "Promote only after all blocked coverage and regression gates pass."
     return {
         "status": status,
         "checks": checks,
@@ -427,18 +431,31 @@ def build_summary_markdown(results: dict[str, Any]) -> str:
             f"{result['status']} |"
         )
 
-    lines.extend(
-        [
-            "",
-            "## What This Means",
-            "",
-            "- The aggregate next-gen gain is useful, but it is not enough by itself.",
-            "- Current enriched historical evaluation has no held-out playoff rows.",
+    playoff_count = int(results["slice_results"].get("playoffs", {}).get("game_count", 0))
+    missing_count = int(
+        results["slice_results"].get("missing_player_impact", {}).get("game_count", 0)
+    )
+    lines.extend(["", "## What This Means", ""])
+    if verdict["status"] == "ready":
+        lines.append("- The next-gen candidate clears the current promotion gates.")
+    else:
+        lines.append("- The aggregate next-gen gain is useful, but promotion remains gated.")
+    if playoff_count > 0:
+        lines.append(f"- Playoff coverage is now present with `{playoff_count}` held-out games.")
+    else:
+        lines.append("- Current enriched historical evaluation has no held-out playoff rows.")
+    if missing_count > 0:
+        lines.append(
+            f"- Missing-player coverage is present with `{missing_count}` held-out games."
+        )
+    else:
+        lines.append(
             "- Current missing-player value is zero throughout the held-out set, so "
-            "availability-aware claims are not yet validated.",
-            "- The next production step is to add real playoff history and real "
-            "availability/inactive signal, then rerun this gate.",
-        ]
+            "availability-aware claims are not yet validated."
+        )
+    lines.append(
+        "- The next production step is to add real availability/inactive history, "
+        "then rerun this gate."
     )
     return "\n".join(lines) + "\n"
 
