@@ -38,6 +38,7 @@ models/neural/*.pt
 models/neural/*.pth
 models/calibrators/*.pkl
 models/ensembles/*.pkl
+models/ensembles_nextgen/
 
 # Predictions (generated output)
 predictions/daily/*.json

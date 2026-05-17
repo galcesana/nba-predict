@@ -11,8 +11,8 @@ def test_build_player_game_logs_normalizes_raw_frame(monkeypatch):
     """Raw league game log rows should be converted into the processed schema."""
     monkeypatch.setattr(
         fetch_player_logs,
-        "player_id_to_idx",
-        lambda player_id: {201143: 7}[player_id],
+        "ensure_player_id_mapping",
+        lambda player_ids: {201143: 7},
     )
     monkeypatch.setattr(
         fetch_player_logs,

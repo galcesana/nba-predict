@@ -50,6 +50,16 @@ def test_build_player_mapping_is_stable():
     assert mapping == {10: 0, 20: 1, 30: 2}
 
 
+def test_extend_player_mapping_adds_missing_ids_after_existing_assignments():
+    """Observed player ids outside the base mapping should get deterministic appended indices."""
+    mapping = player_mapping.extend_player_to_idx_mapping(
+        [40, 20, 30],
+        base_mapping={10: 0, 20: 1},
+    )
+
+    assert mapping == {10: 0, 20: 1, 30: 2, 40: 3}
+
+
 def test_normalize_player_name_handles_punctuation():
     """Normalized player names should be case-insensitive and punctuation-light."""
     assert player_mapping.normalize_player_name("T.J. McConnell") == "TJ MCCONNELL"

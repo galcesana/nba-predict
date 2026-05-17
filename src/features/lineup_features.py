@@ -32,16 +32,19 @@ def _projection_value_column(projected_availability: pd.DataFrame) -> str:
     return "role_score"
 
 
-def _top_players_from_game(
-    player_logs: pd.DataFrame,
-    *,
-    team_idx: int,
-    game_id: str,
-    top_n: int,
-) -> set[int]:
-    game_rows = player_logs[
-        (player_logs["team_idx"] == int(team_idx)) & (player_logs["game_id"] == str(game_id))
-    ].copy()
+def _team_target_rows(games: pd.DataFrame) -> pd.DataFrame:
+    home_rows = games[["game_id", "date", "home_team_idx"]].rename(
+        columns={"home_team_idx": "team_idx"}
+    )
+    away_rows = games[["game_id", "date", "away_team_idx"]].rename(
+        columns={"away_team_idx": "team_idx"}
+    )
+    targets = pd.concat([home_rows, away_rows], ignore_index=True)
+    targets["team_idx"] = targets["team_idx"].astype(int)
+    return targets.sort_values(["team_idx", "date", "game_id"]).reset_index(drop=True)
+
+
+def _top_players_from_game_rows(game_rows: pd.DataFrame, *, top_n: int) -> set[int]:
     if game_rows.empty:
         return set()
     return set(
@@ -72,15 +75,51 @@ def build_lineup_features(
     if "date" in availability.columns:
         availability["date"] = pd.to_datetime(availability["date"])
     value_column = _projection_value_column(availability)
+    target_rows = _team_target_rows(games)
+    logs_by_team = {
+        int(team_idx): group.sort_values(["date", "game_id"]).reset_index(drop=True)
+        for team_idx, group in logs.groupby("team_idx", sort=False)
+    }
+    projection_groups = {
+        (str(game_id), int(team_idx)): group.copy()
+        for (game_id, team_idx), group in availability.groupby(["game_id", "team_idx"], sort=False)
+    }
 
     rows: list[dict[str, object]] = []
-    for _, game in games.sort_values("date").iterrows():
-        game_id = str(game["game_id"])
-        game_date = pd.Timestamp(game["date"])
-        for team_idx in (int(game["home_team_idx"]), int(game["away_team_idx"])):
-            team_projection = availability[
-                (availability["game_id"] == game_id) & (availability["team_idx"] == team_idx)
-            ].copy()
+    team_count = target_rows["team_idx"].nunique()
+    for team_number, (team_idx, team_targets) in enumerate(
+        target_rows.groupby("team_idx", sort=False),
+        start=1,
+    ):
+        team_logs = logs_by_team.get(int(team_idx))
+        if team_logs is None or team_logs.empty:
+            continue
+
+        logger.info(
+            "Building lineup features for team %d (%d/%d)",
+            int(team_idx),
+            team_number,
+            team_count,
+        )
+        team_games = (
+            team_logs[["game_id", "date"]]
+            .drop_duplicates()
+            .sort_values(["date", "game_id"])
+            .reset_index(drop=True)
+        )
+        game_log_lookup = {
+            str(game_id): frame.copy()
+            for game_id, frame in team_logs.groupby("game_id", sort=False)
+        }
+        history_pointer = 0
+
+        for _, game in team_targets.iterrows():
+            game_id = str(game["game_id"])
+            game_date = pd.Timestamp(game["date"])
+            team_projection = projection_groups.get((game_id, int(team_idx)))
+            if team_projection is None:
+                continue
+            team_projection = team_projection.copy()
             if team_projection.empty:
                 continue
 
@@ -98,33 +137,38 @@ def build_lineup_features(
             starters = team_projection.head(starter_size).copy()
             rotation = team_projection.head(rotation_size).copy()
 
-            prior_logs = logs[(logs["team_idx"] == team_idx) & (logs["date"] < game_date)].copy()
-            prior_game_ids = (
-                prior_logs.sort_values(["date", "game_id"])["game_id"].drop_duplicates()
-            )
-            last_game_id = prior_game_ids.iloc[-1] if not prior_game_ids.empty else None
-            recent_game_ids = list(prior_game_ids.tail(recent_team_games))
+            while (
+                history_pointer < len(team_games)
+                and pd.Timestamp(team_games.iloc[history_pointer]["date"]) < game_date
+            ):
+                history_pointer += 1
 
-            prior_top5 = (
-                _top_players_from_game(
-                    logs,
-                    team_idx=team_idx,
-                    game_id=last_game_id,
-                    top_n=starter_size,
-                )
-                if last_game_id is not None
-                else set()
+            recent_game_ids = (
+                team_games.iloc[
+                    max(0, history_pointer - recent_team_games) : history_pointer
+                ]["game_id"]
+                .astype(str)
+                .tolist()
             )
-            prior_top8 = (
-                _top_players_from_game(
-                    logs,
-                    team_idx=team_idx,
-                    game_id=last_game_id,
-                    top_n=rotation_size,
-                )
-                if last_game_id is not None
-                else set()
+            last_game_id = recent_game_ids[-1] if recent_game_ids else None
+            recent_frames = [
+                game_log_lookup[recent_game_id]
+                for recent_game_id in recent_game_ids
+                if recent_game_id in game_log_lookup
+            ]
+            recent_logs = (
+                pd.concat(recent_frames, ignore_index=True)
+                if recent_frames
+                else pd.DataFrame(columns=team_logs.columns)
             )
+
+            last_game_rows = (
+                game_log_lookup.get(last_game_id, pd.DataFrame(columns=team_logs.columns))
+                if last_game_id is not None
+                else pd.DataFrame(columns=team_logs.columns)
+            )
+            prior_top5 = _top_players_from_game_rows(last_game_rows, top_n=starter_size)
+            prior_top8 = _top_players_from_game_rows(last_game_rows, top_n=rotation_size)
 
             starter_ids = set(starters["player_id"].astype(int))
             rotation_ids = set(rotation["player_id"].astype(int))
@@ -142,9 +186,7 @@ def build_lineup_features(
 
             if recent_game_ids:
                 appearance_counts = (
-                    prior_logs[prior_logs["game_id"].isin(recent_game_ids)]
-                    .groupby("player_id")["game_id"]
-                    .nunique()
+                    recent_logs.groupby("player_id")["game_id"].nunique()
                 )
                 rotation_stability = float(
                     appearance_counts.reindex(rotation["player_id"]).fillna(0).mean()

@@ -1,0 +1,832 @@
+{
+  "generated_at_utc": "2026-05-17T11:03:38.331538+00:00",
+  "source_experiment_path": "C:\\Users\\galce\\OneDrive\\\u05e9\u05d5\u05dc\u05d7\u05df \u05d4\u05e2\u05d1\u05d5\u05d3\u05d4\\FOLDERS\\projects\\nba-predict\\docs\\experiments\\m1_enriched_matchup_results.json",
+  "production_results": {
+    "production_neural_full_fusion": {
+      "status": "scored",
+      "source": "models/neural/neural_predictions_test.parquet",
+      "metrics": {
+        "accuracy": 0.6484725050916497,
+        "log_loss": 0.617032819986557,
+        "brier_score": 0.21415617413589255,
+        "calibration_error": 0.026382318108727622,
+        "roc_auc": 0.7151498127340824
+      },
+      "test_slices": {
+        "high_context_confidence": {
+          "game_count": 703,
+          "positive_rate": 0.5376955903271693,
+          "accuracy": 0.6244665718349929,
+          "log_loss": 0.6334758573092876,
+          "brier_score": 0.22164505043708355,
+          "calibration_error": 0.03788091469116264,
+          "roc_auc": 0.6923321123321123
+        },
+        "low_context_confidence": {
+          "game_count": 660,
+          "positive_rate": 0.543939393939394,
+          "accuracy": 0.6484848484848484,
+          "log_loss": 0.6167725113014367,
+          "brier_score": 0.21415310535103785,
+          "calibration_error": 0.022199724117914835,
+          "roc_auc": 0.7142949684894363
+        }
+      }
+    },
+    "production_ensemble_raw": {
+      "status": "scored",
+      "source": "models/ensembles/meta_model.joblib",
+      "metrics": {
+        "accuracy": 0.6562118126272912,
+        "log_loss": 0.6151888250768539,
+        "brier_score": 0.21327146089673396,
+        "calibration_error": 0.05329806192810594,
+        "roc_auc": 0.7249846174424825
+      },
+      "test_slices": {
+        "high_context_confidence": {
+          "game_count": 703,
+          "positive_rate": 0.5376955903271693,
+          "accuracy": 0.6372688477951636,
+          "log_loss": 0.631627788250611,
+          "brier_score": 0.22092563048601913,
+          "calibration_error": 0.04463602017036478,
+          "roc_auc": 0.6984615384615385
+        },
+        "low_context_confidence": {
+          "game_count": 660,
+          "positive_rate": 0.543939393939394,
+          "accuracy": 0.6439393939393939,
+          "log_loss": 0.6179818658661684,
+          "brier_score": 0.21459064276768533,
+          "calibration_error": 0.051607077010456644,
+          "roc_auc": 0.7198659991301048
+        }
+      }
+    },
+    "production_ensemble_calibrated": {
+      "status": "scored",
+      "source": "models/ensembles/calibrator.joblib",
+      "metrics": {
+        "accuracy": 0.6570264765784114,
+        "log_loss": 0.6206701780969561,
+        "brier_score": 0.21548050938260577,
+        "calibration_error": 0.06398021534434363,
+        "roc_auc": 0.7249846174424825
+      },
+      "test_slices": {
+        "high_context_confidence": {
+          "game_count": 703,
+          "positive_rate": 0.5376955903271693,
+          "accuracy": 0.6344238975817923,
+          "log_loss": 0.6358019160520061,
+          "brier_score": 0.2226157408817191,
+          "calibration_error": 0.056117190414539976,
+          "roc_auc": 0.6984615384615385
+        },
+        "low_context_confidence": {
+          "game_count": 660,
+          "positive_rate": 0.543939393939394,
+          "accuracy": 0.65,
+          "log_loss": 0.6232281781010729,
+          "brier_score": 0.2166837931339206,
+          "calibration_error": 0.05995252532010251,
+          "roc_auc": 0.7198659991301048
+        }
+      }
+    }
+  },
+  "combined_leaderboard": [
+    {
+      "family": "production_stack",
+      "label": "production ensemble raw",
+      "feature_set": "production_stack",
+      "model_name": "production_ensemble_raw",
+      "metrics": {
+        "accuracy": 0.6562118126272912,
+        "log_loss": 0.6151888250768539,
+        "brier_score": 0.21327146089673396,
+        "calibration_error": 0.05329806192810594,
+        "roc_auc": 0.7249846174424825
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_all / catboost",
+      "feature_set": "enriched_all",
+      "model_name": "catboost",
+      "metrics": {
+        "accuracy": 0.6513238289205703,
+        "log_loss": 0.6165347132709291,
+        "brier_score": 0.21378408998256027,
+        "calibration_error": 0.04168017166395607,
+        "roc_auc": 0.7180825307651151
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_no_confidence / catboost",
+      "feature_set": "enriched_no_confidence",
+      "model_name": "catboost",
+      "metrics": {
+        "accuracy": 0.6541751527494908,
+        "log_loss": 0.6168128082509939,
+        "brier_score": 0.21401347942506102,
+        "calibration_error": 0.03607582337894937,
+        "roc_auc": 0.7170465489566611
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_all / lightgbm",
+      "feature_set": "enriched_all",
+      "model_name": "lightgbm",
+      "metrics": {
+        "accuracy": 0.655397148676171,
+        "log_loss": 0.616926327630698,
+        "brier_score": 0.2140363141560476,
+        "calibration_error": 0.019215684772860227,
+        "roc_auc": 0.7163670411985019
+      }
+    },
+    {
+      "family": "production_stack",
+      "label": "production neural full fusion",
+      "feature_set": "production_stack",
+      "model_name": "production_neural_full_fusion",
+      "metrics": {
+        "accuracy": 0.6484725050916497,
+        "log_loss": 0.617032819986557,
+        "brier_score": 0.21415617413589255,
+        "calibration_error": 0.026382318108727622,
+        "roc_auc": 0.7151498127340824
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_availability_only / catboost",
+      "feature_set": "enriched_availability_only",
+      "model_name": "catboost",
+      "metrics": {
+        "accuracy": 0.6488798370672098,
+        "log_loss": 0.6176138396214419,
+        "brier_score": 0.21438944819554562,
+        "calibration_error": 0.03629992662393043,
+        "roc_auc": 0.7151702113429641
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_value_only / catboost",
+      "feature_set": "enriched_value_only",
+      "model_name": "catboost",
+      "metrics": {
+        "accuracy": 0.6472505091649694,
+        "log_loss": 0.6186186595567275,
+        "brier_score": 0.21480483675854478,
+        "calibration_error": 0.0420013417628675,
+        "roc_auc": 0.7146207865168539
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_lineup_only / catboost",
+      "feature_set": "enriched_lineup_only",
+      "model_name": "catboost",
+      "metrics": {
+        "accuracy": 0.6452138492871691,
+        "log_loss": 0.6187227457501192,
+        "brier_score": 0.21486739765985052,
+        "calibration_error": 0.041058141810978485,
+        "roc_auc": 0.7141091492776885
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "legacy / catboost",
+      "feature_set": "legacy",
+      "model_name": "catboost",
+      "metrics": {
+        "accuracy": 0.6488798370672098,
+        "log_loss": 0.6200480483109803,
+        "brier_score": 0.21545193555758144,
+        "calibration_error": 0.036467005754476305,
+        "roc_auc": 0.7125153825575173
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_no_confidence / xgboost",
+      "feature_set": "enriched_no_confidence",
+      "model_name": "xgboost",
+      "metrics": {
+        "accuracy": 0.6521384928716905,
+        "log_loss": 0.6200562328488217,
+        "brier_score": 0.2155891432647279,
+        "calibration_error": 0.025417014974683457,
+        "roc_auc": 0.7102829052969504
+      }
+    },
+    {
+      "family": "production_stack",
+      "label": "production ensemble calibrated",
+      "feature_set": "production_stack",
+      "model_name": "production_ensemble_calibrated",
+      "metrics": {
+        "accuracy": 0.6570264765784114,
+        "log_loss": 0.6206701780969561,
+        "brier_score": 0.21548050938260577,
+        "calibration_error": 0.06398021534434363,
+        "roc_auc": 0.7249846174424825
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_all / xgboost",
+      "feature_set": "enriched_all",
+      "model_name": "xgboost",
+      "metrics": {
+        "accuracy": 0.6537678207739308,
+        "log_loss": 0.6209689842029283,
+        "brier_score": 0.21592506215465462,
+        "calibration_error": 0.017974467602863798,
+        "roc_auc": 0.709863228999465
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_lineup_only / lightgbm",
+      "feature_set": "enriched_lineup_only",
+      "model_name": "lightgbm",
+      "metrics": {
+        "accuracy": 0.6509164969450102,
+        "log_loss": 0.6211808663425024,
+        "brier_score": 0.21602964262701063,
+        "calibration_error": 0.01811552239259624,
+        "roc_auc": 0.7088051765650081
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "legacy / xgboost",
+      "feature_set": "legacy",
+      "model_name": "xgboost",
+      "metrics": {
+        "accuracy": 0.6452138492871691,
+        "log_loss": 0.6216673913132476,
+        "brier_score": 0.21622955698301569,
+        "calibration_error": 0.031342277458874634,
+        "roc_auc": 0.7097050561797753
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_lineup_only / logistic_regression",
+      "feature_set": "enriched_lineup_only",
+      "model_name": "logistic_regression",
+      "metrics": {
+        "accuracy": 0.6529531568228106,
+        "log_loss": 0.6217787614682146,
+        "brier_score": 0.21526785366955972,
+        "calibration_error": 0.01902353615468161,
+        "roc_auc": 0.7120385232744783
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_no_confidence / logistic_regression",
+      "feature_set": "enriched_no_confidence",
+      "model_name": "logistic_regression",
+      "metrics": {
+        "accuracy": 0.6505091649694501,
+        "log_loss": 0.6223411828888228,
+        "brier_score": 0.21563929395369436,
+        "calibration_error": 0.019020941733209295,
+        "roc_auc": 0.7109590690208667
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_value_only / logistic_regression",
+      "feature_set": "enriched_value_only",
+      "model_name": "logistic_regression",
+      "metrics": {
+        "accuracy": 0.6505091649694501,
+        "log_loss": 0.6224971863634162,
+        "brier_score": 0.21577469464345486,
+        "calibration_error": 0.023949126681631856,
+        "roc_auc": 0.710597244515784
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_all / logistic_regression",
+      "feature_set": "enriched_all",
+      "model_name": "logistic_regression",
+      "metrics": {
+        "accuracy": 0.65010183299389,
+        "log_loss": 0.6225483668333636,
+        "brier_score": 0.2157303187440703,
+        "calibration_error": 0.017789314002666864,
+        "roc_auc": 0.7106260032102729
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_value_only / xgboost",
+      "feature_set": "enriched_value_only",
+      "model_name": "xgboost",
+      "metrics": {
+        "accuracy": 0.6505091649694501,
+        "log_loss": 0.6226209840566715,
+        "brier_score": 0.21669608302608953,
+        "calibration_error": 0.03359667323757335,
+        "roc_auc": 0.7088222311396469
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_lineup_only / xgboost",
+      "feature_set": "enriched_lineup_only",
+      "model_name": "xgboost",
+      "metrics": {
+        "accuracy": 0.639511201629328,
+        "log_loss": 0.6234946160087378,
+        "brier_score": 0.21713187120913544,
+        "calibration_error": 0.03026455756117518,
+        "roc_auc": 0.7057641118245053
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_value_only / lightgbm",
+      "feature_set": "enriched_value_only",
+      "model_name": "lightgbm",
+      "metrics": {
+        "accuracy": 0.6476578411405295,
+        "log_loss": 0.6235781211339205,
+        "brier_score": 0.2171606992840236,
+        "calibration_error": 0.011884784434824196,
+        "roc_auc": 0.7050922953451044
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_availability_only / logistic_regression",
+      "feature_set": "enriched_availability_only",
+      "model_name": "logistic_regression",
+      "metrics": {
+        "accuracy": 0.6488798370672098,
+        "log_loss": 0.6236832411181704,
+        "brier_score": 0.2162445643364127,
+        "calibration_error": 0.02699822713221096,
+        "roc_auc": 0.7090054842161584
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_availability_only / xgboost",
+      "feature_set": "enriched_availability_only",
+      "model_name": "xgboost",
+      "metrics": {
+        "accuracy": 0.6529531568228106,
+        "log_loss": 0.6239783164966943,
+        "brier_score": 0.2172391689891645,
+        "calibration_error": 0.030105814999329836,
+        "roc_auc": 0.7083196227929374
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_no_confidence / lightgbm",
+      "feature_set": "enriched_no_confidence",
+      "model_name": "lightgbm",
+      "metrics": {
+        "accuracy": 0.6570264765784114,
+        "log_loss": 0.6250776254147643,
+        "brier_score": 0.21750161657688566,
+        "calibration_error": 0.04241290109201727,
+        "roc_auc": 0.7145401952915997
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_no_confidence / catboost_platt",
+      "feature_set": "enriched_no_confidence",
+      "model_name": "catboost_platt",
+      "metrics": {
+        "accuracy": 0.6513238289205703,
+        "log_loss": 0.6253627474062047,
+        "brier_score": 0.21763474245212064,
+        "calibration_error": 0.06070127348606018,
+        "roc_auc": 0.7170465489566611
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "legacy / logistic_regression",
+      "feature_set": "legacy",
+      "model_name": "logistic_regression",
+      "metrics": {
+        "accuracy": 0.6423625254582485,
+        "log_loss": 0.6260462494020278,
+        "brier_score": 0.2172165839943054,
+        "calibration_error": 0.025341301793499776,
+        "roc_auc": 0.7058747993579454
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_all / lightgbm_platt",
+      "feature_set": "enriched_all",
+      "model_name": "lightgbm_platt",
+      "metrics": {
+        "accuracy": 0.659877800407332,
+        "log_loss": 0.6262013407554773,
+        "brier_score": 0.2180728117117741,
+        "calibration_error": 0.05318485087022534,
+        "roc_auc": 0.7163670411985019
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "legacy / lightgbm",
+      "feature_set": "legacy",
+      "model_name": "lightgbm",
+      "metrics": {
+        "accuracy": 0.6460285132382892,
+        "log_loss": 0.6265648528892024,
+        "brier_score": 0.2184647282482699,
+        "calibration_error": 0.029500299975528763,
+        "roc_auc": 0.7033333333333334
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_all / catboost_platt",
+      "feature_set": "enriched_all",
+      "model_name": "catboost_platt",
+      "metrics": {
+        "accuracy": 0.6509164969450102,
+        "log_loss": 0.626774580181463,
+        "brier_score": 0.21819855483993483,
+        "calibration_error": 0.0645801823838514,
+        "roc_auc": 0.7180825307651151
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_availability_only / catboost_platt",
+      "feature_set": "enriched_availability_only",
+      "model_name": "catboost_platt",
+      "metrics": {
+        "accuracy": 0.6468431771894094,
+        "log_loss": 0.626801641484509,
+        "brier_score": 0.2183009020818549,
+        "calibration_error": 0.06531814498683396,
+        "roc_auc": 0.7151702113429641
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_availability_only / lightgbm",
+      "feature_set": "enriched_availability_only",
+      "model_name": "lightgbm",
+      "metrics": {
+        "accuracy": 0.6492871690427698,
+        "log_loss": 0.6268216001076944,
+        "brier_score": 0.2184270948821017,
+        "calibration_error": 0.03126955690325122,
+        "roc_auc": 0.7052755484216158
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_lineup_only / catboost_platt",
+      "feature_set": "enriched_lineup_only",
+      "model_name": "catboost_platt",
+      "metrics": {
+        "accuracy": 0.6464358452138493,
+        "log_loss": 0.6278828029241829,
+        "brier_score": 0.21878897205594935,
+        "calibration_error": 0.06280032972736946,
+        "roc_auc": 0.7141091492776885
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_value_only / catboost_platt",
+      "feature_set": "enriched_value_only",
+      "model_name": "catboost_platt",
+      "metrics": {
+        "accuracy": 0.6521384928716905,
+        "log_loss": 0.6279740496024593,
+        "brier_score": 0.21881659819470534,
+        "calibration_error": 0.06332107286059326,
+        "roc_auc": 0.7146207865168539
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "legacy / catboost_platt",
+      "feature_set": "legacy",
+      "model_name": "catboost_platt",
+      "metrics": {
+        "accuracy": 0.6492871690427698,
+        "log_loss": 0.6286440991296407,
+        "brier_score": 0.2191259237622479,
+        "calibration_error": 0.06417162491811244,
+        "roc_auc": 0.7125153825575173
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_lineup_only / lightgbm_platt",
+      "feature_set": "enriched_lineup_only",
+      "model_name": "lightgbm_platt",
+      "metrics": {
+        "accuracy": 0.6537678207739308,
+        "log_loss": 0.6292462406283987,
+        "brier_score": 0.21949091347356978,
+        "calibration_error": 0.05390001686917768,
+        "roc_auc": 0.7088051765650081
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "legacy / xgboost_platt",
+      "feature_set": "legacy",
+      "model_name": "xgboost_platt",
+      "metrics": {
+        "accuracy": 0.6464358452138493,
+        "log_loss": 0.6315577463570768,
+        "brier_score": 0.22061591618935913,
+        "calibration_error": 0.05989230949018249,
+        "roc_auc": 0.7097050561797753
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_no_confidence / lightgbm_platt",
+      "feature_set": "enriched_no_confidence",
+      "model_name": "lightgbm_platt",
+      "metrics": {
+        "accuracy": 0.6570264765784114,
+        "log_loss": 0.6322494792709384,
+        "brier_score": 0.2208727469991947,
+        "calibration_error": 0.06674231300185633,
+        "roc_auc": 0.7145401952915997
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_all / xgboost_platt",
+      "feature_set": "enriched_all",
+      "model_name": "xgboost_platt",
+      "metrics": {
+        "accuracy": 0.6423625254582485,
+        "log_loss": 0.6322719763228316,
+        "brier_score": 0.22088513190094813,
+        "calibration_error": 0.063145896903958,
+        "roc_auc": 0.709863228999465
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_no_confidence / xgboost_platt",
+      "feature_set": "enriched_no_confidence",
+      "model_name": "xgboost_platt",
+      "metrics": {
+        "accuracy": 0.6570264765784114,
+        "log_loss": 0.6323810254223574,
+        "brier_score": 0.22097222044074122,
+        "calibration_error": 0.061960572998979106,
+        "roc_auc": 0.7102829052969504
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_value_only / lightgbm_platt",
+      "feature_set": "enriched_value_only",
+      "model_name": "lightgbm_platt",
+      "metrics": {
+        "accuracy": 0.6464358452138493,
+        "log_loss": 0.6332317770926196,
+        "brier_score": 0.22137792124503208,
+        "calibration_error": 0.05255246968205881,
+        "roc_auc": 0.7050922953451044
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_lineup_only / xgboost_platt",
+      "feature_set": "enriched_lineup_only",
+      "model_name": "xgboost_platt",
+      "metrics": {
+        "accuracy": 0.6472505091649694,
+        "log_loss": 0.6333959678652437,
+        "brier_score": 0.22151995906708527,
+        "calibration_error": 0.06349277882631105,
+        "roc_auc": 0.7057641118245053
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_availability_only / xgboost_platt",
+      "feature_set": "enriched_availability_only",
+      "model_name": "xgboost_platt",
+      "metrics": {
+        "accuracy": 0.6423625254582485,
+        "log_loss": 0.6336911754205847,
+        "brier_score": 0.221647291983685,
+        "calibration_error": 0.06316839695408542,
+        "roc_auc": 0.7083196227929374
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_availability_only / lightgbm_platt",
+      "feature_set": "enriched_availability_only",
+      "model_name": "lightgbm_platt",
+      "metrics": {
+        "accuracy": 0.6427698574338085,
+        "log_loss": 0.6340660143558792,
+        "brier_score": 0.2218011691136598,
+        "calibration_error": 0.06453032621792867,
+        "roc_auc": 0.7052755484216158
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "enriched_value_only / xgboost_platt",
+      "feature_set": "enriched_value_only",
+      "model_name": "xgboost_platt",
+      "metrics": {
+        "accuracy": 0.6374745417515275,
+        "log_loss": 0.6347653724188509,
+        "brier_score": 0.22212287728183616,
+        "calibration_error": 0.07332798765171901,
+        "roc_auc": 0.7088222311396469
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "legacy / lightgbm_platt",
+      "feature_set": "legacy",
+      "model_name": "lightgbm_platt",
+      "metrics": {
+        "accuracy": 0.6456211812627292,
+        "log_loss": 0.6356551215047781,
+        "brier_score": 0.22256247833061468,
+        "calibration_error": 0.06596812101402999,
+        "roc_auc": 0.7033333333333334
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "m1_only / logistic_regression",
+      "feature_set": "m1_only",
+      "model_name": "logistic_regression",
+      "metrics": {
+        "accuracy": 0.619959266802444,
+        "log_loss": 0.6494435807637442,
+        "brier_score": 0.22890458913634648,
+        "calibration_error": 0.021362211844309576,
+        "roc_auc": 0.6627173622257893
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "m1_only / catboost",
+      "feature_set": "m1_only",
+      "model_name": "catboost",
+      "metrics": {
+        "accuracy": 0.6240325865580448,
+        "log_loss": 0.6527257437862147,
+        "brier_score": 0.2303795551448691,
+        "calibration_error": 0.03444386532322407,
+        "roc_auc": 0.6607878544676298
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "m1_only / xgboost",
+      "feature_set": "m1_only",
+      "model_name": "xgboost",
+      "metrics": {
+        "accuracy": 0.6093686354378819,
+        "log_loss": 0.6607549157280872,
+        "brier_score": 0.23414232462388856,
+        "calibration_error": 0.0395065692680188,
+        "roc_auc": 0.6462596976993045
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "m1_only / lightgbm",
+      "feature_set": "m1_only",
+      "model_name": "lightgbm",
+      "metrics": {
+        "accuracy": 0.6065173116089613,
+        "log_loss": 0.6612766397445129,
+        "brier_score": 0.23439518858268177,
+        "calibration_error": 0.03905622978998854,
+        "roc_auc": 0.6464837479935794
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "m1_only / catboost_platt",
+      "feature_set": "m1_only",
+      "model_name": "catboost_platt",
+      "metrics": {
+        "accuracy": 0.5930753564154786,
+        "log_loss": 0.6628416705206417,
+        "brier_score": 0.23523030366239137,
+        "calibration_error": 0.07092282386918168,
+        "roc_auc": 0.6607878544676298
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "m1_only / xgboost_platt",
+      "feature_set": "m1_only",
+      "model_name": "xgboost_platt",
+      "metrics": {
+        "accuracy": 0.5796334012219959,
+        "log_loss": 0.6688916818455732,
+        "brier_score": 0.238112822139205,
+        "calibration_error": 0.06090769717028472,
+        "roc_auc": 0.6462596976993045
+      }
+    },
+    {
+      "family": "enriched_benchmark",
+      "label": "m1_only / lightgbm_platt",
+      "feature_set": "m1_only",
+      "model_name": "lightgbm_platt",
+      "metrics": {
+        "accuracy": 0.5743380855397149,
+        "log_loss": 0.6693003502592931,
+        "brier_score": 0.23831822126905716,
+        "calibration_error": 0.06518679973442122,
+        "roc_auc": 0.6464837479935794
+      }
+    }
+  ],
+  "verdict": {
+    "best_overall": {
+      "family": "production_stack",
+      "label": "production ensemble raw",
+      "feature_set": "production_stack",
+      "model_name": "production_ensemble_raw",
+      "metrics": {
+        "accuracy": 0.6562118126272912,
+        "log_loss": 0.6151888250768539,
+        "brier_score": 0.21327146089673396,
+        "calibration_error": 0.05329806192810594,
+        "roc_auc": 0.7249846174424825
+      }
+    },
+    "best_production": {
+      "family": "production_stack",
+      "label": "production ensemble raw",
+      "feature_set": "production_stack",
+      "model_name": "production_ensemble_raw",
+      "metrics": {
+        "accuracy": 0.6562118126272912,
+        "log_loss": 0.6151888250768539,
+        "brier_score": 0.21327146089673396,
+        "calibration_error": 0.05329806192810594,
+        "roc_auc": 0.7249846174424825
+      }
+    },
+    "best_enriched": {
+      "family": "enriched_benchmark",
+      "label": "enriched_all / catboost",
+      "feature_set": "enriched_all",
+      "model_name": "catboost",
+      "metrics": {
+        "accuracy": 0.6513238289205703,
+        "log_loss": 0.6165347132709291,
+        "brier_score": 0.21378408998256027,
+        "calibration_error": 0.04168017166395607,
+        "roc_auc": 0.7180825307651151
+      }
+    },
+    "best_calibrated": {
+      "family": "enriched_benchmark",
+      "label": "enriched_value_only / lightgbm",
+      "feature_set": "enriched_value_only",
+      "model_name": "lightgbm",
+      "metrics": {
+        "accuracy": 0.6476578411405295,
+        "log_loss": 0.6235781211339205,
+        "brier_score": 0.2171606992840236,
+        "calibration_error": 0.011884784434824196,
+        "roc_auc": 0.7050922953451044
+      }
+    },
+    "production_minus_enriched_log_loss": -0.0013458881940752176
+  }
+}

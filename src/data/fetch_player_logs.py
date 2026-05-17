@@ -15,7 +15,7 @@ import pandas as pd
 import yaml
 from nba_api.stats.endpoints import leaguegamelog
 
-from src.anonymization.player_mapping import player_id_to_idx
+from src.anonymization.player_mapping import ensure_player_id_mapping
 from src.anonymization.team_mapping import team_abbr_to_idx
 from src.utils.logging import setup_logging
 from src.utils.paths import CONFIGS_DIR, PROCESSED_DIR, RAW_DIR
@@ -103,7 +103,8 @@ def build_player_game_logs(raw_df: pd.DataFrame) -> pd.DataFrame:
     frame["team_idx"] = frame["TEAM_ABBREVIATION"].map(team_abbr_to_idx)
     frame["opponent_team_idx"] = frame["opponent_abbr"].map(team_abbr_to_idx)
     frame["player_id"] = frame["PLAYER_ID"].astype(int)
-    frame["player_idx"] = frame["player_id"].map(player_id_to_idx)
+    player_mapping = ensure_player_id_mapping(frame["player_id"].tolist())
+    frame["player_idx"] = frame["player_id"].map(player_mapping)
     frame["season"] = frame["SEASON_ID"].str[-4:].astype(int).apply(
         lambda year: f"{year}-{str(year + 1)[-2:]}"
     )

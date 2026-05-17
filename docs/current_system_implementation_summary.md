@@ -471,6 +471,36 @@ Additional M1 processed outputs:
 - `data/processed/lineup_features/lineup_features.parquet`
 - `data/processed/matchup_rows/matchup_dataset_enriched.parquet`
 
+Round-two enriched experiment outputs:
+
+- `docs/experiments/m1_enriched_matchup_results.json`
+- `docs/experiments/m1_enriched_matchup_results.md`
+
+The runner lives at `src/models/run_enriched_experiments.py` and compares the legacy feature
+stack against enriched M1 variants, feature-family ablations, calibrated tree variants, and
+playoff/context slices.
+
+Production showdown outputs:
+
+- `docs/experiments/production_stack_showdown.json`
+- `docs/experiments/production_stack_showdown.md`
+
+The showdown runner lives at `src/models/run_production_showdown.py` and re-scores the saved
+production neural full-fusion and ensemble artifacts against the latest enriched benchmark report.
+
+Next-generation ensemble outputs:
+
+- `docs/experiments/nextgen_ensemble_results.json`
+- `docs/experiments/nextgen_ensemble_results.md`
+
+The next-gen ensemble runner lives at `src/models/run_nextgen_ensemble.py`. It trains enriched
+CatBoost/LightGBM input models, merges those probabilities with the current production
+`neural + xgboost + elo` inputs, and scores expanded logistic meta-model variants.
+
+As of the first run, `nextgen_full / raw` is the best candidate on the current held-out split:
+`0.6137` log loss, `0.6550` accuracy, and `0.7261` ROC-AUC. The saved production raw ensemble
+remains the comparison baseline at `0.6152` log loss.
+
 ---
 
 ## 11. Current Strengths

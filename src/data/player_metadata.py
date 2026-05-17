@@ -8,7 +8,7 @@ from typing import Protocol
 import pandas as pd
 from nba_api.stats.static import players as nba_players
 
-from src.anonymization.player_mapping import normalize_player_name, player_id_to_idx
+from src.anonymization.player_mapping import ensure_player_id_mapping, normalize_player_name
 from src.anonymization.team_mapping import team_abbr_to_idx
 
 
@@ -36,7 +36,8 @@ def load_static_player_metadata() -> pd.DataFrame:
     rows = pd.DataFrame(nba_players.get_players())
     rows = rows.rename(columns={"id": "player_id", "full_name": "full_name"})
     rows["player_id"] = rows["player_id"].astype(int)
-    rows["player_idx"] = rows["player_id"].map(player_id_to_idx)
+    player_mapping = ensure_player_id_mapping(rows["player_id"].tolist())
+    rows["player_idx"] = rows["player_id"].map(player_mapping)
     rows["normalized_name"] = rows["full_name"].map(normalize_player_name)
     rows["aliases"] = rows.apply(_player_aliases, axis=1)
     return rows.sort_values("player_id").reset_index(drop=True)
@@ -52,6 +53,7 @@ def build_player_metadata_for_season(
         return pd.DataFrame()
 
     roster["player_id"] = roster["player_id"].astype(int)
+    player_mapping = ensure_player_id_mapping(roster["player_id"].tolist())
     static_columns = [
         "player_id",
         "player_idx",
@@ -67,6 +69,7 @@ def build_player_metadata_for_season(
         how="left",
     )
     merged["player_name"] = merged["player_name"].fillna(merged["full_name"])
+    merged["player_idx"] = merged["player_id"].map(player_mapping)
     merged["team_idx"] = merged["team_abbr"].map(team_abbr_to_idx)
     merged["normalized_name"] = merged["player_name"].map(normalize_player_name)
     merged["aliases"] = merged.apply(

@@ -142,6 +142,48 @@ These write:
 They are not yet part of the deployed model's main inference stack, but they are the active
 foundation for the next-generation roadmap.
 
+To benchmark the enriched representation itself, run:
+
+```bash
+python -m src.models.run_enriched_experiments
+```
+
+That experiment suite writes:
+
+- `docs/experiments/m1_enriched_matchup_results.json`
+- `docs/experiments/m1_enriched_matchup_results.md`
+
+It compares the legacy matchup rows against the enriched M1 variants, includes feature-family
+ablations, and will also score optional `LightGBM` / `CatBoost` leaderboard entries when those
+libraries are installed in the environment.
+
+To compare those enriched winners against the shipped neural + ensemble production stack without
+retraining everything, run:
+
+```bash
+python -m src.models.run_production_showdown
+```
+
+That writes:
+
+- `docs/experiments/production_stack_showdown.json`
+- `docs/experiments/production_stack_showdown.md`
+
+To train the next-generation ensemble that adds enriched CatBoost and LightGBM probabilities on
+top of the current `neural + xgboost + elo` stack, run:
+
+```bash
+python -m src.models.run_nextgen_ensemble
+```
+
+That writes tracked reports to:
+
+- `docs/experiments/nextgen_ensemble_results.json`
+- `docs/experiments/nextgen_ensemble_results.md`
+
+Generated next-gen model artifacts are stored under `models/ensembles_nextgen/` and are ignored by
+git.
+
 ### 3. Generate Local Predictions
 
 To create a local prediction file for the current weekly slate:

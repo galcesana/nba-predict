@@ -40,14 +40,39 @@ def build_player_to_idx_mapping(
     return {player_id: idx for idx, player_id in enumerate(player_ids)}
 
 
-def write_player_mapping(path: Path | None = None) -> Path:
-    """Persist the current player mapping to disk."""
-    target = path or PLAYER_MAPPING_PATH
+def extend_player_to_idx_mapping(
+    player_ids: Iterable[int],
+    *,
+    base_mapping: dict[int, int] | None = None,
+) -> dict[int, int]:
+    """Extend a mapping with observed player ids, preserving existing assignments."""
+    mapping = dict(base_mapping) if base_mapping is not None else load_player_to_idx()
+    next_idx = max(mapping.values(), default=-1) + 1
+    for player_id in sorted({int(player_id) for player_id in player_ids}):
+        if player_id not in mapping:
+            mapping[player_id] = next_idx
+            next_idx += 1
+    return mapping
+
+
+def _write_mapping(mapping: dict[int, int], target: Path) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
-    mapping = build_player_to_idx_mapping()
     serializable = {str(player_id): idx for player_id, idx in mapping.items()}
     target.write_text(json.dumps(serializable, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return target
+
+
+def write_player_mapping(
+    path: Path | None = None,
+    *,
+    extra_player_ids: Iterable[int] | None = None,
+) -> Path:
+    """Persist the current player mapping to disk."""
+    target = path or PLAYER_MAPPING_PATH
+    mapping = build_player_to_idx_mapping()
+    if extra_player_ids is not None:
+        mapping = extend_player_to_idx_mapping(extra_player_ids, base_mapping=mapping)
+    return _write_mapping(mapping, target)
 
 
 @lru_cache(maxsize=1)
@@ -74,6 +99,22 @@ def player_id_to_idx(player_id: int, path: str | None = None) -> int:
     if player_id not in mapping:
         raise KeyError(f"Unknown player_id: {player_id}")
     return mapping[player_id]
+
+
+def ensure_player_id_mapping(
+    player_ids: Iterable[int],
+    *,
+    path: Path | None = None,
+) -> dict[int, int]:
+    """Ensure the persisted mapping includes the provided player ids."""
+    target = path or PLAYER_MAPPING_PATH
+    existing = load_player_to_idx(str(target) if path is not None else None)
+    extended = extend_player_to_idx_mapping(player_ids, base_mapping=existing)
+    if extended != existing or not target.exists():
+        _write_mapping(extended, target)
+        load_player_to_idx.cache_clear()
+        load_idx_to_player.cache_clear()
+    return load_player_to_idx(str(target) if path is not None else None)
 
 
 def idx_to_player_id(idx: int, path: str | None = None) -> int:
