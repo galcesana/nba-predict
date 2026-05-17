@@ -86,9 +86,16 @@ def build_validation_slices(test_df: pd.DataFrame) -> dict[str, pd.Series]:
 
     slices["all_test"] = _as_bool_mask(np.ones(len(frame), dtype=bool), game_ids)
 
-    game_prefix = game_ids.str[:3]
-    slices["regular_season"] = _as_bool_mask(game_prefix == "002", game_ids)
-    slices["playoffs"] = _as_bool_mask(game_prefix == "004", game_ids)
+    if "season_type" in frame.columns:
+        season_type = frame["season_type"].astype(str).str.lower()
+        is_regular_season = season_type.eq("regular season")
+        is_playoffs = season_type.eq("playoffs")
+    else:
+        game_prefix = game_ids.str[:3]
+        is_regular_season = game_prefix == "002"
+        is_playoffs = game_prefix == "004"
+    slices["regular_season"] = _as_bool_mask(is_regular_season, game_ids)
+    slices["playoffs"] = _as_bool_mask(is_playoffs, game_ids)
 
     if "season" in frame.columns:
         for season in sorted(frame["season"].dropna().astype(str).unique()):

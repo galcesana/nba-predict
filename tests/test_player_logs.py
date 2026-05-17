@@ -52,6 +52,7 @@ def test_build_player_game_logs_normalizes_raw_frame(monkeypatch):
     assert len(result) == 1
     row = result.iloc[0]
     assert row["season"] == "2024-25"
+    assert row["season_type"] == fetch_player_logs.REGULAR_SEASON
     assert row["team_idx"] == 1
     assert row["opponent_team_idx"] == 12
     assert row["player_idx"] == 7
@@ -66,4 +67,51 @@ def test_build_player_game_logs_returns_empty_schema_for_empty_input():
     result = fetch_player_logs.build_player_game_logs(pd.DataFrame())
 
     assert result.empty
-    assert {"player_id", "player_idx", "available_for_game"}.issubset(result.columns)
+    assert {"player_id", "player_idx", "season_type", "available_for_game"}.issubset(
+        result.columns
+    )
+
+
+def test_build_player_game_logs_infers_playoff_season_type(monkeypatch):
+    """Player logs from old caches should infer playoff rows from game id prefix."""
+    monkeypatch.setattr(
+        fetch_player_logs,
+        "ensure_player_id_mapping",
+        lambda player_ids: {201143: 7},
+    )
+    monkeypatch.setattr(
+        fetch_player_logs,
+        "team_abbr_to_idx",
+        lambda abbr: {"BOS": 1, "MIA": 14}[abbr],
+    )
+
+    raw = pd.DataFrame(
+        [
+            {
+                "SEASON_ID": "22024",
+                "PLAYER_ID": 201143,
+                "PLAYER_NAME": "Al Horford",
+                "TEAM_ABBREVIATION": "BOS",
+                "GAME_ID": "0042400101",
+                "GAME_DATE": "2025-04-20",
+                "MATCHUP": "BOS vs. MIA",
+                "WL": "W",
+                "MIN": 26,
+                "PTS": 11,
+                "REB": 3,
+                "AST": 5,
+                "STL": 1,
+                "BLK": 1,
+                "TOV": 0,
+                "FG_PCT": 0.571,
+                "FG3_PCT": 0.6,
+                "FT_PCT": None,
+                "PLUS_MINUS": 19,
+                "FANTASY_PTS": 28.1,
+            }
+        ]
+    )
+
+    result = fetch_player_logs.build_player_game_logs(raw)
+
+    assert result.iloc[0]["season_type"] == fetch_player_logs.PLAYOFFS

@@ -46,6 +46,22 @@ def test_build_validation_slices_tracks_playoffs_missing_players_and_seasons():
     assert int(slices["season_2024_25"].sum()) == 2
 
 
+def test_build_validation_slices_prefers_explicit_season_type():
+    """Explicit season_type should drive regime masks when it is available."""
+    frame = _test_frame()
+    frame["season_type"] = [
+        "Regular Season",
+        "Playoffs",
+        "Regular Season",
+        "Playoffs",
+    ]
+
+    slices = run_nextgen_validation.build_validation_slices(frame)
+
+    assert int(slices["regular_season"].sum()) == 2
+    assert int(slices["playoffs"].sum()) == 2
+
+
 def test_evaluate_model_comparison_scores_slices_and_deltas():
     """Slice comparison should report production, next-gen, and deltas."""
     slices = run_nextgen_validation.build_validation_slices(_test_frame())

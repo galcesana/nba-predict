@@ -8,6 +8,7 @@ Usage:
 import argparse
 import logging
 import time
+from pathlib import Path
 
 import pandas as pd
 import yaml
@@ -21,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 CACHE_DIR = RAW_DIR / "nba_api"
 REQUEST_DELAY = 1.0
+REGULAR_SEASON = "Regular Season"
+PLAYOFFS = "Playoffs"
 
 
 def _load_seasons_config() -> list[str]:
@@ -39,8 +42,48 @@ def _load_seasons_config() -> list[str]:
     return seasons
 
 
-def fetch_season_games(season: str) -> pd.DataFrame:
-    """Fetch all regular season games for a single season from nba_api.
+def _load_season_types_config() -> list[str]:
+    """Load configured season types, defaulting to regular season for old configs."""
+    with open(CONFIGS_DIR / "data_sources.yaml") as f:
+        config = yaml.safe_load(f)
+    return list(config.get("season_types", [REGULAR_SEASON]))
+
+
+def _season_type_slug(season_type: str) -> str:
+    return season_type.lower().replace(" ", "_")
+
+
+def _season_cache_path(season: str, season_type: str) -> Path:
+    season_slug = season.replace("-", "_")
+    if season_type == REGULAR_SEASON:
+        return CACHE_DIR / f"games_{season_slug}.parquet"
+    return CACHE_DIR / f"games_{season_slug}_{_season_type_slug(season_type)}.parquet"
+
+
+def _infer_season_type_from_game_id(game_id: object) -> str:
+    return PLAYOFFS if str(game_id)[:3] == "004" else REGULAR_SEASON
+
+
+def _ensure_season_type_column(
+    frame: pd.DataFrame,
+    *,
+    season_type: str | None = None,
+) -> pd.DataFrame:
+    """Attach a normalized season_type column to raw nba_api rows."""
+    result = frame.copy()
+    if result.empty:
+        return result
+    if season_type is not None:
+        result["season_type"] = season_type
+    elif "season_type" not in result.columns:
+        result["season_type"] = result["GAME_ID"].map(_infer_season_type_from_game_id)
+    else:
+        result["season_type"] = result["season_type"].fillna(REGULAR_SEASON).astype(str)
+    return result
+
+
+def fetch_season_games(season: str, season_type: str = REGULAR_SEASON) -> pd.DataFrame:
+    """Fetch games for a single season and season type from nba_api.
 
     Uses caching — skips API call if Parquet cache exists.
 
@@ -50,27 +93,29 @@ def fetch_season_games(season: str) -> pd.DataFrame:
     Returns:
         DataFrame with one row per team per game.
     """
-    cache_path = CACHE_DIR / f"games_{season.replace('-', '_')}.parquet"
+    cache_path = _season_cache_path(season, season_type)
 
     if cache_path.exists():
-        logger.info("Cache hit for season %s: %s", season, cache_path)
-        return pd.read_parquet(cache_path)
+        logger.info("Cache hit for season %s %s: %s", season, season_type, cache_path)
+        return _ensure_season_type_column(pd.read_parquet(cache_path), season_type=season_type)
 
-    logger.info("Fetching season %s from nba_api...", season)
+    logger.info("Fetching season %s %s from nba_api...", season, season_type)
     time.sleep(REQUEST_DELAY)
 
     gf = leaguegamefinder.LeagueGameFinder(
         season_nullable=season,
-        season_type_nullable="Regular Season",
+        season_type_nullable=season_type,
         league_id_nullable="00",
     )
     df = gf.get_data_frames()[0]
 
     if df.empty:
-        logger.warning("No games returned for season %s", season)
+        logger.warning("No games returned for season %s %s", season, season_type)
         return df
 
-    logger.info("Fetched %d team-game rows for season %s", len(df), season)
+    df = _ensure_season_type_column(df, season_type=season_type)
+
+    logger.info("Fetched %d team-game rows for season %s %s", len(df), season, season_type)
 
     # Cache raw response
     cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -93,7 +138,7 @@ def build_games_table(raw_df: pd.DataFrame) -> pd.DataFrame:
         Games table with columns: game_id, date, season, home_team_idx,
         away_team_idx, home_score, away_score, home_win.
     """
-    df = raw_df.copy()
+    df = _ensure_season_type_column(raw_df)
 
     # Parse home vs away from MATCHUP column
     # Home games: "BOS vs. NYK", Away games: "BOS @ NYK"
@@ -104,7 +149,7 @@ def build_games_table(raw_df: pd.DataFrame) -> pd.DataFrame:
 
     # Merge home and away on GAME_ID
     games = home.merge(
-        away[["GAME_ID", "TEAM_ABBREVIATION", "PTS"]],
+        away[["GAME_ID", "TEAM_ABBREVIATION", "PTS", "season_type"]],
         on="GAME_ID",
         suffixes=("_home", "_away"),
     )
@@ -124,6 +169,7 @@ def build_games_table(raw_df: pd.DataFrame) -> pd.DataFrame:
         "season": games["SEASON_ID"].str[-4:].astype(int).apply(
             lambda y: f"{y}-{str(y + 1)[-2:]}"
         ),
+        "season_type": games["season_type_home"].fillna(games["season_type_away"]),
         "home_team_idx": games["home_team_idx"],
         "away_team_idx": games["away_team_idx"],
         "home_score": games["PTS_home"].astype(int),
@@ -146,7 +192,7 @@ def build_team_game_logs(raw_df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         Team game logs DataFrame.
     """
-    df = raw_df.copy()
+    df = _ensure_season_type_column(raw_df)
 
     df["is_home"] = df["MATCHUP"].str.contains("vs.").astype(int)
     df["won"] = (df["WL"] == "W").astype(int)
@@ -225,9 +271,18 @@ def build_team_game_logs(raw_df: pd.DataFrame) -> pd.DataFrame:
 
     # Defensive rating = points allowed per 100 possessions
     # Need opponent possessions — approximate using opponent's stats from same game
-    opp_stats = df.groupby("GAME_ID").agg({
-        "FGA": "sum", "FTA": "sum", "OREB": "sum", "TOV": "sum"
-    }).rename(columns={"FGA": "total_fga", "FTA": "total_fta", "OREB": "total_oreb", "TOV": "total_tov"})
+    opp_stats = (
+        df.groupby("GAME_ID")
+        .agg({"FGA": "sum", "FTA": "sum", "OREB": "sum", "TOV": "sum"})
+        .rename(
+            columns={
+                "FGA": "total_fga",
+                "FTA": "total_fta",
+                "OREB": "total_oreb",
+                "TOV": "total_tov",
+            }
+        )
+    )
     df = df.merge(opp_stats, on="GAME_ID", how="left")
     opp_possessions = (
         (df["total_fga"] - fga)
@@ -249,7 +304,7 @@ def build_team_game_logs(raw_df: pd.DataFrame) -> pd.DataFrame:
 
     # Select final columns
     result = df[[
-        "game_id", "date", "season", "team_idx", "opponent_team_idx",
+        "game_id", "date", "season", "season_type", "team_idx", "opponent_team_idx",
         "is_home", "won", "points_for", "points_against", "point_diff",
         "fg_pct", "ts_pct", "efg_pct", "turnover_pct",
         "off_rebound_pct", "def_rebound_pct",
@@ -265,6 +320,15 @@ def main():
     """Main entry point: fetch all seasons, build games table and team game logs."""
     parser = argparse.ArgumentParser(description="Fetch NBA game data")
     parser.add_argument("--season", type=str, help="Single season to fetch (e.g., 2024-25)")
+    parser.add_argument(
+        "--season-type",
+        action="append",
+        choices=[REGULAR_SEASON, PLAYOFFS],
+        help=(
+            "Season type to fetch. Repeat for multiple values. "
+            "Defaults to configs/data_sources.yaml season_types."
+        ),
+    )
     args = parser.parse_args()
 
     setup_logging()
@@ -273,20 +337,28 @@ def main():
         seasons = [args.season]
     else:
         seasons = _load_seasons_config()
+    season_types = args.season_type if args.season_type else _load_season_types_config()
 
-    logger.info("Fetching %d seasons: %s to %s", len(seasons), seasons[0], seasons[-1])
+    logger.info(
+        "Fetching %d seasons across season types %s: %s to %s",
+        len(seasons),
+        season_types,
+        seasons[0],
+        seasons[-1],
+    )
 
     # Fetch all seasons
     all_raw = []
     for i, season in enumerate(seasons):
         logger.info("=== Season %d/%d: %s ===", i + 1, len(seasons), season)
-        try:
-            df = fetch_season_games(season)
-            if not df.empty:
-                all_raw.append(df)
-        except Exception as e:
-            logger.error("Failed to fetch season %s: %s", season, e)
-            continue
+        for season_type in season_types:
+            try:
+                df = fetch_season_games(season, season_type=season_type)
+                if not df.empty:
+                    all_raw.append(df)
+            except Exception as e:
+                logger.error("Failed to fetch season %s %s: %s", season, season_type, e)
+                continue
 
     if not all_raw:
         logger.error("No data fetched. Aborting.")

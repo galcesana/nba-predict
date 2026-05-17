@@ -99,7 +99,10 @@ def build_matchup_dataset(
     )
 
     # Start from games table
-    matchup = games[["game_id", "date", "season", "home_team_idx", "away_team_idx"]].copy()
+    matchup_meta_cols = ["game_id", "date", "season"]
+    if "season_type" in games.columns:
+        matchup_meta_cols.append("season_type")
+    matchup = games[[*matchup_meta_cols, "home_team_idx", "away_team_idx"]].copy()
 
     # Merge home and away features
     matchup = matchup.merge(home_renamed, on="game_id", how="left")

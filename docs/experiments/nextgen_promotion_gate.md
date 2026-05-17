@@ -1,6 +1,6 @@
 # Next-Gen Promotion Gate
 
-Generated at `2026-05-17T14:20:34.359867+00:00`.
+Generated at `2026-05-17T16:33:47.068612+00:00`.
 
 ## Promotion Status
 

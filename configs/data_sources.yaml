@@ -6,6 +6,12 @@ seasons:
   start: "2014-15"
   end: "2025-26"
 
+# Historical game populations to fetch. The model started regular-season only;
+# playoffs are now included for regime-aware validation and future training.
+season_types:
+  - Regular Season
+  - Playoffs
+
 # Rate limiting for API requests
 rate_limit:
   requests_per_second: 1

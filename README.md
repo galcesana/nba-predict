@@ -113,11 +113,24 @@ make evaluate
 
 What each step does:
 
-- `make fetch-data` downloads and caches historical NBA data.
+- `make fetch-data` downloads and caches historical NBA data. `configs/data_sources.yaml`
+  now includes both `Regular Season` and `Playoffs` under `season_types`, so a full
+  rebuild can populate regime-aware historical rows.
 - `make build-features` creates the processed game table and team-game logs used by training and inference.
 - `make train-baseline` trains the Elo and tabular benchmark models.
 - `make train-model` trains the fusion model and ensemble artifacts.
 - `make evaluate` writes the evaluation outputs used by the dashboard.
+
+To fetch only one population during development, pass an explicit season type:
+
+```bash
+python -m src.data.fetch_games --season-type "Regular Season"
+python -m src.data.fetch_games --season-type Playoffs
+python -m src.data.fetch_player_logs --season-type Playoffs
+```
+
+Those commands rewrite the processed tables for the selected fetch scope, so use the
+full default commands before training or promotion-gate evaluation.
 
 For the active M1 player-and-lineup foundation work, there are also standalone builders for the new
 player-aware tables:

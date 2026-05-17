@@ -105,7 +105,12 @@ def _load_or_build_player_logs() -> pd.DataFrame:
 
     logger.info("Processed player logs missing; fetching seasons and building them now.")
     seasons = fetch_player_logs._load_seasons_config()
-    raw_frames = [fetch_player_logs.fetch_season_player_logs(season) for season in seasons]
+    season_types = fetch_player_logs._load_season_types_config()
+    raw_frames = [
+        fetch_player_logs.fetch_season_player_logs(season, season_type=season_type)
+        for season in seasons
+        for season_type in season_types
+    ]
     raw_frames = [frame for frame in raw_frames if not frame.empty]
     if not raw_frames:
         msg = "Unable to build player logs; no raw season frames were fetched."
@@ -303,7 +308,11 @@ def build_test_slice_masks(enriched_df: pd.DataFrame) -> dict[str, pd.Series]:
         "all_test": pd.Series(True, index=game_ids),
     }
 
-    is_playoffs = game_ids.str.startswith("004")
+    if "season_type" in test_df.columns:
+        is_playoffs = test_df["season_type"].astype(str).str.lower().eq("playoffs")
+        is_playoffs = is_playoffs.reset_index(drop=True)
+    else:
+        is_playoffs = game_ids.str.startswith("004")
     if 0 < int(is_playoffs.sum()) < len(game_ids):
         slice_masks["playoffs"] = pd.Series(is_playoffs.to_numpy(), index=game_ids)
     if 0 < int((~is_playoffs).sum()) < len(game_ids):

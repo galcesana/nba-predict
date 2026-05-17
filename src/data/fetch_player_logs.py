@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import logging
 import time
+from pathlib import Path
 
 import pandas as pd
 import yaml
@@ -24,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 CACHE_DIR = RAW_DIR / "nba_api"
 REQUEST_DELAY = 1.0
+REGULAR_SEASON = "Regular Season"
+PLAYOFFS = "Playoffs"
 
 
 def _load_seasons_config() -> list[str]:
@@ -37,25 +40,68 @@ def _load_seasons_config() -> list[str]:
     return [f"{year}-{str(year + 1)[-2:]}" for year in range(start_year, end_year + 1)]
 
 
-def fetch_season_player_logs(season: str) -> pd.DataFrame:
-    """Fetch all regular-season player game logs for a season with Parquet caching."""
-    cache_path = CACHE_DIR / f"player_logs_{season.replace('-', '_')}.parquet"
-    if cache_path.exists():
-        logger.info("Cache hit for player logs %s: %s", season, cache_path)
-        return pd.read_parquet(cache_path)
+def _load_season_types_config() -> list[str]:
+    with open(CONFIGS_DIR / "data_sources.yaml", encoding="utf-8") as handle:
+        config = yaml.safe_load(handle)
+    return list(config.get("season_types", [REGULAR_SEASON]))
 
-    logger.info("Fetching player logs for season %s from nba_api...", season)
+
+def _season_type_slug(season_type: str) -> str:
+    return season_type.lower().replace(" ", "_")
+
+
+def _season_cache_path(season: str, season_type: str) -> Path:
+    season_slug = season.replace("-", "_")
+    if season_type == REGULAR_SEASON:
+        return CACHE_DIR / f"player_logs_{season_slug}.parquet"
+    return CACHE_DIR / f"player_logs_{season_slug}_{_season_type_slug(season_type)}.parquet"
+
+
+def _infer_season_type_from_game_id(game_id: object) -> str:
+    return PLAYOFFS if str(game_id)[:3] == "004" else REGULAR_SEASON
+
+
+def _ensure_season_type_column(
+    frame: pd.DataFrame,
+    *,
+    season_type: str | None = None,
+) -> pd.DataFrame:
+    result = frame.copy()
+    if result.empty:
+        return result
+    if season_type is not None:
+        result["season_type"] = season_type
+    elif "season_type" not in result.columns:
+        result["season_type"] = result["GAME_ID"].map(_infer_season_type_from_game_id)
+    else:
+        result["season_type"] = result["season_type"].fillna(REGULAR_SEASON).astype(str)
+    return result
+
+
+def fetch_season_player_logs(
+    season: str,
+    season_type: str = REGULAR_SEASON,
+) -> pd.DataFrame:
+    """Fetch player game logs for a season and season type with Parquet caching."""
+    cache_path = _season_cache_path(season, season_type)
+    if cache_path.exists():
+        logger.info("Cache hit for player logs %s %s: %s", season, season_type, cache_path)
+        return _ensure_season_type_column(pd.read_parquet(cache_path), season_type=season_type)
+
+    logger.info("Fetching player logs for season %s %s from nba_api...", season, season_type)
     time.sleep(REQUEST_DELAY)
 
     endpoint = leaguegamelog.LeagueGameLog(
         season=season,
-        season_type_all_star="Regular Season",
+        season_type_all_star=season_type,
         player_or_team_abbreviation="P",
     )
     frame = endpoint.get_data_frames()[0]
     if frame.empty:
-        logger.warning("No player logs returned for season %s", season)
+        logger.warning("No player logs returned for season %s %s", season, season_type)
         return frame
+
+    frame = _ensure_season_type_column(frame, season_type=season_type)
 
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_parquet(cache_path, index=False)
@@ -71,6 +117,7 @@ def build_player_game_logs(raw_df: pd.DataFrame) -> pd.DataFrame:
                 "game_id",
                 "date",
                 "season",
+                "season_type",
                 "team_idx",
                 "opponent_team_idx",
                 "player_id",
@@ -94,7 +141,7 @@ def build_player_game_logs(raw_df: pd.DataFrame) -> pd.DataFrame:
             ]
         )
 
-    frame = raw_df.copy()
+    frame = _ensure_season_type_column(raw_df)
     frame["date"] = pd.to_datetime(frame["GAME_DATE"])
     frame["is_home"] = frame["MATCHUP"].str.contains("vs.").astype(int)
     frame["won"] = frame["WL"].eq("W").astype(int)
@@ -115,6 +162,7 @@ def build_player_game_logs(raw_df: pd.DataFrame) -> pd.DataFrame:
             "game_id": frame["GAME_ID"].astype(str),
             "date": frame["date"],
             "season": frame["season"],
+            "season_type": frame["season_type"],
             "team_idx": frame["team_idx"].astype(int),
             "opponent_team_idx": frame["opponent_team_idx"].astype(int),
             "player_id": frame["player_id"],
@@ -146,10 +194,24 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Fetch NBA player game logs.")
     parser.add_argument("--season", type=str, default=None, help="Single season to fetch.")
+    parser.add_argument(
+        "--season-type",
+        action="append",
+        choices=[REGULAR_SEASON, PLAYOFFS],
+        help=(
+            "Season type to fetch. Repeat for multiple values. "
+            "Defaults to configs/data_sources.yaml season_types."
+        ),
+    )
     args = parser.parse_args()
 
     seasons = [args.season] if args.season else _load_seasons_config()
-    raw_frames = [fetch_season_player_logs(season) for season in seasons]
+    season_types = args.season_type if args.season_type else _load_season_types_config()
+    raw_frames = [
+        fetch_season_player_logs(season, season_type=season_type)
+        for season in seasons
+        for season_type in season_types
+    ]
     raw_frames = [frame for frame in raw_frames if not frame.empty]
     if not raw_frames:
         logger.warning("No player logs were fetched.")

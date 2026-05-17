@@ -39,6 +39,10 @@ Core historical processed tables:
 - `data/processed/injury_features/injury_features.parquet`
 - `data/processed/news_features/news_features.parquet`
 
+The game and team-log fetch path now supports both `Regular Season` and `Playoffs`
+from `configs/data_sources.yaml`. New processed rows preserve a `season_type` column
+so evaluation can separate regular-season and playoff regimes.
+
 New M1 foundation code now also exists for:
 
 - player identity mapping
@@ -514,6 +518,10 @@ Current promotion status is `blocked`: the next-gen candidate clears the aggrega
 but the held-out historical evaluation has 0 playoff games and 0 nonzero missing-player-impact games.
 Do not promote the next-gen ensemble into live inference until those coverage gates are fixed and the
 gate reports `ready`.
+
+The first coverage fix is implemented at the ingestion-code level: historical game and player-log
+fetchers can now request playoff rows and carry `season_type` forward. The local processed/parquet
+artifacts still need a full rebuild before the promotion gate will have playoff coverage.
 
 ---
 

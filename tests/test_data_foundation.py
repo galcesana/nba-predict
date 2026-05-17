@@ -77,7 +77,10 @@ class TestGamesTable:
 
     def test_games_per_season(self, games_df):
         """Each full season has roughly 1,230 games (±200 for COVID/lockout)."""
-        season_counts = games_df.groupby("season").size()
+        frame = games_df
+        if "season_type" in frame.columns:
+            frame = frame[frame["season_type"] == "Regular Season"]
+        season_counts = frame.groupby("season").size()
         for season, count in season_counts.items():
             assert 800 <= count <= 1300, (
                 f"Season {season} has {count} games, expected 800-1300"
