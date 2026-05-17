@@ -39,6 +39,14 @@ Core historical processed tables:
 - `data/processed/injury_features/injury_features.parquet`
 - `data/processed/news_features/news_features.parquet`
 
+New early M1 foundation code now also exists for:
+
+- player identity mapping
+- season roster metadata loading
+- processed player-game log building
+
+These utilities are present, but they are not yet fully integrated into the deployed forecasting model.
+
 Historical modeling is built around anonymous team IDs `0-29`, with team names reserved for collection and UI only.
 
 ---
@@ -143,6 +151,22 @@ The current deployed inference pipeline still loads:
 - Elo ratings
 - XGBoost model
 - scaler artifact
+
+### 4.1.1 Early player foundation utilities
+
+The repo now also includes early M1 foundation files:
+
+- [src/anonymization/player_mapping.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/anonymization/player_mapping.py>)
+- [src/data/player_metadata.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/data/player_metadata.py>)
+- [src/data/fetch_player_logs.py](</C:/Users/galce/OneDrive/שולחן העבודה/FOLDERS/projects/nba-predict/src/data/fetch_player_logs.py>)
+
+These provide:
+
+- stable anonymous player indices
+- season roster metadata normalization
+- processed historical player-game logs
+
+They are the first live code slice of the new player-and-lineup roadmap, but they do not yet change the deployed forecast representation.
 
 ### 4.2 Neural model
 
@@ -354,11 +378,12 @@ The current system is already strong in these ways:
 These are the most important limitations to remember before extending the system:
 
 1. **The model is still mostly team-level.**
-2. **Injury value is still heuristic in many cases.**
-3. **News coverage is still sparse and often fallback-heavy.**
-4. **Playoff handling is stronger in publishing logic than in model design.**
-5. **Displayed explanations are still partly heuristic rather than fully learned attribution.**
-6. **The ensemble is simple and not yet context-aware or regime-aware.**
+2. **The new player foundation is not yet integrated into training or inference.**
+3. **Injury value is still heuristic in many cases.**
+4. **News coverage is still sparse and often fallback-heavy.**
+5. **Playoff handling is stronger in publishing logic than in model design.**
+6. **Displayed explanations are still partly heuristic rather than fully learned attribution.**
+7. **The ensemble is simple and not yet context-aware or regime-aware.**
 
 ---
 

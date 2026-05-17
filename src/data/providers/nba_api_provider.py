@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Any, Callable
 
 import pandas as pd
+from nba_api.stats.endpoints import commonteamroster
+from nba_api.stats.static import teams as nba_teams
 
 from .base import DataProvider
 
@@ -124,5 +126,57 @@ class NbaApiProvider(DataProvider):
         raise NotImplementedError("fetch_box_scores will be implemented in Phase 1")
 
     def fetch_player_info(self, season: str) -> pd.DataFrame:
-        """Fetch player info for a season. Implemented in Phase 1."""
-        raise NotImplementedError("fetch_player_info will be implemented in Phase 1")
+        """Fetch season roster info for all NBA teams."""
+        cache_path = self._get_cache_path("player_info", season)
+        cached = self._load_from_cache(cache_path)
+        if cached is not None:
+            return cached
+
+        rows: list[pd.DataFrame] = []
+        for team in nba_teams.get_teams():
+            team_id = int(team["id"])
+            team_abbr = str(team["abbreviation"]).upper()
+            roster = self._request_with_retry(
+                commonteamroster.CommonTeamRoster,
+                team_id=team_id,
+                season=season,
+            ).get_data_frames()[0]
+            if roster.empty:
+                continue
+
+            roster = roster.rename(
+                columns={
+                    "PLAYER_ID": "player_id",
+                    "PLAYER": "player_name",
+                    "POSITION": "position",
+                    "HEIGHT": "height",
+                    "WEIGHT": "weight",
+                    "BIRTH_DATE": "birth_date",
+                    "EXP": "experience",
+                    "HOW_ACQUIRED": "how_acquired",
+                }
+            )
+            roster["team_abbr"] = team_abbr
+            roster["season"] = season
+            rows.append(
+                roster[
+                    [
+                        "season",
+                        "player_id",
+                        "player_name",
+                        "team_abbr",
+                        "position",
+                        "height",
+                        "weight",
+                        "birth_date",
+                        "experience",
+                        "how_acquired",
+                    ]
+                ].copy()
+            )
+
+        result = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
+        if not result.empty:
+            result["player_id"] = result["player_id"].astype(int)
+        self._save_to_cache(result, cache_path)
+        return result

@@ -310,7 +310,7 @@ Historical implementation history is preserved in:
 | 11 | Live Context + Playoff Hardening | Complete |
 | 12 | API Service Layer | Complete |
 
-**Current data:** 14,429 games across 12 seasons (2014-2026), Ensemble Model (65.6% acc, 0.615 log loss), weekly live publishing + deployment dashboard + live context coverage + API delivery, 148 tests passing.
+**Current data:** 14,429 games across 12 seasons (2014-2026), Ensemble Model (65.6% acc, 0.615 log loss), weekly live publishing + deployment dashboard + live context coverage + API delivery, early M1 player-foundation scaffolding, 155 tests passing.
 
 ---
 
