@@ -531,6 +531,10 @@ Shadow inference is available but opt-in. `python -m src.app.predict_today --nex
 `ensemble_v1` while adding `component_outputs.nextgen_shadow_probability`, enriched CatBoost/LightGBM
 probabilities, and `shadow_model_version=nextgen_full_raw_v1` for review.
 
+The Streamlit dashboard exposes those candidate outputs in `Model Lab`, a dedicated review page that
+shows production vs shadow home-win probabilities, candidate deltas, pick flips, candidate component
+probabilities, and the shadow artifact version for the loaded slate.
+
 The first coverage fix is complete: historical game and player-log fetchers request playoff rows,
 carry `season_type` forward, and the rebuilt evaluation now includes 166 held-out playoff games.
 The second coverage fix is implemented as `historical_absence_proxy_v1`; the rebuilt evaluation now

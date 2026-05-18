@@ -23,6 +23,7 @@ PAGES = [
     "Game Detail",
     "Archive",
     "Performance",
+    "Model Lab",
     "Calibration",
     "Team Form",
     "Injury Impact",
@@ -691,6 +692,150 @@ def render_performance_page() -> None:
         st.bar_chart(weights.set_index("model"), width="stretch")
 
 
+def render_model_lab_page() -> None:
+    payload = _latest_daily_payload()
+    manifest = _publish_manifest()
+    st.subheader("Model Lab")
+    _slate_source_notice(payload, manifest)
+
+    shadow_frame = data.build_shadow_model_frame(payload)
+    if shadow_frame.empty:
+        st.info(
+            "No shadow candidate outputs are available for the loaded slate yet. "
+            "Run publication with `--nextgen-shadow` to review candidate probabilities here."
+        )
+        return
+
+    avg_delta = float(shadow_frame["abs_delta"].mean())
+    max_delta = float(shadow_frame["abs_delta"].max())
+    pick_changes = int(shadow_frame["pick_changed"].sum())
+    shadow_versions = sorted(
+        version
+        for version in shadow_frame["shadow_model_version"].dropna().astype(str).unique()
+        if version
+    )
+    shadow_label = ", ".join(shadow_versions) if shadow_versions else "unknown"
+
+    _metric_row(
+        [
+            (
+                "Shadow Candidate",
+                shadow_label,
+                "Compared beside production only",
+            ),
+            (
+                "Avg Delta",
+                f"{avg_delta * 100:.1f} pts",
+                "Mean absolute probability move",
+            ),
+            (
+                "Largest Delta",
+                f"{max_delta * 100:.1f} pts",
+                "Biggest candidate disagreement",
+            ),
+            (
+                "Pick Changes",
+                str(pick_changes),
+                "Games where candidate flips the winner",
+            ),
+        ]
+    )
+
+    st.caption(
+        "Production remains "
+        f"{(payload or {}).get('model_version', 'ensemble_v1')}; "
+        "this page is for shadow review before any promotion."
+    )
+
+    display = shadow_frame.copy()
+    display["date"] = display["date"].dt.strftime("%Y-%m-%d")
+    display["production_probability"] = display["production_probability"] * 100.0
+    display["shadow_probability"] = display["shadow_probability"] * 100.0
+    display["shadow_calibrated_probability"] = (
+        display["shadow_calibrated_probability"] * 100.0
+    )
+    display["shadow_delta"] = display["shadow_delta"] * 100.0
+    display["abs_delta"] = display["abs_delta"] * 100.0
+    display["catboost_probability"] = display["catboost_probability"] * 100.0
+    display["lightgbm_probability"] = display["lightgbm_probability"] * 100.0
+
+    st.markdown("#### Production vs Shadow")
+    st.dataframe(
+        display[
+            [
+                "date",
+                "matchup",
+                "production_probability",
+                "shadow_probability",
+                "shadow_calibrated_probability",
+                "shadow_delta",
+                "production_pick",
+                "shadow_pick",
+                "pick_changed",
+                "confidence_bucket",
+                "shadow_mode",
+            ]
+        ],
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "production_probability": st.column_config.NumberColumn(
+                "Production home %",
+                format="%.1f",
+            ),
+            "shadow_probability": st.column_config.NumberColumn(
+                "Shadow home %",
+                format="%.1f",
+            ),
+            "shadow_calibrated_probability": st.column_config.NumberColumn(
+                "Shadow calibrated %",
+                format="%.1f",
+            ),
+            "shadow_delta": st.column_config.NumberColumn(
+                "Delta pts",
+                format="%+.1f",
+            ),
+        },
+    )
+
+    st.markdown("#### Candidate Components")
+    st.dataframe(
+        display[
+            [
+                "date",
+                "matchup",
+                "catboost_probability",
+                "lightgbm_probability",
+                "shadow_model_version",
+                "shadow_generated_at",
+            ]
+        ],
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "catboost_probability": st.column_config.NumberColumn(
+                "CatBoost home %",
+                format="%.1f",
+            ),
+            "lightgbm_probability": st.column_config.NumberColumn(
+                "LightGBM home %",
+                format="%.1f",
+            ),
+        },
+    )
+
+    biggest_moves = shadow_frame.sort_values("abs_delta", ascending=False).head(3)
+    st.markdown("#### Largest Candidate Moves")
+    for row in biggest_moves.itertuples(index=False):
+        direction = "higher" if row.shadow_delta > 0 else "lower"
+        st.markdown(
+            f"- **{row.matchup}**: shadow is "
+            f"{abs(float(row.shadow_delta)) * 100:.1f} pts {direction} "
+            f"than production ({float(row.production_probability) * 100:.1f}% -> "
+            f"{float(row.shadow_probability) * 100:.1f}%)."
+        )
+
+
 def render_calibration_page() -> None:
     calibration = _calibration_frame()
     st.subheader("Calibration")
@@ -843,6 +988,8 @@ def render_dashboard() -> None:
         render_archive_page()
     elif selected_page == "Performance":
         render_performance_page()
+    elif selected_page == "Model Lab":
+        render_model_lab_page()
     elif selected_page == "Calibration":
         render_calibration_page()
     elif selected_page == "Team Form":

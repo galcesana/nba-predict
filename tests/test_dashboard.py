@@ -64,6 +64,7 @@ def _write_json(path: Path, payload: dict) -> None:
 def test_streamlit_app_imports():
     """Streamlit app module imports with expected page definitions."""
     assert "This Week's Games" in streamlit_app.PAGES
+    assert "Model Lab" in streamlit_app.PAGES
     assert "Calibration" in streamlit_app.PAGES
 
 
@@ -101,6 +102,33 @@ def test_game_detail_page_renders():
     assert detail["game_id"] == prediction["game_id"]
     frame = dashboard_data.build_component_output_frame(detail)
     assert not frame.empty
+
+
+def test_shadow_model_frame_compares_candidate_outputs():
+    """Shadow review frame compares production and next-gen candidate probabilities."""
+    payload = _payload_for_date("2026-05-16")
+    payload["shadow_model_version"] = "nextgen_full_raw_v1"
+    prediction = payload["predictions"][0]
+    prediction["component_outputs"] = {
+        "final_probability": 0.61,
+        "nextgen_shadow_probability": 0.64,
+        "nextgen_shadow_calibrated_probability": 0.63,
+        "enriched_catboost_probability": 0.66,
+        "enriched_lightgbm_probability": 0.62,
+    }
+    prediction["context_details"]["nextgen_shadow_mode"] = "available"
+    prediction["context_details"]["nextgen_shadow_model_version"] = "nextgen_full_raw_v1"
+    prediction["context_details"]["nextgen_shadow_delta"] = 0.03
+
+    frame = dashboard_data.build_shadow_model_frame(payload)
+
+    assert len(frame) == 1
+    row = frame.iloc[0]
+    assert row["shadow_model_version"] == "nextgen_full_raw_v1"
+    assert row["production_probability"] == pytest.approx(0.61)
+    assert row["shadow_probability"] == pytest.approx(0.64)
+    assert row["shadow_delta"] == pytest.approx(0.03)
+    assert not bool(row["pick_changed"])
 
 
 def test_calibration_chart_generates():

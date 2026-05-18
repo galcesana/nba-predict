@@ -326,6 +326,131 @@ def build_component_output_frame(prediction: dict[str, Any]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _numeric_or_none(value: Any) -> float | None:
+    """Return a float when a payload value is numeric enough for display."""
+    try:
+        if value is None or pd.isna(value):
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _first_numeric(mapping: dict[str, Any], *keys: str) -> float | None:
+    for key in keys:
+        value = _numeric_or_none(mapping.get(key))
+        if value is not None:
+            return value
+    return None
+
+
+def build_shadow_model_frame(payload: dict[str, Any] | None = None) -> pd.DataFrame:
+    """Build a comparison table for production vs next-gen shadow probabilities."""
+    payload = payload or load_latest_daily_predictions()
+    columns = [
+        "date",
+        "game_id",
+        "matchup",
+        "production_probability",
+        "shadow_probability",
+        "shadow_calibrated_probability",
+        "shadow_delta",
+        "abs_delta",
+        "production_pick",
+        "shadow_pick",
+        "pick_changed",
+        "confidence_bucket",
+        "shadow_mode",
+        "shadow_model_version",
+        "catboost_probability",
+        "lightgbm_probability",
+        "generated_at",
+        "shadow_generated_at",
+    ]
+    if not payload:
+        return pd.DataFrame(columns=columns)
+
+    rows: list[dict[str, Any]] = []
+    for prediction in payload.get("predictions", []):
+        outputs = prediction.get("component_outputs", {})
+        shadow_outputs = prediction.get("shadow_outputs", {})
+        context_details = prediction.get("context_details", {})
+
+        shadow_probability = _first_numeric(
+            outputs,
+            "nextgen_shadow_probability",
+        )
+        if shadow_probability is None:
+            shadow_probability = _first_numeric(shadow_outputs, "nextgen_shadow_probability")
+        if shadow_probability is None:
+            continue
+
+        production_probability = _first_numeric(outputs, "final_probability")
+        if production_probability is None:
+            production_probability = _numeric_or_none(prediction.get("home_win_probability"))
+        if production_probability is None:
+            continue
+
+        shadow_calibrated_probability = _first_numeric(
+            outputs,
+            "nextgen_shadow_calibrated_probability",
+        )
+        if shadow_calibrated_probability is None:
+            shadow_calibrated_probability = _first_numeric(
+                shadow_outputs,
+                "nextgen_shadow_calibrated_probability",
+            )
+
+        shadow_delta = _numeric_or_none(context_details.get("nextgen_shadow_delta"))
+        if shadow_delta is None:
+            shadow_delta = shadow_probability - production_probability
+
+        production_pick = "home" if production_probability >= 0.5 else "away"
+        shadow_pick = "home" if shadow_probability >= 0.5 else "away"
+        catboost_probability = _first_numeric(outputs, "enriched_catboost_probability")
+        if catboost_probability is None:
+            catboost_probability = _first_numeric(shadow_outputs, "enriched_catboost_probability")
+        lightgbm_probability = _first_numeric(outputs, "enriched_lightgbm_probability")
+        if lightgbm_probability is None:
+            lightgbm_probability = _first_numeric(shadow_outputs, "enriched_lightgbm_probability")
+
+        rows.append(
+            {
+                "date": pd.to_datetime(prediction.get("game_date", payload.get("date"))),
+                "game_id": prediction.get("game_id"),
+                "matchup": matchup_label(
+                    prediction.get("home_team_idx"),
+                    prediction.get("away_team_idx"),
+                ),
+                "production_probability": production_probability,
+                "shadow_probability": shadow_probability,
+                "shadow_calibrated_probability": shadow_calibrated_probability,
+                "shadow_delta": shadow_delta,
+                "abs_delta": abs(shadow_delta),
+                "production_pick": production_pick,
+                "shadow_pick": shadow_pick,
+                "pick_changed": production_pick != shadow_pick,
+                "confidence_bucket": prediction.get("confidence_bucket"),
+                "shadow_mode": context_details.get("nextgen_shadow_mode", "available"),
+                "shadow_model_version": context_details.get("nextgen_shadow_model_version")
+                or shadow_outputs.get("model_version")
+                or payload.get("shadow_model_version"),
+                "catboost_probability": catboost_probability,
+                "lightgbm_probability": lightgbm_probability,
+                "generated_at": payload.get("generated_at"),
+                "shadow_generated_at": payload.get("shadow_generated_at"),
+            }
+        )
+
+    if not rows:
+        return pd.DataFrame(columns=columns)
+
+    frame = pd.DataFrame(rows)
+    return frame.sort_values(["date", "abs_delta"], ascending=[True, False]).reset_index(
+        drop=True
+    )
+
+
 def _prediction_record(
     prediction: dict[str, Any],
     *,

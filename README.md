@@ -350,6 +350,7 @@ The Streamlit app is organized into the following pages:
 - `Game Detail` lets you inspect one matchup in depth, including component model outputs and recent team form.
 - `Archive` combines local forecasts, published forecasts, and historical backtests into one searchable table.
 - `Performance` summarizes model comparison results, rolling validation trends, and ensemble behavior.
+- `Model Lab` compares production probabilities with the opt-in `nextgen_full_raw_v1` shadow candidate, including deltas, pick flips, and enriched CatBoost/LightGBM component outputs.
 - `Calibration` shows how well predicted probabilities line up with actual outcomes, including error by probability bucket.
 - `Team Form` highlights recent record, point differential, and net-rating trends for a selected team.
 - `Injury Impact` summarizes the current slate's official injury-report coverage when available and falls back honestly when later-week games do not have reports yet.
