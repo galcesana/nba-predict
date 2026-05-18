@@ -204,6 +204,7 @@ Required fields should include:
 - `status`
 - `availability_score`
 - `source_type`
+- `availability_model_version`
 - `source_timestamp`
 - `projection_confidence`
 
@@ -212,10 +213,17 @@ Projection idea:
 - `OUT` near zero
 - `DOUBTFUL` very low
 - `QUESTIONABLE` partial
+- `PROJECTED_ABSENT` low, but not zero, when a rotation player missed prior team games
 - `PROBABLE` high
 - `AVAILABLE` full
 
 This allows the model to reason over uncertainty instead of only binary availability.
+
+Implementation note:
+
+- `historical_absence_proxy_v1` is a leakage-safe proxy, not an official inactive feed.
+- It uses only team games before the target date and never inspects whether the player appeared in the target game.
+- It exists to create measurable historical missing-player coverage until richer official inactive history is available.
 
 ### D6. Lineup and rotation features
 
@@ -310,6 +318,7 @@ Build next:
 1. resolve injury report names to players
 2. convert statuses into probabilistic availability scores
 3. preserve source timestamps and confidence
+4. discount likely availability for rotation players who missed prior team games
 
 Likely outputs:
 

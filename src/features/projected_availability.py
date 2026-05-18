@@ -14,6 +14,8 @@ from src.utils.paths import PROCESSED_DIR, RAW_DIR
 
 logger = logging.getLogger(__name__)
 
+PROJECTED_AVAILABILITY_VERSION = "historical_absence_proxy_v1"
+
 STATUS_TO_AVAILABILITY = {
     "AVAILABLE": 1.0,
     "ACTIVE": 1.0,
@@ -21,6 +23,7 @@ STATUS_TO_AVAILABILITY = {
     "PROBABLE": 0.85,
     "QUESTIONABLE": 0.5,
     "GAME TIME DECISION": 0.5,
+    "PROJECTED_ABSENT": 0.25,
     "DOUBTFUL": 0.15,
     "OUT": 0.0,
     "NOT YET SUBMITTED": 0.75,
@@ -33,6 +36,7 @@ STATUS_TO_CONFIDENCE = {
     "PROBABLE": 0.8,
     "QUESTIONABLE": 0.65,
     "GAME TIME DECISION": 0.65,
+    "PROJECTED_ABSENT": 0.65,
     "DOUBTFUL": 0.8,
     "OUT": 0.95,
     "NOT YET SUBMITTED": 0.2,
@@ -50,6 +54,7 @@ AVAILABILITY_COLUMNS = [
     "availability_score",
     "projection_confidence",
     "source_type",
+    "availability_model_version",
     "source_timestamp",
     "report_reason",
     "recent_games_played",
@@ -104,6 +109,146 @@ def _empty_availability_frame() -> pd.DataFrame:
 
 def _empty_unresolved_frame() -> pd.DataFrame:
     return pd.DataFrame(columns=UNRESOLVED_COLUMNS)
+
+
+def _team_game_history_index(
+    player_logs: pd.DataFrame,
+) -> tuple[dict[int, pd.DataFrame], dict[tuple[int, str], set[int]]]:
+    """Build fast prior-game lookup tables from historical player appearances."""
+    if player_logs.empty:
+        return {}, {}
+
+    team_games_by_team: dict[int, pd.DataFrame] = {}
+    players_by_team_game: dict[tuple[int, str], set[int]] = {}
+    for team_idx, team_logs in player_logs.groupby("team_idx", sort=False):
+        team_key = int(team_idx)
+        team_games_by_team[team_key] = (
+            team_logs[["game_id", "date"]]
+            .drop_duplicates()
+            .sort_values(["date", "game_id"])
+            .reset_index(drop=True)
+        )
+        for game_id, game_logs in team_logs.groupby("game_id", sort=False):
+            players_by_team_game[(team_key, str(game_id))] = set(
+                game_logs["player_id"].astype(int)
+            )
+    return team_games_by_team, players_by_team_game
+
+
+def _prior_team_games(
+    team_games_by_team: dict[int, pd.DataFrame],
+    *,
+    team_idx: int,
+    game_date: pd.Timestamp,
+    lookback_games: int,
+) -> list[tuple[str, pd.Timestamp]]:
+    """Return the latest team games before the target date."""
+    team_games = team_games_by_team.get(int(team_idx))
+    if team_games is None or team_games.empty:
+        return []
+
+    prior = team_games[pd.to_datetime(team_games["date"]) < game_date]
+    if prior.empty:
+        return []
+    prior = prior.tail(max(lookback_games, 1))
+    return [
+        (str(row["game_id"]), pd.Timestamp(row["date"]))
+        for _, row in prior.iterrows()
+    ]
+
+
+def _coerce_float(value: object, default: float = 0.0) -> float:
+    if pd.isna(value):
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _coerce_int(value: object, default: int = 0) -> int:
+    if pd.isna(value):
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _apply_historical_absence_proxy(
+    row: dict[str, object],
+    *,
+    team_idx: int,
+    player_id: int,
+    prior_games: list[tuple[str, pd.Timestamp]],
+    players_by_team_game: dict[tuple[int, str], set[int]],
+    min_recent_games: int,
+    min_role_score: float,
+    min_expected_minutes: float,
+) -> dict[str, object]:
+    """Discount likely availability when a rotation player missed prior team games.
+
+    The proxy is intentionally conservative and leakage-safe: it only inspects
+    player appearances in games before the target date.
+    """
+    if not prior_games:
+        return row
+
+    recent_games_played = _coerce_int(row.get("recent_games_played"))
+    role_score = _coerce_float(row.get("role_score") or row.get("player_value_score"))
+    expected_minutes = _coerce_float(row.get("expected_minutes"))
+    if recent_games_played < min_recent_games:
+        return row
+    if role_score < min_role_score and expected_minutes < min_expected_minutes:
+        return row
+
+    absence_streak = 0
+    for prior_game_id, _ in reversed(prior_games):
+        game_players = players_by_team_game.get((int(team_idx), prior_game_id), set())
+        if int(player_id) in game_players:
+            break
+        absence_streak += 1
+
+    if absence_streak == 0:
+        return row
+
+    latest_prior_timestamp = prior_games[-1][1].strftime("%Y-%m-%dT%H:%M:%SZ")
+    if absence_streak == 1:
+        row.update(
+            {
+                "status": "QUESTIONABLE",
+                "availability_score": 0.5,
+                "projection_confidence": max(
+                    _coerce_float(row.get("projection_confidence"), 0.4),
+                    0.55,
+                ),
+                "source_type": "historical_absence_proxy",
+                "source_timestamp": latest_prior_timestamp,
+                "report_reason": (
+                    "Missed the previous team game before target; inferred from "
+                    "prior box-score appearances only."
+                ),
+            }
+        )
+        return row
+
+    row.update(
+        {
+            "status": "PROJECTED_ABSENT",
+            "availability_score": 0.15 if absence_streak >= 3 else 0.25,
+            "projection_confidence": max(
+                _coerce_float(row.get("projection_confidence"), 0.4),
+                0.7 if absence_streak >= 3 else 0.65,
+            ),
+            "source_type": "historical_absence_proxy",
+            "source_timestamp": latest_prior_timestamp,
+            "report_reason": (
+                f"Missed the previous {absence_streak} team games before target; "
+                "inferred from prior box-score appearances only."
+            ),
+        }
+    )
+    return row
 
 
 def _recent_team_pool(
@@ -350,6 +495,7 @@ def resolve_injury_report_players(
                 "availability_score": status_to_availability_score(status),
                 "projection_confidence": status_to_projection_confidence(status),
                 "source_type": "official_injury_report",
+                "availability_model_version": PROJECTED_AVAILABILITY_VERSION,
                 "source_timestamp": row.get("report_generated_at"),
                 "report_reason": row.get("reason"),
                 "resolved_from_name": player_name,
@@ -374,6 +520,11 @@ def build_projected_availability(
     player_value_features: pd.DataFrame | None = None,
     recent_team_games: int = 10,
     max_players: int = 12,
+    use_historical_absence_proxy: bool = True,
+    absence_lookback_games: int = 3,
+    absence_min_recent_games: int = 2,
+    absence_min_role_score: float = 8.0,
+    absence_min_expected_minutes: float = 12.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build projected availability rows and an unresolved injury-entity audit table."""
     if games.empty:
@@ -381,6 +532,7 @@ def build_projected_availability(
 
     logs = player_logs.copy()
     logs["date"] = pd.to_datetime(logs["date"])
+    team_games_by_team, players_by_team_game = _team_game_history_index(logs)
     games = games.copy()
     games["date"] = pd.to_datetime(games["date"])
     games_by_id = games.set_index("game_id")[["date", "season"]]
@@ -408,43 +560,64 @@ def build_projected_availability(
         game_id = str(game["game_id"])
         game_date = pd.Timestamp(game["date"])
         for team_idx in (int(game["home_team_idx"]), int(game["away_team_idx"])):
+            prior_games = (
+                _prior_team_games(
+                    team_games_by_team,
+                    team_idx=team_idx,
+                    game_date=game_date,
+                    lookback_games=absence_lookback_games,
+                )
+                if use_historical_absence_proxy
+                else []
+            )
             value_pool = player_value_groups.get((game_id, team_idx))
             if value_pool is not None and not value_pool.empty:
                 baseline_rows = []
                 for _, player in value_pool.sort_values(
                     ["rotation_rank", "player_value_score", "player_id"]
                 ).iterrows():
-                    baseline_rows.append(
-                        {
-                            "game_id": game_id,
-                            "date": game_date,
-                            "season": str(game["season"]),
-                            "team_idx": team_idx,
-                            "player_id": int(player["player_id"]),
-                            "player_idx": int(player["player_idx"]),
-                            "player_name": str(player["player_name"]),
-                            "status": "AVAILABLE",
-                            "availability_score": 1.0,
-                            "projection_confidence": float(
-                                0.3 + 0.6 * player["recent_role_stability"]
-                            ),
-                            "source_type": "historical_recent_role",
-                            "source_timestamp": (
-                                pd.Timestamp(player["last_game_date"]).strftime("%Y-%m-%dT%H:%M:%SZ")
-                                if pd.notna(player["last_game_date"])
-                                else None
-                            ),
-                            "report_reason": None,
-                            "recent_games_played": int(player["recent_games_played"]),
-                            "expected_minutes": float(player["recent_minutes_avg"]),
-                            "player_value_score": float(player["player_value_score"]),
-                            "minutes_share_recent": float(player["recent_minutes_share"]),
-                            "starter_rate_recent": float(player["recent_starter_rate"]),
-                            "recent_role_stability": float(player["recent_role_stability"]),
-                            "role_score": float(player["player_value_score"]),
-                            "resolved_from_name": None,
-                        }
-                    )
+                    row = {
+                        "game_id": game_id,
+                        "date": game_date,
+                        "season": str(game["season"]),
+                        "team_idx": team_idx,
+                        "player_id": int(player["player_id"]),
+                        "player_idx": int(player["player_idx"]),
+                        "player_name": str(player["player_name"]),
+                        "status": "AVAILABLE",
+                        "availability_score": 1.0,
+                        "projection_confidence": float(
+                            0.3 + 0.6 * player["recent_role_stability"]
+                        ),
+                        "source_type": "historical_recent_role",
+                        "availability_model_version": PROJECTED_AVAILABILITY_VERSION,
+                        "source_timestamp": (
+                            pd.Timestamp(player["last_game_date"]).strftime("%Y-%m-%dT%H:%M:%SZ")
+                            if pd.notna(player["last_game_date"])
+                            else None
+                        ),
+                        "report_reason": None,
+                        "recent_games_played": int(player["recent_games_played"]),
+                        "expected_minutes": float(player["recent_minutes_avg"]),
+                        "player_value_score": float(player["player_value_score"]),
+                        "minutes_share_recent": float(player["recent_minutes_share"]),
+                        "starter_rate_recent": float(player["recent_starter_rate"]),
+                        "recent_role_stability": float(player["recent_role_stability"]),
+                        "role_score": float(player["player_value_score"]),
+                        "resolved_from_name": None,
+                    }
+                    if use_historical_absence_proxy:
+                        row = _apply_historical_absence_proxy(
+                            row,
+                            team_idx=team_idx,
+                            player_id=int(player["player_id"]),
+                            prior_games=prior_games,
+                            players_by_team_game=players_by_team_game,
+                            min_recent_games=absence_min_recent_games,
+                            min_role_score=absence_min_role_score,
+                            min_expected_minutes=absence_min_expected_minutes,
+                        )
+                    baseline_rows.append(row)
                 availability_rows.extend(baseline_rows)
                 continue
 
@@ -459,32 +632,45 @@ def build_projected_availability(
                 continue
 
             for _, player in recent_pool.iterrows():
+                row = {
+                    "game_id": game_id,
+                    "date": game_date,
+                    "season": str(game["season"]),
+                    "team_idx": team_idx,
+                    "player_id": int(player["player_id"]),
+                    "player_idx": int(player["player_idx"]),
+                    "player_name": str(player["player_name"]),
+                    "status": "AVAILABLE",
+                    "availability_score": 1.0,
+                    "projection_confidence": float(player["projection_confidence"]),
+                    "source_type": "historical_recent_role",
+                    "availability_model_version": PROJECTED_AVAILABILITY_VERSION,
+                    "source_timestamp": player["source_timestamp"],
+                    "report_reason": None,
+                    "recent_games_played": int(player["recent_games_played"]),
+                    "expected_minutes": float(player["avg_minutes"]),
+                    "player_value_score": float(player["role_score"]),
+                    "minutes_share_recent": 0.0,
+                    "starter_rate_recent": 0.0,
+                    "recent_role_stability": float(
+                        player["recent_games_played"] / max(recent_team_games, 1)
+                    ),
+                    "role_score": float(player["role_score"]),
+                    "resolved_from_name": None,
+                }
+                if use_historical_absence_proxy:
+                    row = _apply_historical_absence_proxy(
+                        row,
+                        team_idx=team_idx,
+                        player_id=int(player["player_id"]),
+                        prior_games=prior_games,
+                        players_by_team_game=players_by_team_game,
+                        min_recent_games=absence_min_recent_games,
+                        min_role_score=absence_min_role_score,
+                        min_expected_minutes=absence_min_expected_minutes,
+                    )
                 availability_rows.append(
-                    {
-                        "game_id": game_id,
-                        "date": game_date,
-                        "season": str(game["season"]),
-                        "team_idx": team_idx,
-                        "player_id": int(player["player_id"]),
-                        "player_idx": int(player["player_idx"]),
-                        "player_name": str(player["player_name"]),
-                        "status": "AVAILABLE",
-                        "availability_score": 1.0,
-                        "projection_confidence": float(player["projection_confidence"]),
-                        "source_type": "historical_recent_role",
-                        "source_timestamp": player["source_timestamp"],
-                        "report_reason": None,
-                        "recent_games_played": int(player["recent_games_played"]),
-                        "expected_minutes": float(player["avg_minutes"]),
-                        "player_value_score": float(player["role_score"]),
-                        "minutes_share_recent": 0.0,
-                        "starter_rate_recent": 0.0,
-                        "recent_role_stability": float(
-                            player["recent_games_played"] / max(recent_team_games, 1)
-                        ),
-                        "role_score": float(player["role_score"]),
-                        "resolved_from_name": None,
-                    }
+                    row
                 )
 
     availability = pd.DataFrame(availability_rows, columns=AVAILABILITY_COLUMNS)
@@ -521,6 +707,7 @@ def build_projected_availability(
                     "availability_score",
                     "projection_confidence",
                     "source_type",
+                    "availability_model_version",
                     "source_timestamp",
                     "report_reason",
                     "resolved_from_name",
@@ -572,6 +759,9 @@ def build_projected_availability(
             availability["role_score"],
             errors="coerce",
         ).fillna(0.0)
+        availability["availability_model_version"] = availability[
+            "availability_model_version"
+        ].fillna(PROJECTED_AVAILABILITY_VERSION)
         availability["recent_games_played"] = pd.to_numeric(
             availability["recent_games_played"], errors="coerce"
         ).fillna(0).astype(int)

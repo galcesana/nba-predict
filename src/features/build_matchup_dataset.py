@@ -21,6 +21,8 @@ from src.utils.paths import PROCESSED_DIR
 
 logger = logging.getLogger(__name__)
 
+ENRICHED_FEATURE_STACK_VERSION = "player_lineup_absence_proxy_v1"
+
 # Key features to compute home-minus-away differences for
 DIFF_FEATURES = [
     "season_win_pct", "last_10_win_pct",
@@ -249,6 +251,7 @@ def build_enriched_matchup_dataset(
         if home_col in enriched.columns and away_col in enriched.columns:
             enriched[f"diff_{feature_name}"] = enriched[home_col] - enriched[away_col]
 
+    enriched["enriched_feature_stack_version"] = ENRICHED_FEATURE_STACK_VERSION
     return enriched.sort_values("date").reset_index(drop=True)
 
 

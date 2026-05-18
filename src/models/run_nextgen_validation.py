@@ -453,10 +453,20 @@ def build_summary_markdown(results: dict[str, Any]) -> str:
             "- Current missing-player value is zero throughout the held-out set, so "
             "availability-aware claims are not yet validated."
         )
-    lines.append(
-        "- The next production step is to add real availability/inactive history, "
-        "then rerun this gate."
-    )
+    if verdict["status"] == "ready":
+        lines.append(
+            "- The next production step is a shadow/live promotion review with "
+            "monitoring on playoff, calibration, and missing-player slices."
+        )
+        lines.append(
+            "- Longer-term availability work should replace the historical absence "
+            "proxy with richer official inactive history when available."
+        )
+    else:
+        lines.append(
+            "- The next production step is to improve the blocked coverage or "
+            "regression checks, then rerun this gate."
+        )
     return "\n".join(lines) + "\n"
 
 

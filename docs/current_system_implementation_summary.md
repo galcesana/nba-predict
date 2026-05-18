@@ -325,7 +325,10 @@ Current behavior:
 - seeds each team-game from a recent-role baseline built only from prior player logs
 - resolves official injury-report names to player IDs using season-aware aliases and team-aware filtering
 - overlays official statuses onto those baseline rows without losing the player's historical role context
+- applies a conservative historical absence proxy when a rotation player missed prior team games before the target date
 - writes unresolved names to an audit table instead of silently dropping them
+
+The absence proxy is not an official inactive feed. It is a leakage-safe historical signal derived only from prior player-game appearances, intended to make missing-player value measurable in backtests until richer official inactive history is available.
 
 Current output fields include:
 
@@ -340,6 +343,7 @@ Current output fields include:
 - `availability_score`
 - `projection_confidence`
 - `source_type`
+- `availability_model_version`
 - `source_timestamp`
 - `report_reason`
 - `recent_games_played`
@@ -482,7 +486,9 @@ Round-two enriched experiment outputs:
 
 The runner lives at `src/models/run_enriched_experiments.py` and compares the legacy feature
 stack against enriched M1 variants, feature-family ablations, calibrated tree variants, and
-playoff/context slices.
+playoff/context slices. It also invalidates cached enriched, projected-availability, and lineup
+artifacts when feature-stack version stamps change, so rebuilt experiments actually pick up
+availability logic changes.
 
 Production showdown outputs:
 
@@ -514,14 +520,15 @@ The promotion gate runner lives at `src/models/run_nextgen_validation.py`. It co
 raw ensemble probabilities against next-gen raw probabilities across aggregate, per-season,
 schedule-stress, context-confidence, playoff, and missing-player-impact slices.
 
-Current promotion status is `blocked`: the next-gen candidate clears the aggregate log-loss check and
-the playoff coverage gate, but the held-out historical evaluation still has 0 nonzero
-missing-player-impact games. Do not promote the next-gen ensemble into live inference until real
-availability/inactive coverage exists and the gate reports `ready`.
+Current promotion status is `ready` for shadow/live promotion review: the next-gen candidate clears
+the aggregate log-loss check, playoff coverage gate, missing-player coverage gate, and critical
+slice-regression gate.
 
 The first coverage fix is complete: historical game and player-log fetchers request playoff rows,
 carry `season_type` forward, and the rebuilt evaluation now includes 166 held-out playoff games.
-The remaining coverage fix is historical availability/inactive signal.
+The second coverage fix is implemented as `historical_absence_proxy_v1`; the rebuilt evaluation now
+includes 2,595 held-out missing-player-impact games. Longer-term availability work should replace
+this proxy with richer official inactive history when available.
 
 ---
 
@@ -550,7 +557,7 @@ These are the most important limitations to remember before extending the system
 6. **Playoff handling is stronger in publishing logic than in model design.**
 7. **Displayed explanations are still partly heuristic rather than fully learned attribution.**
 8. **The ensemble is simple and not yet context-aware or regime-aware.**
-9. **The next-gen candidate is blocked from promotion until real missing-player validation exists.**
+9. **The next-gen candidate is ready for shadow/live review, but official inactive-history coverage is still a future quality upgrade.**
 
 ---
 

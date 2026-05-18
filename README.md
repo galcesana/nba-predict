@@ -170,6 +170,11 @@ It compares the legacy matchup rows against the enriched M1 variants, includes f
 ablations, and will also score optional `LightGBM` / `CatBoost` leaderboard entries when those
 libraries are installed in the environment.
 
+The projected-availability layer now includes `historical_absence_proxy_v1`, a conservative
+pregame proxy that discounts rotation players who missed prior team games. It uses only games before
+the target date, so it creates measurable missing-player backtest coverage without peeking at the
+target game's box score.
+
 To compare those enriched winners against the shipped neural + ensemble production stack without
 retraining everything, run:
 
@@ -209,11 +214,11 @@ That writes:
 - `docs/experiments/nextgen_promotion_gate.md`
 
 The gate scores production vs next-gen across regular-season, per-season, schedule-stress, context-confidence,
-playoff, and missing-player slices. The rebuilt evaluation now includes playoff coverage; promotion remains
-blocked until the historical evaluation includes real nonzero missing-player impact rows.
+playoff, and missing-player slices. The latest rebuilt gate is `ready` for shadow/live promotion
+review, with 166 held-out playoff games and 2,595 held-out missing-player-impact games.
 
-If `games.parquet` changes after a new fetch, the enriched experiment runner checks cached
-matchup/player artifacts and rebuilds stale regular-season-only caches automatically.
+If `games.parquet` changes after a new fetch, or if the enriched feature-stack version changes, the
+enriched experiment runner checks cached matchup/player artifacts and rebuilds stale caches automatically.
 
 ### 3. Generate Local Predictions
 
@@ -406,7 +411,7 @@ Historical implementation history is preserved in:
 | 11 | Live Context + Playoff Hardening | Complete |
 | 12 | API Service Layer | Complete |
 
-**Current data:** 15,412 games across 12 seasons (2014-2026), including 983 playoff games. The current next-gen experiment candidate is `nextgen_full / raw` at 0.6161 log loss on the playoff-aware held-out split, with promotion still blocked until real missing-player validation coverage exists.
+**Current data:** 15,412 games across 12 seasons (2014-2026), including 983 playoff games. The current next-gen experiment candidate is `nextgen_full / raw` at 0.6161 log loss on the playoff-aware held-out split, and the promotion gate is ready for shadow/live review.
 
 ---
 

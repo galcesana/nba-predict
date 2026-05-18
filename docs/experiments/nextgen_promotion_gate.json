@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-05-17T18:52:01.320577+00:00",
+  "generated_at_utc": "2026-05-18T20:46:56.663542+00:00",
   "test_rows": 2621,
   "criteria": {
     "min_overall_log_loss_gain": 0.001,
@@ -134,63 +134,103 @@
       }
     },
     "missing_player_impact": {
-      "status": "no_data",
-      "game_count": 0,
-      "reason": "No held-out games matched this validation slice."
+      "status": "scored",
+      "game_count": 2595,
+      "positive_rate": 0.545664739884393,
+      "production": {
+        "accuracy": 0.6485549132947976,
+        "log_loss": 0.619816326212506,
+        "brier_score": 0.2153413911052569,
+        "calibration_error": 0.047468713472548045,
+        "roc_auc": 0.7170427155062943
+      },
+      "nextgen": {
+        "accuracy": 0.6500963391136801,
+        "log_loss": 0.6163796531703907,
+        "brier_score": 0.2138465945465007,
+        "calibration_error": 0.04902347645018385,
+        "roc_auc": 0.7206714250801454
+      },
+      "delta": {
+        "log_loss": -0.003436673042115368,
+        "accuracy": 0.0015414258188825025,
+        "brier_score": -0.0014947965587562007,
+        "calibration_error": 0.0015547629776358068
+      }
     },
     "high_missing_value": {
-      "status": "no_data",
-      "game_count": 0,
-      "reason": "No held-out games matched this validation slice."
+      "status": "scored",
+      "game_count": 656,
+      "positive_rate": 0.5487804878048781,
+      "production": {
+        "accuracy": 0.6737804878048781,
+        "log_loss": 0.6129261641858978,
+        "brier_score": 0.21228877332864565,
+        "calibration_error": 0.045338083588850615,
+        "roc_auc": 0.7263138138138139
+      },
+      "nextgen": {
+        "accuracy": 0.6570121951219512,
+        "log_loss": 0.6110585121261731,
+        "brier_score": 0.2116512580542077,
+        "calibration_error": 0.050390253017628665,
+        "roc_auc": 0.7253003003003002
+      },
+      "delta": {
+        "log_loss": -0.0018676520597247226,
+        "accuracy": -0.0167682926829269,
+        "brier_score": -0.0006375152744379498,
+        "calibration_error": 0.00505216942877805
+      }
     },
     "high_context_confidence": {
       "status": "scored",
-      "game_count": 700,
-      "positive_rate": 0.5514285714285714,
+      "game_count": 662,
+      "positive_rate": 0.5483383685800605,
       "production": {
-        "accuracy": 0.6242857142857143,
-        "log_loss": 0.6339745625591328,
-        "brier_score": 0.22184678231310076,
-        "calibration_error": 0.037542667771808196,
-        "roc_auc": 0.6910332992310484
+        "accuracy": 0.6299093655589124,
+        "log_loss": 0.6293365037852063,
+        "brier_score": 0.21968171488589638,
+        "calibration_error": 0.04382955468487292,
+        "roc_auc": 0.7033546163980946
       },
       "nextgen": {
-        "accuracy": 0.6342857142857142,
-        "log_loss": 0.6310468836571977,
-        "brier_score": 0.22045431150801204,
-        "calibration_error": 0.03868832509566169,
-        "roc_auc": 0.6937724827563447
+        "accuracy": 0.6374622356495468,
+        "log_loss": 0.6267759694720768,
+        "brier_score": 0.21845676182552878,
+        "calibration_error": 0.03942740344994862,
+        "roc_auc": 0.7037784350037315
       },
       "delta": {
-        "log_loss": -0.002927678901935016,
-        "accuracy": 0.009999999999999898,
-        "brier_score": -0.0013924708050887247,
-        "calibration_error": 0.001145657323853494
+        "log_loss": -0.0025605343131295255,
+        "accuracy": 0.007552870090634434,
+        "brier_score": -0.0012249530603676007,
+        "calibration_error": -0.004402151234924302
       }
     },
     "low_context_confidence": {
       "status": "scored",
-      "game_count": 679,
-      "positive_rate": 0.5316642120765832,
+      "game_count": 669,
+      "positive_rate": 0.5440956651718983,
       "production": {
-        "accuracy": 0.6568483063328424,
-        "log_loss": 0.618479139597931,
-        "brier_score": 0.2146917495077464,
-        "calibration_error": 0.045658389377929785,
-        "roc_auc": 0.7257356399937281
+        "accuracy": 0.6457399103139013,
+        "log_loss": 0.6223961186147419,
+        "brier_score": 0.21662430504434102,
+        "calibration_error": 0.037505892990524224,
+        "roc_auc": 0.7120789047018555
       },
       "nextgen": {
-        "accuracy": 0.646539027982327,
-        "log_loss": 0.6162531012691324,
-        "brier_score": 0.21394020691055643,
-        "calibration_error": 0.052226467518714015,
-        "roc_auc": 0.7259447028693881
+        "accuracy": 0.6367713004484304,
+        "log_loss": 0.6216321225856407,
+        "brier_score": 0.2165661914817538,
+        "calibration_error": 0.05233769012544358,
+        "roc_auc": 0.711115114393803
       },
       "delta": {
-        "log_loss": -0.0022260383287986407,
-        "accuracy": -0.010309278350515427,
-        "brier_score": -0.0007515425971899581,
-        "calibration_error": 0.0065680781407842295
+        "log_loss": -0.0007639960291011549,
+        "accuracy": -0.008968609865470878,
+        "brier_score": -5.811356258722533e-05,
+        "calibration_error": 0.014831797134919354
       }
     },
     "home_back_to_back": {
@@ -270,7 +310,7 @@
     }
   },
   "verdict": {
-    "status": "blocked",
+    "status": "ready",
     "checks": [
       {
         "name": "overall_log_loss_gain",
@@ -286,9 +326,9 @@
       },
       {
         "name": "missing_player_coverage",
-        "status": "block",
-        "passed": false,
-        "detail": "Need at least 100 held-out games with nonzero missing-player value; found 0."
+        "status": "pass",
+        "passed": true,
+        "detail": "Need at least 100 held-out games with nonzero missing-player value; found 2595."
       },
       {
         "name": "critical_slice_regression",
@@ -297,6 +337,6 @@
         "detail": "No critical slice exceeded the allowed regression threshold."
       }
     ],
-    "recommendation": "Promote only after real missing-player coverage is validated."
+    "recommendation": "Candidate is ready for a shadow/live promotion review."
   }
 }

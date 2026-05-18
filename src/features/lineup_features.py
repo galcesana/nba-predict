@@ -11,6 +11,8 @@ from src.utils.paths import PROCESSED_DIR
 
 logger = logging.getLogger(__name__)
 
+LINEUP_FEATURE_VERSION = "historical_absence_proxy_v1"
+
 LINEUP_FEATURE_COLS = [
     "expected_starter_continuity",
     "expected_top8_continuity",
@@ -65,7 +67,14 @@ def build_lineup_features(
 ) -> pd.DataFrame:
     """Build team-level lineup/rotation features for each team-game."""
     if games.empty or projected_availability.empty:
-        return pd.DataFrame(columns=["game_id", "team_idx", *LINEUP_FEATURE_COLS])
+        return pd.DataFrame(
+            columns=[
+                "game_id",
+                "team_idx",
+                "lineup_feature_stack_version",
+                *LINEUP_FEATURE_COLS,
+            ]
+        )
 
     logs = player_logs.copy()
     logs["date"] = pd.to_datetime(logs["date"])
@@ -212,6 +221,7 @@ def build_lineup_features(
                 {
                     "game_id": game_id,
                     "team_idx": team_idx,
+                    "lineup_feature_stack_version": LINEUP_FEATURE_VERSION,
                     "expected_starter_continuity": round(starter_continuity, 4),
                     "expected_top8_continuity": round(top8_continuity, 4),
                     "projected_minutes_concentration": round(projected_minutes_concentration, 4),

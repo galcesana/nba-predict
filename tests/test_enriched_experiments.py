@@ -168,6 +168,34 @@ def test_artifact_game_universe_check_accepts_multiraw_cache_with_all_regimes():
     )
 
 
+def test_artifact_game_universe_check_rejects_old_feature_versions():
+    """Versioned feature caches should rebuild after feature-logic changes."""
+    games = pd.DataFrame(
+        {
+            "game_id": ["0022400001"],
+            "season_type": ["Regular Season"],
+        }
+    )
+    old_artifact = pd.DataFrame(
+        {
+            "game_id": ["0022400001"],
+            "availability_model_version": ["old"],
+        }
+    )
+
+    assert not run_enriched_experiments._artifact_matches_game_universe(
+        old_artifact,
+        games,
+        label="projected availability",
+        exact_game_ids=False,
+        required_column_values={
+            "availability_model_version": (
+                run_enriched_experiments.PROJECTED_AVAILABILITY_VERSION
+            ),
+        },
+    )
+
+
 def test_build_summary_markdown_mentions_best_model_and_unavailable_models():
     """The markdown summary should reflect leaderboard, slices, and missing libs."""
     results = {

@@ -150,3 +150,49 @@ def test_build_summary_markdown_reports_blocked_gate():
     assert "# Next-Gen Promotion Gate" in markdown
     assert "Status: `blocked`" in markdown
     assert "playoff_coverage" in markdown
+
+
+def test_build_summary_markdown_reports_ready_next_step():
+    """A ready report should point to promotion review, not another data rebuild."""
+    results = {
+        "generated_at_utc": "2026-05-17T12:00:00+00:00",
+        "verdict": {
+            "status": "ready",
+            "recommendation": "Candidate is ready for a shadow/live promotion review.",
+            "checks": [
+                {
+                    "name": "missing_player_coverage",
+                    "status": "pass",
+                    "detail": "Need missing-player games; found 2595.",
+                }
+            ],
+        },
+        "slice_results": {
+            "all_test": {
+                "status": "scored",
+                "game_count": 4,
+                "production": {"log_loss": 0.62, "accuracy": 0.65},
+                "nextgen": {"log_loss": 0.61, "accuracy": 0.66},
+                "delta": {"log_loss": -0.01},
+            },
+            "playoffs": {
+                "status": "scored",
+                "game_count": 166,
+                "production": {"log_loss": 0.65, "accuracy": 0.63},
+                "nextgen": {"log_loss": 0.64, "accuracy": 0.62},
+                "delta": {"log_loss": -0.01},
+            },
+            "missing_player_impact": {
+                "status": "scored",
+                "game_count": 2595,
+                "production": {"log_loss": 0.62, "accuracy": 0.65},
+                "nextgen": {"log_loss": 0.61, "accuracy": 0.65},
+                "delta": {"log_loss": -0.01},
+            },
+        },
+    }
+
+    markdown = run_nextgen_validation.build_summary_markdown(results)
+
+    assert "shadow/live promotion review" in markdown
+    assert "then rerun this gate" not in markdown

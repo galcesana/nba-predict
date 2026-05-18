@@ -16,12 +16,16 @@ from sklearn.preprocessing import StandardScaler
 
 from src.data import fetch_player_logs
 from src.features.build_matchup_dataset import (
+    ENRICHED_FEATURE_STACK_VERSION,
     build_enriched_matchup_dataset,
     build_matchup_dataset,
 )
-from src.features.lineup_features import build_lineup_features
+from src.features.lineup_features import LINEUP_FEATURE_VERSION, build_lineup_features
 from src.features.player_value_features import build_player_value_features
-from src.features.projected_availability import build_projected_availability
+from src.features.projected_availability import (
+    PROJECTED_AVAILABILITY_VERSION,
+    build_projected_availability,
+)
 from src.models.calibrate import calibrate_predictions
 from src.models.evaluate import compute_calibration_error
 from src.models.tabular_model import (
@@ -143,11 +147,32 @@ def _artifact_matches_game_universe(
     *,
     label: str,
     exact_game_ids: bool,
+    required_column_values: dict[str, str] | None = None,
 ) -> bool:
     """Return whether a cached artifact matches the current game universe."""
     if artifact.empty or "game_id" not in artifact.columns:
         logger.info("Cached %s is stale because it has no game_id rows.", label)
         return False
+
+    if required_column_values:
+        for column, expected_value in required_column_values.items():
+            if column not in artifact.columns:
+                logger.info(
+                    "Cached %s is stale because it is missing %s.",
+                    label,
+                    column,
+                )
+                return False
+            actual_values = set(artifact[column].dropna().astype(str))
+            if actual_values != {expected_value}:
+                logger.info(
+                    "Cached %s is stale because %s has values %s, expected %s.",
+                    label,
+                    column,
+                    sorted(actual_values),
+                    expected_value,
+                )
+                return False
 
     expected_ids = _game_id_set(games)
     actual_ids = _game_id_set(artifact)
@@ -189,6 +214,7 @@ def _load_current_artifact(
     *,
     label: str,
     exact_game_ids: bool = False,
+    required_column_values: dict[str, str] | None = None,
 ) -> pd.DataFrame | None:
     artifact = _load_if_exists(path)
     if artifact is None:
@@ -198,6 +224,7 @@ def _load_current_artifact(
         games,
         label=label,
         exact_game_ids=exact_game_ids,
+        required_column_values=required_column_values,
     ):
         return artifact
     return None
@@ -227,6 +254,9 @@ def ensure_experiment_datasets() -> tuple[pd.DataFrame, pd.DataFrame]:
         games,
         label="enriched matchup dataset",
         exact_game_ids=True,
+        required_column_values={
+            "enriched_feature_stack_version": ENRICHED_FEATURE_STACK_VERSION,
+        },
     )
     if enriched_df is not None:
         return legacy_df, enriched_df
@@ -251,10 +281,12 @@ def ensure_experiment_datasets() -> tuple[pd.DataFrame, pd.DataFrame]:
         games,
         label="player value features",
     )
+    player_value_rebuilt = False
     if player_value_features is None:
         logger.info("Building player value features...")
         player_value_features = build_player_value_features(games, player_logs)
         player_value_features.to_parquet(player_value_path, index=False)
+        player_value_rebuilt = True
         logger.info(
             "Saved player value features rows=%d in %.1fs",
             len(player_value_features),
@@ -268,12 +300,18 @@ def ensure_experiment_datasets() -> tuple[pd.DataFrame, pd.DataFrame]:
         )
 
     stage_start = perf_counter()
-    projected_availability = _load_current_artifact(
-        projected_path,
-        games,
-        label="projected availability",
-    )
+    projected_availability = None
+    if not player_value_rebuilt:
+        projected_availability = _load_current_artifact(
+            projected_path,
+            games,
+            label="projected availability",
+            required_column_values={
+                "availability_model_version": PROJECTED_AVAILABILITY_VERSION,
+            },
+        )
     unresolved = _load_if_exists(unresolved_path) if projected_availability is not None else None
+    projected_rebuilt = False
     if projected_availability is None:
         logger.info("Building projected availability...")
         projected_availability, unresolved = build_projected_availability(
@@ -282,6 +320,7 @@ def ensure_experiment_datasets() -> tuple[pd.DataFrame, pd.DataFrame]:
             player_value_features=player_value_features,
         )
         projected_availability.to_parquet(projected_path, index=False)
+        projected_rebuilt = True
         if unresolved is not None:
             unresolved.to_parquet(unresolved_path, index=False)
         logger.info(
@@ -298,11 +337,16 @@ def ensure_experiment_datasets() -> tuple[pd.DataFrame, pd.DataFrame]:
         )
 
     stage_start = perf_counter()
-    lineup_features_df = _load_current_artifact(
-        lineup_path,
-        games,
-        label="lineup features",
-    )
+    lineup_features_df = None
+    if not projected_rebuilt:
+        lineup_features_df = _load_current_artifact(
+            lineup_path,
+            games,
+            label="lineup features",
+            required_column_values={
+                "lineup_feature_stack_version": LINEUP_FEATURE_VERSION,
+            },
+        )
     if lineup_features_df is None:
         logger.info("Building lineup features...")
         lineup_features_df = build_lineup_features(games, player_logs, projected_availability)

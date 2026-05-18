@@ -163,6 +163,7 @@ def test_build_projected_availability_keeps_recent_role_baseline_without_reports
         metadata_by_season=_season_metadata(),
         recent_team_games=5,
         max_players=5,
+        use_historical_absence_proxy=False,
     )
 
     assert unresolved.empty
@@ -170,6 +171,84 @@ def test_build_projected_availability_keeps_recent_role_baseline_without_reports
     cavs = projected[projected["team_idx"] == 5]
     assert set(cavs["player_id"]) == {101, 102, 103}
     assert cavs["availability_score"].eq(1.0).all()
+
+
+def test_build_projected_availability_marks_prior_absence_without_target_leakage():
+    """A rotation player missing prior games should receive a non-live absence proxy."""
+    games = pd.DataFrame(
+        [
+            {
+                "game_id": "game-5",
+                "date": "2026-05-20",
+                "season": "2025-26",
+                "home_team_idx": 5,
+                "away_team_idx": 8,
+            }
+        ]
+    )
+    rows = []
+    for game_id, game_date, players in [
+        ("hist-1", "2026-05-10", [101, 102]),
+        ("hist-2", "2026-05-12", [101, 102]),
+        ("hist-3", "2026-05-14", [101, 103]),
+        ("hist-4", "2026-05-16", [101, 103]),
+    ]:
+        for player_id in players:
+            rows.append(
+                {
+                    "game_id": game_id,
+                    "date": game_date,
+                    "season": "2025-26",
+                    "team_idx": 5,
+                    "opponent_team_idx": 8,
+                    "player_id": player_id,
+                    "player_idx": player_id,
+                    "player_name": f"Player {player_id}",
+                    "minutes": 35 if player_id == 102 else 30,
+                    "fantasy_points": 44.0 if player_id == 102 else 30.0,
+                    "plus_minus": 4,
+                    "points": 20,
+                    "assists": 4,
+                    "rebounds": 6,
+                }
+            )
+    rows.append(
+        {
+            "game_id": "hist-4",
+            "date": "2026-05-16",
+            "season": "2025-26",
+            "team_idx": 8,
+            "opponent_team_idx": 5,
+            "player_id": 201,
+            "player_idx": 201,
+            "player_name": "Player 201",
+            "minutes": 34,
+            "fantasy_points": 40.0,
+            "plus_minus": 3,
+            "points": 22,
+            "assists": 5,
+            "rebounds": 7,
+        }
+    )
+
+    projected, unresolved = projected_availability.build_projected_availability(
+        games,
+        pd.DataFrame(rows),
+        recent_team_games=5,
+        max_players=5,
+    )
+
+    absent_player = projected[
+        (projected["game_id"] == "game-5") & (projected["player_id"] == 102)
+    ].iloc[0]
+
+    assert unresolved.empty
+    assert absent_player["status"] == "PROJECTED_ABSENT"
+    assert absent_player["source_type"] == "historical_absence_proxy"
+    assert absent_player["availability_score"] < 1.0
+    assert absent_player["availability_model_version"] == (
+        projected_availability.PROJECTED_AVAILABILITY_VERSION
+    )
 
 
 def test_build_projected_availability_records_unmatched_injury_names():
