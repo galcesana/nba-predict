@@ -40,7 +40,11 @@
         "elo_probability": 0.7294,
         "tabular_probability": 0.6144999861717224,
         "sequence_probability": 0.5788000226020813,
-        "final_probability": 0.645
+        "final_probability": 0.645,
+        "enriched_lightgbm_probability": 0.5285,
+        "nextgen_shadow_probability": 0.6276,
+        "enriched_catboost_probability": 0.6002,
+        "nextgen_shadow_calibrated_probability": 0.626
       },
       "context_details": {
         "injury_mode": "live",
@@ -63,7 +67,10 @@
         "home_article_count_72h": 14,
         "away_article_count_72h": 15,
         "latest_article_at": "2026-05-18T17:30:00Z",
-        "news_collected_at": "2026-05-18T17:36:59Z"
+        "news_collected_at": "2026-05-18T17:36:59Z",
+        "nextgen_shadow_mode": "available",
+        "nextgen_shadow_model_version": "nextgen_full_raw_v1",
+        "nextgen_shadow_delta": -0.0183
       },
       "top_model_factors": [
         "Away team has significantly better recent net rating",
@@ -76,7 +83,14 @@
       "game_label": "West Conf. Finals",
       "game_sub_label": "Game 1",
       "series_text": "Series tied 0-0",
-      "game_code": "20260518/SASOKC"
+      "game_code": "20260518/SASOKC",
+      "shadow_outputs": {
+        "model_version": "nextgen_full_raw_v1",
+        "nextgen_shadow_probability": 0.6275741988590444,
+        "nextgen_shadow_calibrated_probability": 0.6260121842291906,
+        "enriched_catboost_probability": 0.6001900333916663,
+        "enriched_lightgbm_probability": 0.5285354895025036
+      }
     },
     {
       "game_id": "0042500301",
@@ -90,7 +104,11 @@
         "elo_probability": 0.6954,
         "tabular_probability": 0.6952000260353088,
         "sequence_probability": 0.7688999772071838,
-        "final_probability": 0.6889
+        "final_probability": 0.6889,
+        "enriched_lightgbm_probability": 0.7028,
+        "nextgen_shadow_probability": 0.7088,
+        "enriched_catboost_probability": 0.7129,
+        "nextgen_shadow_calibrated_probability": 0.6934
       },
       "context_details": {
         "injury_mode": "fallback",
@@ -113,7 +131,10 @@
         "home_article_count_72h": 0,
         "away_article_count_72h": 0,
         "latest_article_at": null,
-        "news_collected_at": null
+        "news_collected_at": null,
+        "nextgen_shadow_mode": "available",
+        "nextgen_shadow_model_version": "nextgen_full_raw_v1",
+        "nextgen_shadow_delta": 0.0201
       },
       "top_model_factors": [
         "Home team has significantly better recent net rating"
@@ -125,7 +146,16 @@
       "game_label": "East Conf. Finals",
       "game_sub_label": "Game 1",
       "series_text": "Series tied 0-0",
-      "game_code": "20260519/CLENYK"
+      "game_code": "20260519/CLENYK",
+      "shadow_outputs": {
+        "model_version": "nextgen_full_raw_v1",
+        "nextgen_shadow_probability": 0.7087961435414952,
+        "nextgen_shadow_calibrated_probability": 0.6933926059060684,
+        "enriched_catboost_probability": 0.7128660960982798,
+        "enriched_lightgbm_probability": 0.702826013377901
+      }
     }
-  ]
+  ],
+  "shadow_model_version": "nextgen_full_raw_v1",
+  "shadow_generated_at": "2026-05-18T21:52:18Z"
 }

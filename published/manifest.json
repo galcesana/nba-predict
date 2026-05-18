@@ -20,5 +20,7 @@
     "latest_injury_report_at": "2026-05-18T13:30:00-0400",
     "latest_news_article_at": "2026-05-18T17:30:00Z",
     "latest_news_collection_at": "2026-05-18T17:36:59Z"
-  }
+  },
+  "shadow_model_version": "nextgen_full_raw_v1",
+  "shadow_generated_at": "2026-05-18T21:52:18Z"
 }
