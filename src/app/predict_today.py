@@ -15,7 +15,7 @@ from typing import Callable
 import pandas as pd
 from nba_api.stats.endpoints import scoreboardv2, scoreboardv3
 
-from src.models.predict import PredictionPipeline
+from src.models.predict import NEXTGEN_SHADOW_MODEL_VERSION, PredictionPipeline
 from src.utils.logging import setup_logging
 from src.utils.paths import DATA_DIR, PREDICTIONS_DIR, PROCESSED_DIR
 
@@ -98,6 +98,19 @@ def _context_summary_from_predictions(predictions: list[dict]) -> dict[str, obje
         "latest_news_article_at": latest_news_article_at,
         "latest_news_collection_at": latest_news_collection_at,
     }
+
+
+def _shadow_model_version_from_predictions(predictions: list[dict]) -> str | None:
+    """Return the shadow model version when candidate outputs are present."""
+    for prediction in predictions:
+        details = prediction.get("context_details", {})
+        version = details.get("nextgen_shadow_model_version")
+        if version:
+            return str(version)
+        outputs = prediction.get("component_outputs", {})
+        if "nextgen_shadow_probability" in outputs:
+            return NEXTGEN_SHADOW_MODEL_VERSION
+    return None
 
 
 def _load_team_mapping() -> dict[str, int]:
@@ -352,6 +365,7 @@ def generate_predictions_for_date(
     pipeline: PredictionPipeline | None = None,
     historical_games: pd.DataFrame | None = None,
     historical_team_logs: pd.DataFrame | None = None,
+    enable_nextgen_shadow: bool = False,
 ) -> tuple[dict, Path] | None:
     """Generate and save daily predictions for a specific date."""
     target_games = schedule_fetcher(date_str)
@@ -363,7 +377,7 @@ def generate_predictions_for_date(
     )
 
     if pipeline is None:
-        pipeline = PredictionPipeline()
+        pipeline = PredictionPipeline(enable_nextgen_shadow=enable_nextgen_shadow)
 
     results = _predict_for_schedule(
         target_games,
@@ -373,11 +387,13 @@ def generate_predictions_for_date(
         historical_team_logs=hist_logs,
     )
 
+    shadow_model_version = _shadow_model_version_from_predictions(results)
     output = {
         "date": date_str,
         "slate_type": "day",
         "generated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
         "model_version": "ensemble_v1",
+        "shadow_model_version": shadow_model_version,
         "context_summary": _context_summary_from_predictions(results),
         "predictions": results,
     }
@@ -411,6 +427,7 @@ def generate_predictions_for_window(
     pipeline: PredictionPipeline | None = None,
     historical_games: pd.DataFrame | None = None,
     historical_team_logs: pd.DataFrame | None = None,
+    enable_nextgen_shadow: bool = False,
 ) -> tuple[dict, Path] | None:
     """Generate and save predictions for an upcoming multi-day window."""
     forecast_dates = forecast_window_dates(start_date, days=days)
@@ -420,7 +437,7 @@ def generate_predictions_for_window(
     )
 
     if pipeline is None:
-        pipeline = PredictionPipeline()
+        pipeline = PredictionPipeline(enable_nextgen_shadow=enable_nextgen_shadow)
 
     all_predictions: list[dict] = []
     dates_with_games: list[dict[str, int | str]] = []
@@ -463,6 +480,7 @@ def generate_predictions_for_window(
         key=lambda pred: (pred.get("game_date", start_date), pred.get("game_id", ""))
     )
     generated_at = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    shadow_model_version = _shadow_model_version_from_predictions(all_predictions)
     output = {
         "date": start_date,
         "slate_type": "week",
@@ -470,6 +488,7 @@ def generate_predictions_for_window(
         "window_end": forecast_dates[-1],
         "generated_at": generated_at,
         "model_version": "ensemble_v1",
+        "shadow_model_version": shadow_model_version,
         "dates_with_games": dates_with_games,
         "playoff_filtering_mode": "next_game_per_series",
         "context_summary": _context_summary_from_predictions(all_predictions),
@@ -502,9 +521,14 @@ def main(argv: list[str] | None = None):
         default=datetime.today().strftime("%Y-%m-%d"),
         help="Date to predict for in YYYY-MM-DD format.",
     )
+    parser.add_argument(
+        "--nextgen-shadow",
+        action="store_true",
+        help="Emit opt-in next-gen candidate probabilities alongside production outputs.",
+    )
     args = parser.parse_args(argv)
 
-    generate_predictions_for_date(args.date)
+    generate_predictions_for_date(args.date, enable_nextgen_shadow=args.nextgen_shadow)
 
 
 if __name__ == "__main__":

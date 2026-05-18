@@ -11,6 +11,7 @@ import pytest
 from src.app.predict_today import (
     _filter_confirmed_schedule,
     _filter_to_next_playoff_games,
+    _shadow_model_version_from_predictions,
     generate_predictions_for_date,
     generate_predictions_for_window,
 )
@@ -180,6 +181,19 @@ class TestPredictionPipeline:
         assert "tabular_probability" in comps
         assert "sequence_probability" in comps
         assert "final_probability" in comps
+
+    def test_shadow_model_version_detects_nextgen_outputs(self):
+        """Prediction payload metadata should label opt-in shadow candidate outputs."""
+        version = _shadow_model_version_from_predictions(
+            [
+                {
+                    "component_outputs": {"nextgen_shadow_probability": 0.58},
+                    "context_details": {},
+                }
+            ]
+        )
+
+        assert version == "nextgen_full_raw_v1"
 
     def test_top_factors_generated(self, sample_predictions):
         """top_model_factors is a non-empty list of strings."""

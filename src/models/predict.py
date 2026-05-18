@@ -7,6 +7,7 @@ to proxy defaults when raw daily inputs are unavailable.
 
 import json
 import logging
+import os
 from typing import Any
 
 import joblib
@@ -16,9 +17,12 @@ import torch
 import xgboost as xgb
 import yaml
 
-from src.features.build_matchup_dataset import build_matchup_dataset
+from src.features.build_matchup_dataset import build_enriched_matchup_dataset, build_matchup_dataset
 from src.features.injury_features import INJURY_FEATURE_COLS, build_injury_features
+from src.features.lineup_features import build_lineup_features
 from src.features.news_features import NEWS_FEATURE_COLS, build_news_features
+from src.features.player_value_features import build_player_value_features
+from src.features.projected_availability import build_projected_availability
 from src.features.sequence_builder import build_context_features, build_team_sequences
 from src.models.elo import EloModel
 from src.models.matchup_fusion_model import MatchupFusionModel
@@ -29,12 +33,35 @@ logger = logging.getLogger(__name__)
 BASELINES_DIR = MODELS_DIR / "baselines"
 NEURAL_DIR = MODELS_DIR / "neural"
 ENSEMBLE_DIR = MODELS_DIR / "ensembles"
+NEXTGEN_DIR = MODELS_DIR / "ensembles_nextgen"
+NEXTGEN_INPUT_COLS = [
+    "neural_prob",
+    "xgboost_prob",
+    "elo_prob",
+    "enriched_catboost_prob",
+    "enriched_lightgbm_prob",
+]
+NEXTGEN_SHADOW_MODEL_VERSION = "nextgen_full_raw_v1"
+
+
+def _env_flag_enabled(name: str) -> bool:
+    return str(os.getenv(name, "")).strip().lower() in {"1", "true", "yes", "on"}
 
 
 class PredictionPipeline:
-    def __init__(self, use_cuda: bool = False):
+    def __init__(
+        self,
+        use_cuda: bool = False,
+        enable_nextgen_shadow: bool | None = None,
+    ):
         """Initialize pipeline and load all models/artifacts."""
         self.device = torch.device("cuda" if use_cuda and torch.cuda.is_available() else "cpu")
+        self.nextgen_shadow_requested = (
+            _env_flag_enabled("NBA_PREDICT_NEXTGEN_SHADOW")
+            if enable_nextgen_shadow is None
+            else enable_nextgen_shadow
+        )
+        self.nextgen_shadow_enabled = False
         self._load_configs()
         self._load_models()
 
@@ -99,6 +126,35 @@ class PredictionPipeline:
         logger.info("Loading Ensemble model...")
         self.meta_model = joblib.load(ENSEMBLE_DIR / "meta_model.joblib")
         self.calibrator = joblib.load(ENSEMBLE_DIR / "calibrator.joblib")
+        self._load_nextgen_shadow_models()
+
+    def _load_nextgen_shadow_models(self) -> None:
+        """Load next-gen candidate artifacts when shadow mode is explicitly enabled."""
+        if not self.nextgen_shadow_requested:
+            return
+
+        required_paths = {
+            "catboost": NEXTGEN_DIR / "enriched_catboost.joblib",
+            "lightgbm": NEXTGEN_DIR / "enriched_lightgbm.joblib",
+            "feature_columns": NEXTGEN_DIR / "enriched_feature_columns.json",
+            "meta_model": NEXTGEN_DIR / "meta_model.joblib",
+            "calibrator": NEXTGEN_DIR / "calibrator.joblib",
+            "player_logs": PROCESSED_DIR / "player_game_logs" / "player_game_logs.parquet",
+        }
+        missing = [str(path) for path in required_paths.values() if not path.exists()]
+        if missing:
+            logger.warning("Next-gen shadow mode disabled; missing artifacts: %s", missing)
+            return
+
+        logger.info("Loading next-gen shadow artifacts...")
+        self.nextgen_catboost = joblib.load(required_paths["catboost"])
+        self.nextgen_lightgbm = joblib.load(required_paths["lightgbm"])
+        with open(required_paths["feature_columns"]) as f:
+            self.nextgen_feature_cols = json.load(f)
+        self.nextgen_meta_model = joblib.load(required_paths["meta_model"])
+        self.nextgen_calibrator = joblib.load(required_paths["calibrator"])
+        self.nextgen_player_logs_path = required_paths["player_logs"]
+        self.nextgen_shadow_enabled = True
 
     def _build_auxiliary_feature_arrays(
         self,
@@ -341,6 +397,106 @@ class PredictionPipeline:
             context_details,
         )
 
+    def _build_nextgen_shadow_probabilities(
+        self,
+        *,
+        combined_games: pd.DataFrame,
+        combined_logs: pd.DataFrame,
+        target_games: pd.DataFrame,
+        target_matchups: pd.DataFrame,
+        neural_probs: np.ndarray,
+        xgb_probs: np.ndarray,
+    ) -> dict[str, dict[str, float | str]]:
+        """Build opt-in next-gen candidate probabilities for shadow comparison."""
+        if not self.nextgen_shadow_enabled:
+            return {}
+
+        player_logs = pd.read_parquet(self.nextgen_player_logs_path)
+        player_logs["date"] = pd.to_datetime(player_logs["date"])
+        target_dates = pd.to_datetime(target_games["date"])
+        cutoff = pd.Timestamp(target_dates.min())
+        historical_player_logs = player_logs[player_logs["date"] < cutoff].copy()
+        if historical_player_logs.empty:
+            logger.warning(
+                "Next-gen shadow unavailable; no historical player logs before %s.",
+                cutoff,
+            )
+            return {}
+
+        player_value_features = build_player_value_features(
+            target_games,
+            historical_player_logs,
+        )
+        projected_availability, _ = build_projected_availability(
+            target_games,
+            historical_player_logs,
+            player_value_features=player_value_features,
+        )
+        lineup_features = build_lineup_features(
+            target_games,
+            historical_player_logs,
+            projected_availability,
+        )
+        enriched = build_enriched_matchup_dataset(
+            combined_games,
+            combined_logs,
+            historical_player_logs,
+            player_value_features=player_value_features,
+            projected_availability=projected_availability,
+            lineup_features_df=lineup_features,
+        )
+
+        target_game_ids = target_matchups["game_id"].astype(str).tolist()
+        enriched_targets = (
+            enriched.assign(game_id=enriched["game_id"].astype(str))
+            .drop_duplicates("game_id", keep="last")
+            .set_index("game_id")
+            .reindex(target_game_ids)
+        )
+        X_enriched = enriched_targets.reindex(columns=self.nextgen_feature_cols).fillna(0.0)
+        if X_enriched.empty:
+            logger.warning("Next-gen shadow unavailable; enriched target rows were not generated.")
+            return {}
+        enriched_catboost_prob = self.nextgen_catboost.predict_proba(
+            X_enriched.to_numpy()
+        )[:, 1]
+        enriched_lightgbm_prob = self.nextgen_lightgbm.predict_proba(X_enriched)[:, 1]
+        elo_probs = np.array(
+            [
+                self.elo.predict_proba(int(row["home_team_idx"]), int(row["away_team_idx"]))
+                for _, row in target_matchups.iterrows()
+            ]
+        )
+        meta_frame = pd.DataFrame(
+            {
+                "neural_prob": neural_probs,
+                "xgboost_prob": xgb_probs,
+                "elo_prob": elo_probs,
+                "enriched_catboost_prob": enriched_catboost_prob,
+                "enriched_lightgbm_prob": enriched_lightgbm_prob,
+            }
+        )[NEXTGEN_INPUT_COLS]
+        raw_probs = self.nextgen_meta_model.predict_proba(meta_frame.to_numpy())[:, 1]
+        calibrated_probs = self.nextgen_calibrator.predict_proba(raw_probs)
+
+        return {
+            game_id: {
+                "model_version": NEXTGEN_SHADOW_MODEL_VERSION,
+                "nextgen_shadow_probability": float(raw_prob),
+                "nextgen_shadow_calibrated_probability": float(calibrated_prob),
+                "enriched_catboost_probability": float(cat_prob),
+                "enriched_lightgbm_probability": float(lgbm_prob),
+            }
+            for game_id, raw_prob, calibrated_prob, cat_prob, lgbm_prob in zip(
+                target_game_ids,
+                raw_probs,
+                calibrated_probs,
+                enriched_catboost_prob,
+                enriched_lightgbm_prob,
+                strict=False,
+            )
+        }
+
     def _get_top_factors(
         self,
         matchup_row: pd.Series,
@@ -505,10 +661,20 @@ class PredictionPipeline:
         if neural_probs.ndim == 0:
             neural_probs = np.array([neural_probs])
 
+        nextgen_shadow = self._build_nextgen_shadow_probabilities(
+            combined_games=combined_games,
+            combined_logs=combined_logs,
+            target_games=target_games,
+            target_matchups=target_matchups,
+            neural_probs=neural_probs,
+            xgb_probs=xgb_probs,
+        )
+
         # 6. Ensemble and Combine
         for i, (_, row) in enumerate(target_matchups.iterrows()):
             home_idx = int(row["home_team_idx"])
             away_idx = int(row["away_team_idx"])
+            game_id = str(row["game_id"])
 
             # Elo probability
             elo_prob = self.elo.predict_proba(home_idx, away_idx)
@@ -526,6 +692,7 @@ class PredictionPipeline:
 
             raw_ensemble_prob = self.meta_model.predict_proba(ensemble_in.values)[:, 1][0]
             final_prob = self.calibrator.predict_proba(np.array([raw_ensemble_prob]))[0]
+            shadow = nextgen_shadow.get(game_id)
 
             if final_prob > 0.7 or final_prob < 0.3:
                 conf = "high"
@@ -533,6 +700,35 @@ class PredictionPipeline:
                 conf = "medium"
             else:
                 conf = "low"
+
+            component_outputs = {
+                "elo_probability": float(round(elo_prob, 4)),
+                "tabular_probability": float(round(xgb_probs[i], 4)),
+                "sequence_probability": float(round(neural_probs[i], 4)),
+                "final_probability": float(round(final_prob, 4)),
+            }
+            context = dict(context_details[i])
+            if shadow:
+                shadow_prob = float(shadow["nextgen_shadow_probability"])
+                component_outputs.update(
+                    {
+                        "nextgen_shadow_probability": float(round(shadow_prob, 4)),
+                        "nextgen_shadow_calibrated_probability": float(
+                            round(float(shadow["nextgen_shadow_calibrated_probability"]), 4)
+                        ),
+                        "enriched_catboost_probability": float(
+                            round(float(shadow["enriched_catboost_probability"]), 4)
+                        ),
+                        "enriched_lightgbm_probability": float(
+                            round(float(shadow["enriched_lightgbm_probability"]), 4)
+                        ),
+                    }
+                )
+                context["nextgen_shadow_mode"] = "available"
+                context["nextgen_shadow_model_version"] = shadow["model_version"]
+                context["nextgen_shadow_delta"] = float(round(shadow_prob - final_prob, 4))
+            elif self.nextgen_shadow_requested:
+                context["nextgen_shadow_mode"] = "unavailable"
 
             results.append(
                 {
@@ -543,13 +739,9 @@ class PredictionPipeline:
                     "away_win_probability": float(round(1 - final_prob, 4)),
                     "predicted_winner": "home" if final_prob >= 0.5 else "away",
                     "confidence_bucket": conf,
-                    "component_outputs": {
-                        "elo_probability": float(round(elo_prob, 4)),
-                        "tabular_probability": float(round(xgb_probs[i], 4)),
-                        "sequence_probability": float(round(neural_probs[i], 4)),
-                        "final_probability": float(round(final_prob, 4)),
-                    },
-                    "context_details": context_details[i],
+                    "component_outputs": component_outputs,
+                    "context_details": context,
+                    "shadow_outputs": shadow or {},
                     "top_model_factors": self._get_top_factors(
                         row,
                         home_injury_arr[i],

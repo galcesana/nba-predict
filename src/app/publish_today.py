@@ -97,6 +97,7 @@ def publish_predictions_for_date(
     timezone_name: str = DEFAULT_TIMEZONE,
     published_root: Path = PUBLISHED_DIR,
     prediction_generator: PredictionGenerator = generate_predictions_for_window,
+    enable_nextgen_shadow: bool = False,
 ) -> tuple[dict, list[Path]]:
     """Publish a forecast snapshot for the requested date."""
     publish_root = Path(published_root)
@@ -109,7 +110,11 @@ def publish_predictions_for_date(
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         temp_root = Path(tmp_dir)
-        result = prediction_generator(date_str, output_dir=temp_root)
+        result = prediction_generator(
+            date_str,
+            output_dir=temp_root,
+            enable_nextgen_shadow=enable_nextgen_shadow,
+        )
 
         if result is None:
             previous_date = previous_latest.get("date") if previous_latest else None
@@ -154,6 +159,7 @@ def publish_predictions_for_date(
         "published_file": _repo_relative_path(dated_path, repo_root),
         "games_count": len(payload.get("predictions", [])),
         "model_version": payload.get("model_version"),
+        "shadow_model_version": payload.get("shadow_model_version"),
         "slate_type": payload.get("slate_type", "week"),
         "window_start": payload.get("window_start", date_str),
         "window_end": payload.get("window_end", date_str),
@@ -180,6 +186,11 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_TIMEZONE,
         help="Timezone used when --date is omitted.",
     )
+    parser.add_argument(
+        "--nextgen-shadow",
+        action="store_true",
+        help="Publish production probabilities with next-gen candidate outputs for shadow review.",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -187,6 +198,7 @@ def main(argv: list[str] | None = None) -> int:
         manifest, _ = publish_predictions_for_date(
             target_date,
             timezone_name=args.timezone,
+            enable_nextgen_shadow=args.nextgen_shadow,
         )
         logger.info(
             "Publish finished with status=%s target_date=%s latest_available=%s days=%s",

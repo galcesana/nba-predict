@@ -21,6 +21,8 @@
 - `src/models/run_production_showdown.py` now compares the saved enriched benchmark winners against the shipped neural full-fusion and production ensemble artifacts on the same held-out split.
 - `src/models/run_nextgen_ensemble.py` now trains enriched CatBoost/LightGBM input models and evaluates expanded meta-ensembles that add those probabilities to the current `neural + xgboost + elo` stack.
 - `src/models/run_nextgen_validation.py` now runs a promotion gate across aggregate, per-season, schedule-stress, context-confidence, playoff, and missing-player slices before any live model promotion.
+- `src/models/predict.py`, `src/app/predict_today.py`, and `src/app/publish_today.py` now support opt-in `nextgen_full_raw_v1` shadow outputs through `--nextgen-shadow` / `NBA_PREDICT_NEXTGEN_SHADOW=1`, while production final probabilities remain `ensemble_v1`.
+- The small next-gen shadow bundle and historical player-log inference bundle are tracked so clean checkouts can emit candidate probabilities for review.
 - `src/data/fetch_games.py` and `src/data/fetch_player_logs.py` now support configured `Regular Season` + `Playoffs` ingestion and preserve `season_type` into processed rows for regime-aware evaluation.
 - `src/models/run_enriched_experiments.py` now detects stale cached matchup/player feature artifacts when the game universe or feature-stack version changes, so adding playoff rows or changing availability logic forces the enriched stack to rebuild instead of silently reusing old caches.
 - `src/models/run_nextgen_ensemble.py` now also invalidates stale enriched input prediction caches, and `src/models/run_production_showdown.py` reports saved-production coverage when old artifacts do not cover every enriched test row.
@@ -29,5 +31,5 @@
 
 ## Next Slice
 
-- Prepare the shadow promotion path for `nextgen_full / raw`, including artifact handoff, inference integration, and dashboard/API labeling.
+- Run a manual `python -m src.app.publish_today --nextgen-shadow` review slate and compare production vs candidate deltas before making the candidate the default final probability.
 - Keep monitoring playoff, calibration, and missing-player slices; longer-term work should replace the historical absence proxy with richer official inactive history when available.

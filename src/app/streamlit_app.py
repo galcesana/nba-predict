@@ -419,6 +419,12 @@ def render_today_page() -> None:
         f"{payload.get('generated_at', 'unknown')} | "
         f"Model {payload.get('model_version', 'unknown')}"
     )
+    if payload.get("shadow_model_version"):
+        st.caption(
+            "Shadow candidate active: "
+            f"{payload.get('shadow_model_version')} "
+            "(displayed for review; production probability remains ensemble_v1)."
+        )
     if context_summary.get("latest_injury_report_at") or context_summary.get(
         "latest_news_article_at"
     ):
@@ -509,10 +515,19 @@ def render_game_detail_page() -> None:
         unsafe_allow_html=True,
     )
 
-    metric_cols = st.columns(3)
+    metric_cols = st.columns(4 if payload.get("shadow_model_version") else 3)
     metric_cols[0].metric("Predicted Winner", prediction.get("predicted_winner", "unknown").title())
     metric_cols[1].metric("Confidence", prediction.get("confidence_bucket", "unknown").title())
     metric_cols[2].metric("Model Version", payload.get("model_version", "unknown"))
+    if payload.get("shadow_model_version"):
+        shadow_probability = (
+            prediction.get("component_outputs", {}).get("nextgen_shadow_probability")
+        )
+        metric_cols[3].metric(
+            "Shadow Candidate",
+            f"{float(shadow_probability) * 100:.1f}%" if shadow_probability is not None else "n/a",
+            payload.get("shadow_model_version"),
+        )
 
     left, right = st.columns([1, 1])
     with left:

@@ -199,6 +199,8 @@ def create_app() -> FastAPI:
             "model_version": (payload or {}).get("model_version") or (manifest or {}).get(
                 "model_version"
             ),
+            "shadow_model_version": (payload or {}).get("shadow_model_version")
+            or (manifest or {}).get("shadow_model_version"),
             "attempted_at": (manifest or {}).get("attempted_at"),
             "context_summary": _to_builtin(
                 dashboard_data.latest_context_summary(payload, manifest)

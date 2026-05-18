@@ -70,6 +70,9 @@ data/processed/*
 !data/processed/team_game_logs/
 data/processed/team_game_logs/*
 !data/processed/team_game_logs/team_game_logs.parquet
+!data/processed/player_game_logs/
+data/processed/player_game_logs/*
+!data/processed/player_game_logs/player_game_logs.parquet
 !data/processed/injury_features/
 data/processed/injury_features/*
 !data/processed/injury_features/injury_features.parquet
@@ -79,3 +82,12 @@ data/processed/news_features/*
 
 !models/baselines/scaler.joblib
 !models/neural/best_model.pt
+!models/ensembles_nextgen/
+models/ensembles_nextgen/*
+!models/ensembles_nextgen/calibrator.joblib
+!models/ensembles_nextgen/enriched_catboost.joblib
+!models/ensembles_nextgen/enriched_feature_columns.json
+!models/ensembles_nextgen/enriched_lightgbm.joblib
+!models/ensembles_nextgen/meta_model.joblib
+!models/ensembles_nextgen/nextgen_results.json
+!models/ensembles_nextgen/promotion_manifest.json

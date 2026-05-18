@@ -234,6 +234,13 @@ Or run the script directly for a specific date:
 python -m src.app.predict_today --date 2026-05-16
 ```
 
+To run a safe next-gen shadow comparison, keep production probabilities unchanged while adding
+candidate probabilities to `component_outputs`:
+
+```bash
+python -m src.app.predict_today --date 2026-05-16 --nextgen-shadow
+```
+
 This writes to:
 
 ```text
@@ -294,11 +301,18 @@ Or publish a specific date manually:
 python -m src.app.publish_today --date 2024-01-15
 ```
 
+For a deployment review slate with next-gen candidate probabilities alongside production:
+
+```bash
+python -m src.app.publish_today --nextgen-shadow
+```
+
 This command:
 
 - resolves the target date in `America/New_York` by default
 - runs inference in a temporary workspace
 - attempts to enrich the slate with the latest official injury report snapshot and live team-news context
+- optionally emits `nextgen_full_raw_v1` shadow probabilities without changing the production final probability
 - writes `published/daily/YYYY-MM-DD.json`
 - updates `published/daily/latest.json`
 - writes `published/manifest.json`
@@ -411,7 +425,7 @@ Historical implementation history is preserved in:
 | 11 | Live Context + Playoff Hardening | Complete |
 | 12 | API Service Layer | Complete |
 
-**Current data:** 15,412 games across 12 seasons (2014-2026), including 983 playoff games. The current next-gen experiment candidate is `nextgen_full / raw` at 0.6161 log loss on the playoff-aware held-out split, and the promotion gate is ready for shadow/live review.
+**Current data:** 15,412 games across 12 seasons (2014-2026), including 983 playoff games. The current next-gen experiment candidate is `nextgen_full / raw` at 0.6161 log loss on the playoff-aware held-out split, and the promotion gate is ready for shadow/live review. The shipped shadow bundle is `nextgen_full_raw_v1`.
 
 ---
 

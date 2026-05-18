@@ -257,9 +257,11 @@ Current behavior:
 - attempts live injury/news overlays for target games
 - falls back to zero or proxy defaults when live context is missing
 - returns prediction payloads with `context_details`
+- optionally emits `nextgen_full_raw_v1` shadow probabilities when `--nextgen-shadow` or `NBA_PREDICT_NEXTGEN_SHADOW=1` is enabled
 
 Important current limitation:
 
+- production final probabilities still come from `ensemble_v1` until a separate promotion flips the default model version
 - when no live aux data exists, inference still zero-fills or fallback-fills the aux streams rather than reasoning over player-level uncertainty
 
 ---
@@ -523,6 +525,11 @@ schedule-stress, context-confidence, playoff, and missing-player-impact slices.
 Current promotion status is `ready` for shadow/live promotion review: the next-gen candidate clears
 the aggregate log-loss check, playoff coverage gate, missing-player coverage gate, and critical
 slice-regression gate.
+
+Shadow inference is available but opt-in. `python -m src.app.predict_today --nextgen-shadow` and
+`python -m src.app.publish_today --nextgen-shadow` keep the production final probability as
+`ensemble_v1` while adding `component_outputs.nextgen_shadow_probability`, enriched CatBoost/LightGBM
+probabilities, and `shadow_model_version=nextgen_full_raw_v1` for review.
 
 The first coverage fix is complete: historical game and player-log fetchers request playoff rows,
 carry `season_type` forward, and the rebuilt evaluation now includes 166 held-out playoff games.

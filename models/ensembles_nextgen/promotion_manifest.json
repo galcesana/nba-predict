@@ -1,0 +1,38 @@
+{
+  "model_version": "nextgen_full_raw_v1",
+  "promotion_status": "shadow_ready",
+  "candidate": "nextgen_full / raw",
+  "production_baseline": "production ensemble raw",
+  "final_probability_mode": "raw",
+  "input_columns": [
+    "neural_prob",
+    "xgboost_prob",
+    "elo_prob",
+    "enriched_catboost_prob",
+    "enriched_lightgbm_prob"
+  ],
+  "required_artifacts": [
+    "models/ensembles_nextgen/enriched_catboost.joblib",
+    "models/ensembles_nextgen/enriched_lightgbm.joblib",
+    "models/ensembles_nextgen/enriched_feature_columns.json",
+    "models/ensembles_nextgen/meta_model.joblib",
+    "models/ensembles_nextgen/calibrator.joblib",
+    "data/processed/player_game_logs/player_game_logs.parquet"
+  ],
+  "validation": {
+    "gate_status": "ready",
+    "test_rows": 2621,
+    "production_log_loss": 0.6196,
+    "candidate_log_loss": 0.6161,
+    "log_loss_delta": -0.0035,
+    "candidate_accuracy": 0.6501,
+    "playoff_heldout_games": 166,
+    "missing_player_impact_games": 2595
+  },
+  "shadow_mode": {
+    "production_probability_remains": "ensemble_v1",
+    "shadow_probability_field": "component_outputs.nextgen_shadow_probability",
+    "enable_cli_flag": "--nextgen-shadow",
+    "enable_env_var": "NBA_PREDICT_NEXTGEN_SHADOW=1"
+  }
+}

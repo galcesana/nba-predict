@@ -79,6 +79,28 @@ def test_publish_success_writes_dated_latest_and_manifest(tmp_path):
     assert set(paths) == {dated_path, latest_path, manifest_path}
 
 
+def test_publish_manifest_records_shadow_model_version(tmp_path):
+    """Shadow-mode publishes should label the candidate without replacing production."""
+
+    def fake_generator(date_str: str, output_dir: Path, **_: object):
+        payload = _prediction_payload(date_str)
+        payload["shadow_model_version"] = "nextgen_full_raw_v1"
+        payload["predictions"][0]["component_outputs"]["nextgen_shadow_probability"] = 0.64
+        out_path = output_dir / f"{date_str}.json"
+        _write_json(out_path, payload)
+        return payload, out_path
+
+    manifest, _ = publish_today.publish_predictions_for_date(
+        "2026-01-15",
+        published_root=tmp_path / "published",
+        prediction_generator=fake_generator,
+        enable_nextgen_shadow=True,
+    )
+
+    assert manifest["model_version"] == "ensemble_v1"
+    assert manifest["shadow_model_version"] == "nextgen_full_raw_v1"
+
+
 def test_publish_no_games_preserves_latest_and_writes_manifest(tmp_path):
     """No-games days update only the manifest and keep the previous latest file."""
     publish_root = tmp_path / "published"

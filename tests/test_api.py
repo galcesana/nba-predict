@@ -102,6 +102,20 @@ def test_health_endpoint_reports_ok(monkeypatch):
     assert body["games_count"] == 2
 
 
+def test_health_endpoint_exposes_shadow_model_version(monkeypatch):
+    """Health metadata should label active shadow candidates when present."""
+    payload = _payload()
+    payload["shadow_model_version"] = "nextgen_full_raw_v1"
+    manifest = _manifest()
+    manifest["shadow_model_version"] = "nextgen_full_raw_v1"
+    client = _client(monkeypatch, payload=payload, manifest=manifest)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["shadow_model_version"] == "nextgen_full_raw_v1"
+
+
 def test_health_endpoint_returns_503_when_forecast_is_missing(monkeypatch):
     """Missing payloads and manifests should surface as unavailable health."""
     client = _client(monkeypatch, payload=None, manifest=None)
