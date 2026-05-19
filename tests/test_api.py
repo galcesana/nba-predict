@@ -193,6 +193,8 @@ def test_forecast_game_returns_derived_team_labels(monkeypatch):
     assert game["matchup"] == "ATL at BOS"
     assert game["home_team"] == "BOS"
     assert game["away_team"] == "ATL"
+    assert game["home_team_abbr"] == "BOS"
+    assert game["away_team_abbr"] == "ATL"
     assert game["predicted_team"] == "BOS"
 
 

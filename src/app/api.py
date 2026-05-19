@@ -61,6 +61,8 @@ def _decorate_prediction(prediction: dict[str, Any]) -> dict[str, Any]:
     away_team = dashboard_data.team_abbr(enriched.get("away_team_idx"))
     enriched["home_team"] = home_team
     enriched["away_team"] = away_team
+    enriched["home_team_abbr"] = home_team
+    enriched["away_team_abbr"] = away_team
     enriched["matchup"] = dashboard_data.matchup_label(
         enriched.get("home_team_idx"),
         enriched.get("away_team_idx"),

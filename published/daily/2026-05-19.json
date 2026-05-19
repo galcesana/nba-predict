@@ -3,7 +3,7 @@
   "slate_type": "week",
   "window_start": "2026-05-19",
   "window_end": "2026-05-25",
-  "generated_at": "2026-05-19T17:58:21Z",
+  "generated_at": "2026-05-19T20:06:47Z",
   "model_version": "nextgen_full_value_tuned_v2",
   "shadow_model_version": "nextgen_full_value_tuned_v2",
   "dates_with_games": [
@@ -90,6 +90,11 @@
       "top_model_factors": [
         "Home team has significantly better recent net rating"
       ],
+      "home_team": "NYK",
+      "away_team": "CLE",
+      "home_team_abbr": "NYK",
+      "away_team_abbr": "CLE",
+      "matchup": "CLE at NYK",
       "game_date": "2026-05-19",
       "game_time_utc": "2026-05-20T00:00:00Z",
       "game_time_et": "2026-05-19T20:00:00Z",
@@ -160,6 +165,11 @@
         "Away team has significantly better recent net rating",
         "Away team projects as more shorthanded"
       ],
+      "home_team": "OKC",
+      "away_team": "SAS",
+      "home_team_abbr": "OKC",
+      "away_team_abbr": "SAS",
+      "matchup": "SAS at OKC",
       "game_date": "2026-05-20",
       "game_time_utc": "2026-05-21T00:30:00Z",
       "game_time_et": "2026-05-20T20:30:00Z",

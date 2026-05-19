@@ -253,6 +253,10 @@ This writes to:
 predictions/daily/YYYY-MM-DD.json
 ```
 
+Prediction records preserve anonymous `home_team_idx` / `away_team_idx` fields and also include
+public `home_team`, `away_team`, `home_team_abbr`, `away_team_abbr`, and `matchup` labels for
+dashboard/API clients.
+
 ### 4. Run a Historical Backtest
 
 ```bash

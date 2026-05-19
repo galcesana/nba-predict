@@ -257,6 +257,8 @@ Current behavior:
 - attempts live injury/news overlays for target games
 - falls back to zero or proxy defaults when live context is missing
 - returns prediction payloads with `context_details`
+- preserves anonymous team indices while adding public `home_team`, `away_team`, team-abbreviation,
+  and `matchup` labels at the app publishing boundary
 - uses `nextgen_full_value_tuned_v2` as the default production model
 - retains the previous `ensemble_v1_probability` in component outputs for baseline comparison
 - builds neural sequences only for the requested target slate during live inference, rather than

@@ -337,6 +337,13 @@ class TestScripts:
         assert out_file.exists()
         assert output["date"] == test_date
         assert len(output["predictions"]) == len(target_games)
+        first_prediction = output["predictions"][0]
+        assert first_prediction["home_team"] == first_prediction["home_team_abbr"]
+        assert first_prediction["away_team"] == first_prediction["away_team_abbr"]
+        assert (
+            first_prediction["matchup"]
+            == f"{first_prediction['away_team']} at {first_prediction['home_team']}"
+        )
 
     def test_daily_predictions_saved(self, tmp_path, stub_pipeline, sample_data):
         """Daily prediction output is saved as valid JSON."""
@@ -426,3 +433,9 @@ class TestScripts:
             {"date": "2024-01-15", "games_count": 1},
             {"date": "2024-01-17", "games_count": 1},
         ]
+        first_prediction = output["predictions"][0]
+        assert first_prediction["home_team"] == "BOS"
+        assert first_prediction["away_team"] == "BKN"
+        assert first_prediction["home_team_abbr"] == "BOS"
+        assert first_prediction["away_team_abbr"] == "BKN"
+        assert first_prediction["matchup"] == "BKN at BOS"

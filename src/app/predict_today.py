@@ -15,6 +15,7 @@ from typing import Callable
 import pandas as pd
 from nba_api.stats.endpoints import scoreboardv2, scoreboardv3
 
+from src.anonymization.team_mapping import idx_to_team_abbr
 from src.models.predict import NEXTGEN_SHADOW_MODEL_VERSION, PredictionPipeline
 from src.utils.logging import setup_logging
 from src.utils.paths import DATA_DIR, PREDICTIONS_DIR, PROCESSED_DIR
@@ -126,6 +127,28 @@ def _model_version_from_pipeline(pipeline: PredictionPipeline | object) -> str:
 def _load_team_mapping() -> dict[str, int]:
     with open(DATA_DIR / "mappings" / "team_to_idx.json") as f:
         return json.load(f)
+
+
+def _team_label(team_idx: int | str) -> str:
+    """Return the public team abbreviation for a model-internal team index."""
+    idx = int(team_idx)
+    try:
+        return idx_to_team_abbr(idx)
+    except KeyError:
+        return f"TEAM_{idx}"
+
+
+def _with_team_labels(prediction: dict) -> dict:
+    """Attach public team labels while preserving anonymous model IDs."""
+    enriched = dict(prediction)
+    home_team = _team_label(enriched["home_team_idx"])
+    away_team = _team_label(enriched["away_team_idx"])
+    enriched["home_team"] = home_team
+    enriched["away_team"] = away_team
+    enriched["home_team_abbr"] = home_team
+    enriched["away_team_abbr"] = away_team
+    enriched["matchup"] = f"{away_team} at {home_team}"
+    return enriched
 
 
 def _season_from_date(date_str: str) -> str:
@@ -347,7 +370,7 @@ def _predict_for_schedule(
     for result in results:
         game_id = result["game_id"]
         meta = metadata_lookup.get(game_id, {})
-        enriched = dict(result)
+        enriched = _with_team_labels(result)
         enriched["game_date"] = date_str
         if "game_time_utc" in meta:
             enriched["game_time_utc"] = meta.get("game_time_utc")
