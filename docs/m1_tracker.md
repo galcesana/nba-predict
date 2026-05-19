@@ -31,10 +31,12 @@
 - `src/models/run_nextgen_ensemble.py` now also invalidates stale enriched input prediction caches, and `src/models/run_production_showdown.py` reports saved-production coverage when old artifacts do not cover every enriched test row.
 - Latest enriched-feature experiment after the roster-value upgrade: `enriched_value_only / catboost` at `0.6163` log loss, `0.6616` accuracy, and `0.7169` ROC-AUC. This is now the configured CatBoost input family for the promoted next-gen ensemble.
 - Current best value-tuned candidate: `nextgen_full / raw` at `0.6159` log loss and `0.6536` accuracy, beating the saved production raw ensemble at `0.6196` log loss on the current held-out split.
-- Current promotion status: promoted to live production. The validation gate passed with 166 held-out playoff games and 2,602 held-out missing-player-impact games through `historical_absence_proxy_v1`. The next candidate feature stack is `replacement_risk_v1`; heavy experiment metrics are pending after the stack rebuild.
+- Current promotion status: promoted to live production. The validation gate passed with 166 held-out playoff games and 2,602 held-out missing-player-impact games through `historical_absence_proxy_v1`.
+- `replacement_risk_v1` has been evaluated but should not be promoted as-is: its best result was `enriched_no_confidence / catboost` at `0.6172` log loss and `0.6570` accuracy, below the current value-tuned best of `0.6163` log loss and `0.6616` accuracy. It did improve the playoff slice, so it remains useful as a future regime-aware experiment.
 
 ## Next Slice
 
 - Monitor the promoted model in `Model Lab`, especially playoff, calibration, and missing-player slices.
 - Keep `NBA_PREDICT_PRODUCTION_MODEL=ensemble` available as the rollback switch if live behavior looks wrong.
-- Rebuild and benchmark `replacement_risk_v1` with `python -m src.models.run_enriched_experiments`, then refresh next-gen inputs if it improves validation.
+- Do not refresh next-gen production inputs from `replacement_risk_v1` yet.
+- Next modeling slice should focus on direct live injury-report integration into projected availability, confirmed/expected starters, or a playoff-gated version of replacement risk.

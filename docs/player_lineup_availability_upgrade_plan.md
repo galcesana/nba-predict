@@ -147,7 +147,22 @@ After the feature slice lands:
 3. Rerun next-gen ensemble with refreshed value-tuned enriched inputs. Complete: `nextgen_full / raw` reached `0.6159` log loss and `0.6536` accuracy.
 4. Rerun promotion gate. Complete: gate status is `ready`.
 5. Compare against the prior `nextgen_full_raw_v1` shadow baseline, then label the rebuilt value-tuned bundle as `nextgen_full_value_tuned_v2`. Complete.
-6. Rebuild and benchmark `replacement_risk_v1`. Pending heavy local run after this code slice lands.
+6. Rebuild and benchmark `replacement_risk_v1`. Complete: best result was
+   `enriched_no_confidence / catboost` at `0.6172` log loss and `0.6570` accuracy.
+   This did not beat the current value-tuned baseline (`enriched_value_only / catboost`
+   at `0.6163` log loss and `0.6616` accuracy), so it should not be promoted as-is.
+
+Replacement-risk readout:
+
+- Aggregate held-out log loss worsened by about `+0.0009` versus the current best M1 enriched
+  model.
+- Playoff slice improved versus the prior best (`0.6365` vs `0.6437` log loss), so the signal may
+  still be useful for a playoff/regime-aware branch.
+- Regular-season and high-missing-value slices worsened, which suggests the raw replacement-risk
+  signal is too noisy as a general feature.
+- Next step is not to refresh the next-gen production bundle from this run. Instead, keep the
+  code path as an experimental feature and revisit it with stronger shrinkage, playoff-only gating,
+  or a learned missing-player component.
 
 Commands:
 
