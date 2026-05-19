@@ -531,6 +531,9 @@ Shadow inference is available but opt-in. `python -m src.app.predict_today --nex
 `ensemble_v1` while adding `component_outputs.nextgen_shadow_probability`, enriched CatBoost/LightGBM
 probabilities, and `shadow_model_version=nextgen_full_raw_v1` for review.
 
+The scheduled GitHub Actions publisher uses `python -m src.app.publish_today --nextgen-shadow`, so
+tracked deployment slates refresh both the production forecast and the shadow review fields.
+
 The Streamlit dashboard exposes those candidate outputs in `Model Lab`, a dedicated review page that
 shows production vs shadow home-win probabilities, candidate deltas, pick flips, candidate component
 probabilities, and the shadow artifact version for the loaded slate.

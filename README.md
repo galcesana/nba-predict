@@ -318,7 +318,7 @@ This command:
 - writes `published/manifest.json`
 - leaves the current published slate untouched if publishing fails
 
-Automation is defined in `.github/workflows/publish_daily.yml`, which schedules the publish job daily at `15:05 UTC` and also supports `workflow_dispatch`.
+Automation is defined in `.github/workflows/publish_daily.yml`, which schedules the publish job daily at `15:05 UTC` and also supports `workflow_dispatch`. The scheduled job runs with `--nextgen-shadow`, so the deployed production forecast remains `ensemble_v1` while `Model Lab` receives fresh `nextgen_full_raw_v1` candidate comparisons after each publish.
 
 ### 7. Launch the API Service
 

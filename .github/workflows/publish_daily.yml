@@ -28,7 +28,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Publish forecast
-        run: python -m src.app.publish_today
+        run: python -m src.app.publish_today --nextgen-shadow
 
       - name: Commit published artifacts
         run: |

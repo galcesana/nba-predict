@@ -116,6 +116,7 @@ make train-baseline              # train Elo + XGBoost
 make train-model                 # train neural model
 make predict-today               # generate today's predictions
 python -m src.app.publish_today  # publish deployment forecast JSONs
+python -m src.app.publish_today --nextgen-shadow  # publish production plus shadow review fields
 streamlit run streamlit_app.py   # launch dashboard
 make serve-api                   # launch FastAPI service
 python -m src.data.fetch_player_logs       # build player-game logs for M1
@@ -133,6 +134,9 @@ python -m src.app.predict_today --nextgen-shadow  # emit candidate probabilities
 includes held-out playoff rows. Projected availability includes a leakage-safe historical absence
 proxy that discounts rotation players who missed prior team games, and enriched caches are versioned
 so those feature changes force rebuilds.
+
+The scheduled GitHub Actions publisher runs `python -m src.app.publish_today --nextgen-shadow`, so
+the deployed slate refreshes production probabilities and `Model Lab` shadow comparisons together.
 
 ## Architecture (Target)
 
