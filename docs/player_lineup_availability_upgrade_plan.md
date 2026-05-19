@@ -106,17 +106,17 @@ Initial implementation slice:
 
 After the feature slice lands:
 
-1. Rebuild M1 feature stack.
-2. Rerun enriched experiments.
-3. Rerun next-gen ensemble.
+1. Rebuild M1 feature stack. Complete.
+2. Rerun enriched experiments. Complete: `enriched_value_only / catboost` reached `0.6163` log loss and `0.6616` accuracy.
+3. Rerun next-gen ensemble with refreshed value-tuned enriched inputs.
 4. Rerun promotion gate.
-5. Compare against the current `nextgen_full_raw_v1` shadow baseline.
+5. Compare against the current `nextgen_full_raw_v1` shadow baseline, then label the rebuilt value-tuned bundle as `nextgen_full_value_tuned_v2`.
 
 Commands:
 
 ```bash
 python -m src.models.run_enriched_experiments
-python -m src.models.run_nextgen_ensemble
+python -m src.models.run_nextgen_ensemble --refresh-enriched-inputs
 python -m src.models.run_nextgen_validation
 ```
 
@@ -142,4 +142,3 @@ Promote only if:
 - missing-player-impact slice improves or remains stable,
 - calibration does not worsen materially,
 - live shadow slates look sane in `Model Lab`.
-

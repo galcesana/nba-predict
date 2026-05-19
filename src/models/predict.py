@@ -42,6 +42,7 @@ NEXTGEN_INPUT_COLS = [
     "enriched_lightgbm_prob",
 ]
 NEXTGEN_SHADOW_MODEL_VERSION = "nextgen_full_raw_v1"
+NEXTGEN_VALUE_TUNED_SHADOW_MODEL_VERSION = "nextgen_full_value_tuned_v2"
 
 
 def _env_flag_enabled(name: str) -> bool:
@@ -149,8 +150,28 @@ class PredictionPipeline:
         logger.info("Loading next-gen shadow artifacts...")
         self.nextgen_catboost = joblib.load(required_paths["catboost"])
         self.nextgen_lightgbm = joblib.load(required_paths["lightgbm"])
-        with open(required_paths["feature_columns"]) as f:
-            self.nextgen_feature_cols = json.load(f)
+        self.nextgen_shadow_model_version = NEXTGEN_SHADOW_MODEL_VERSION
+        try:
+            with open(required_paths["feature_columns"]) as f:
+                feature_payload = json.load(f)
+            if isinstance(feature_payload, list):
+                # Backward compatibility for the original shared-column shadow bundle.
+                self.nextgen_catboost_feature_cols = feature_payload
+                self.nextgen_lightgbm_feature_cols = feature_payload
+            else:
+                model_features = feature_payload["models"]
+                self.nextgen_catboost_feature_cols = model_features["catboost"]["columns"]
+                self.nextgen_lightgbm_feature_cols = model_features["lightgbm"]["columns"]
+                if feature_payload.get("schema_version") == "value_tuned_inputs_v1":
+                    self.nextgen_shadow_model_version = (
+                        NEXTGEN_VALUE_TUNED_SHADOW_MODEL_VERSION
+                    )
+        except (KeyError, TypeError, json.JSONDecodeError) as exc:
+            logger.warning(
+                "Next-gen shadow mode disabled; invalid feature-column metadata: %s",
+                exc,
+            )
+            return
         self.nextgen_meta_model = joblib.load(required_paths["meta_model"])
         self.nextgen_calibrator = joblib.load(required_paths["calibrator"])
         self.nextgen_player_logs_path = required_paths["player_logs"]
@@ -453,14 +474,19 @@ class PredictionPipeline:
             .set_index("game_id")
             .reindex(target_game_ids)
         )
-        X_enriched = enriched_targets.reindex(columns=self.nextgen_feature_cols).fillna(0.0)
-        if X_enriched.empty:
+        X_catboost = enriched_targets.reindex(
+            columns=self.nextgen_catboost_feature_cols
+        ).fillna(0.0)
+        X_lightgbm = enriched_targets.reindex(
+            columns=self.nextgen_lightgbm_feature_cols
+        ).fillna(0.0)
+        if X_catboost.empty or X_lightgbm.empty:
             logger.warning("Next-gen shadow unavailable; enriched target rows were not generated.")
             return {}
         enriched_catboost_prob = self.nextgen_catboost.predict_proba(
-            X_enriched.to_numpy()
+            X_catboost.to_numpy()
         )[:, 1]
-        enriched_lightgbm_prob = self.nextgen_lightgbm.predict_proba(X_enriched)[:, 1]
+        enriched_lightgbm_prob = self.nextgen_lightgbm.predict_proba(X_lightgbm)[:, 1]
         elo_probs = np.array(
             [
                 self.elo.predict_proba(int(row["home_team_idx"]), int(row["away_team_idx"]))
@@ -481,7 +507,7 @@ class PredictionPipeline:
 
         return {
             game_id: {
-                "model_version": NEXTGEN_SHADOW_MODEL_VERSION,
+                "model_version": self.nextgen_shadow_model_version,
                 "nextgen_shadow_probability": float(raw_prob),
                 "nextgen_shadow_calibrated_probability": float(calibrated_prob),
                 "enriched_catboost_probability": float(cat_prob),

@@ -84,7 +84,7 @@ def test_publish_manifest_records_shadow_model_version(tmp_path):
 
     def fake_generator(date_str: str, output_dir: Path, **_: object):
         payload = _prediction_payload(date_str)
-        payload["shadow_model_version"] = "nextgen_full_raw_v1"
+        payload["shadow_model_version"] = "nextgen_full_value_tuned_v2"
         payload["predictions"][0]["component_outputs"]["nextgen_shadow_probability"] = 0.64
         out_path = output_dir / f"{date_str}.json"
         _write_json(out_path, payload)
@@ -98,7 +98,7 @@ def test_publish_manifest_records_shadow_model_version(tmp_path):
     )
 
     assert manifest["model_version"] == "ensemble_v1"
-    assert manifest["shadow_model_version"] == "nextgen_full_raw_v1"
+    assert manifest["shadow_model_version"] == "nextgen_full_value_tuned_v2"
 
 
 def test_publish_no_games_preserves_latest_and_writes_manifest(tmp_path):

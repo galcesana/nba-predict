@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pandas as pd
 
 from src.models import run_nextgen_ensemble
@@ -28,6 +30,72 @@ def _enriched_frame() -> pd.DataFrame:
             "enriched_lightgbm_prob": [0.78, 0.32, 0.64, 0.41],
         }
     )
+
+
+def _legacy_matchup_frame() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "game_id": ["g1", "g2"],
+            "date": ["2025-01-01", "2025-01-02"],
+            "season": ["2024-25", "2024-25"],
+            "target_home_win": [1, 0],
+            "base_rating_gap": [0.5, -0.3],
+        }
+    )
+
+
+def _enriched_matchup_frame() -> pd.DataFrame:
+    frame = _legacy_matchup_frame().copy()
+    frame["home_projected_player_value_available"] = [4.0, 3.0]
+    frame["away_projected_top8_value_confidence_mean"] = [0.7, 0.8]
+    frame["home_expected_starter_continuity"] = [0.9, 0.6]
+    return frame
+
+
+def test_build_enriched_input_feature_config_uses_model_specific_feature_sets():
+    """Next-gen inputs should train each enriched learner on its selected family."""
+    config = run_nextgen_ensemble.build_enriched_input_feature_config(
+        _enriched_matchup_frame(),
+        legacy_df=_legacy_matchup_frame(),
+    )
+
+    catboost_cols = config["catboost"]["feature_cols"]
+    lightgbm_cols = config["lightgbm"]["feature_cols"]
+
+    assert config["catboost"]["feature_set"] == "enriched_value_only"
+    assert config["lightgbm"]["feature_set"] == "enriched_all"
+    assert "home_projected_player_value_available" in catboost_cols
+    assert "home_expected_starter_continuity" not in catboost_cols
+    assert "home_expected_starter_continuity" in lightgbm_cols
+
+
+def test_feature_column_cache_rejects_legacy_shared_schema(tmp_path, monkeypatch):
+    """Old shared-column next-gen caches should be rebuilt after feature-family tuning."""
+    path = tmp_path / "enriched_feature_columns.json"
+    path.write_text(json.dumps(["base_rating_gap"]), encoding="utf-8")
+    monkeypatch.setattr(run_nextgen_ensemble, "ENRICHED_FEATURE_COLUMNS_PATH", path)
+    config = run_nextgen_ensemble.build_enriched_input_feature_config(
+        _enriched_matchup_frame(),
+        legacy_df=_legacy_matchup_frame(),
+    )
+
+    assert not run_nextgen_ensemble._feature_column_cache_matches(config)
+
+
+def test_feature_column_cache_accepts_model_specific_schema(tmp_path, monkeypatch):
+    """Current next-gen caches should preserve the model-specific feature selections."""
+    path = tmp_path / "enriched_feature_columns.json"
+    config = run_nextgen_ensemble.build_enriched_input_feature_config(
+        _enriched_matchup_frame(),
+        legacy_df=_legacy_matchup_frame(),
+    )
+    path.write_text(
+        json.dumps(run_nextgen_ensemble._feature_config_payload(config)),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(run_nextgen_ensemble, "ENRICHED_FEATURE_COLUMNS_PATH", path)
+
+    assert run_nextgen_ensemble._feature_column_cache_matches(config)
 
 
 def test_assemble_meta_frames_merges_production_and_enriched_inputs():

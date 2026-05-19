@@ -257,7 +257,7 @@ Current behavior:
 - attempts live injury/news overlays for target games
 - falls back to zero or proxy defaults when live context is missing
 - returns prediction payloads with `context_details`
-- optionally emits `nextgen_full_raw_v1` shadow probabilities when `--nextgen-shadow` or `NBA_PREDICT_NEXTGEN_SHADOW=1` is enabled
+- optionally emits next-gen shadow probabilities when `--nextgen-shadow` or `NBA_PREDICT_NEXTGEN_SHADOW=1` is enabled
 
 Important current limitation:
 
@@ -519,9 +519,13 @@ Next-generation ensemble outputs:
 - `docs/experiments/nextgen_ensemble_results.json`
 - `docs/experiments/nextgen_ensemble_results.md`
 
-The next-gen ensemble runner lives at `src/models/run_nextgen_ensemble.py`. It trains enriched
-CatBoost/LightGBM input models, merges those probabilities with the current production
-`neural + xgboost + elo` inputs, and scores expanded logistic meta-model variants.
+The next-gen ensemble runner lives at `src/models/run_nextgen_ensemble.py`. It trains model-specific
+enriched CatBoost/LightGBM input models, merges those probabilities with the current production
+`neural + xgboost + elo` inputs, and scores expanded logistic meta-model variants. The current
+value-tuned config trains CatBoost on `enriched_value_only` and LightGBM on `enriched_all`.
+
+The latest enriched-feature benchmark after the roster-value upgrade is
+`enriched_value_only / catboost`: `0.6163` log loss, `0.6616` accuracy, and `0.7169` ROC-AUC.
 
 After rebuilding with playoff rows, `nextgen_full / raw` is the best candidate on the current
 held-out split: `0.6161` log loss, `0.6501` accuracy, and `0.7212` ROC-AUC. The saved production
@@ -543,7 +547,9 @@ slice-regression gate.
 Shadow inference is available but opt-in. `python -m src.app.predict_today --nextgen-shadow` and
 `python -m src.app.publish_today --nextgen-shadow` keep the production final probability as
 `ensemble_v1` while adding `component_outputs.nextgen_shadow_probability`, enriched CatBoost/LightGBM
-probabilities, and `shadow_model_version=nextgen_full_raw_v1` for review.
+probabilities, and a `shadow_model_version` for review. The current tracked bundle reports
+`nextgen_full_raw_v1`; once `run_nextgen_ensemble --refresh-enriched-inputs` regenerates the
+model-specific value-tuned artifacts, shadow output will report `nextgen_full_value_tuned_v2`.
 
 The scheduled GitHub Actions publisher uses `python -m src.app.publish_today --nextgen-shadow`, so
 tracked deployment slates refresh both the production forecast and the shadow review fields.

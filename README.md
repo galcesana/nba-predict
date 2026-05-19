@@ -193,8 +193,12 @@ To train the next-generation ensemble that adds enriched CatBoost and LightGBM p
 top of the current `neural + xgboost + elo` stack, run:
 
 ```bash
-python -m src.models.run_nextgen_ensemble
+python -m src.models.run_nextgen_ensemble --refresh-enriched-inputs
 ```
+
+The current value-tuned setup trains the CatBoost input on the best `enriched_value_only`
+feature family and the LightGBM input on `enriched_all`, then lets the meta-ensemble decide
+how much to trust each probability stream.
 
 That writes tracked reports to:
 
@@ -314,13 +318,13 @@ This command:
 - resolves the target date in `America/New_York` by default
 - runs inference in a temporary workspace
 - attempts to enrich the slate with the latest official injury report snapshot and live team-news context
-- optionally emits `nextgen_full_raw_v1` shadow probabilities without changing the production final probability
+- optionally emits next-gen shadow probabilities without changing the production final probability
 - writes `published/daily/YYYY-MM-DD.json`
 - updates `published/daily/latest.json`
 - writes `published/manifest.json`
 - leaves the current published slate untouched if publishing fails
 
-Automation is defined in `.github/workflows/publish_daily.yml`, which schedules the publish job daily at `15:05 UTC` and also supports `workflow_dispatch`. The scheduled job runs with `--nextgen-shadow`, so the deployed production forecast remains `ensemble_v1` while `Model Lab` receives fresh `nextgen_full_raw_v1` candidate comparisons after each publish.
+Automation is defined in `.github/workflows/publish_daily.yml`, which schedules the publish job daily at `15:05 UTC` and also supports `workflow_dispatch`. The scheduled job runs with `--nextgen-shadow`, so the deployed production forecast remains `ensemble_v1` while `Model Lab` receives fresh next-gen candidate comparisons after each publish.
 
 ### 7. Launch the API Service
 
@@ -352,7 +356,7 @@ The Streamlit app is organized into the following pages:
 - `Game Detail` lets you inspect one matchup in depth, including component model outputs and recent team form.
 - `Archive` combines local forecasts, published forecasts, and historical backtests into one searchable table.
 - `Performance` summarizes model comparison results, rolling validation trends, and ensemble behavior.
-- `Model Lab` compares production probabilities with the opt-in `nextgen_full_raw_v1` shadow candidate, including deltas, pick flips, and enriched CatBoost/LightGBM component outputs.
+- `Model Lab` compares production probabilities with the opt-in next-gen shadow candidate, including deltas, pick flips, and enriched CatBoost/LightGBM component outputs.
 - `Calibration` shows how well predicted probabilities line up with actual outcomes, including error by probability bucket.
 - `Team Form` highlights recent record, point differential, and net-rating trends for a selected team.
 - `Injury Impact` summarizes the current slate's official injury-report coverage when available and falls back honestly when later-week games do not have reports yet.
@@ -428,7 +432,7 @@ Historical implementation history is preserved in:
 | 11 | Live Context + Playoff Hardening | Complete |
 | 12 | API Service Layer | Complete |
 
-**Current data:** 15,412 games across 12 seasons (2014-2026), including 983 playoff games. The current next-gen experiment candidate is `nextgen_full / raw` at 0.6161 log loss on the playoff-aware held-out split, and the promotion gate is ready for shadow/live review. The shipped shadow bundle is `nextgen_full_raw_v1`.
+**Current data:** 15,412 games across 12 seasons (2014-2026), including 983 playoff games. The latest enriched-feature benchmark is `enriched_value_only / catboost` at 0.6163 log loss and 66.2% accuracy. The current tracked next-gen shadow candidate remains `nextgen_full / raw` at 0.6161 log loss until the value-tuned shadow ensemble is rebuilt; the tracked bundle reports `nextgen_full_raw_v1`, and the rebuilt value-tuned bundle will report `nextgen_full_value_tuned_v2`.
 
 ---
 

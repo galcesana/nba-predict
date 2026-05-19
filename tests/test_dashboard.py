@@ -107,7 +107,7 @@ def test_game_detail_page_renders():
 def test_shadow_model_frame_compares_candidate_outputs():
     """Shadow review frame compares production and next-gen candidate probabilities."""
     payload = _payload_for_date("2026-05-16")
-    payload["shadow_model_version"] = "nextgen_full_raw_v1"
+    payload["shadow_model_version"] = "nextgen_full_value_tuned_v2"
     prediction = payload["predictions"][0]
     prediction["component_outputs"] = {
         "final_probability": 0.61,
@@ -117,14 +117,14 @@ def test_shadow_model_frame_compares_candidate_outputs():
         "enriched_lightgbm_probability": 0.62,
     }
     prediction["context_details"]["nextgen_shadow_mode"] = "available"
-    prediction["context_details"]["nextgen_shadow_model_version"] = "nextgen_full_raw_v1"
+    prediction["context_details"]["nextgen_shadow_model_version"] = "nextgen_full_value_tuned_v2"
     prediction["context_details"]["nextgen_shadow_delta"] = 0.03
 
     frame = dashboard_data.build_shadow_model_frame(payload)
 
     assert len(frame) == 1
     row = frame.iloc[0]
-    assert row["shadow_model_version"] == "nextgen_full_raw_v1"
+    assert row["shadow_model_version"] == "nextgen_full_value_tuned_v2"
     assert row["production_probability"] == pytest.approx(0.61)
     assert row["shadow_probability"] == pytest.approx(0.64)
     assert row["shadow_delta"] == pytest.approx(0.03)
@@ -134,7 +134,7 @@ def test_shadow_model_frame_compares_candidate_outputs():
 def test_streamlit_shadow_frame_fallback_handles_stale_data_module(monkeypatch):
     """Model Lab should render if Streamlit Cloud keeps an older dashboard_data module."""
     payload = _payload_for_date("2026-05-16")
-    payload["shadow_model_version"] = "nextgen_full_raw_v1"
+    payload["shadow_model_version"] = "nextgen_full_value_tuned_v2"
     prediction = payload["predictions"][0]
     prediction["component_outputs"] = {
         "final_probability": 0.49,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 from datetime import UTC, datetime
@@ -13,7 +14,11 @@ from sklearn.linear_model import LogisticRegression
 
 from src.models.calibrate import PlattCalibrator
 from src.models.ensemble import load_model_predictions
-from src.models.run_enriched_experiments import train_catboost, train_lightgbm
+from src.models.run_enriched_experiments import (
+    get_experiment_feature_sets,
+    train_catboost,
+    train_lightgbm,
+)
 from src.models.run_production_showdown import (
     _evaluate_slice_metrics as evaluate_slice_metrics,
 )
@@ -21,7 +26,7 @@ from src.models.run_production_showdown import (
     evaluate_probabilities,
     load_production_stack_predictions,
 )
-from src.models.tabular_model import get_feature_columns, split_by_season
+from src.models.tabular_model import split_by_season
 from src.utils.logging import setup_logging
 from src.utils.paths import DOCS_DIR, MODELS_DIR, PROCESSED_DIR
 
@@ -32,7 +37,21 @@ NEXTGEN_RESULTS_PATH = DOCS_DIR / "experiments" / "nextgen_ensemble_results.json
 NEXTGEN_SUMMARY_PATH = DOCS_DIR / "experiments" / "nextgen_ensemble_results.md"
 
 PRODUCTION_INPUT_COLS = ["neural_prob", "xgboost_prob", "elo_prob"]
-ENRICHED_INPUT_COLS = ["enriched_catboost_prob", "enriched_lightgbm_prob"]
+ENRICHED_INPUT_CONFIG_VERSION = "value_tuned_inputs_v1"
+ENRICHED_INPUT_MODEL_CONFIGS = {
+    "catboost": {
+        "prob_col": "enriched_catboost_prob",
+        "feature_set": "enriched_value_only",
+    },
+    "lightgbm": {
+        "prob_col": "enriched_lightgbm_prob",
+        "feature_set": "enriched_all",
+    },
+}
+ENRICHED_INPUT_COLS = [
+    config["prob_col"] for config in ENRICHED_INPUT_MODEL_CONFIGS.values()
+]
+ENRICHED_FEATURE_COLUMNS_PATH = NEXTGEN_DIR / "enriched_feature_columns.json"
 
 
 def load_enriched_matchup_dataset() -> pd.DataFrame:
@@ -47,49 +66,169 @@ def load_enriched_matchup_dataset() -> pd.DataFrame:
     return pd.read_parquet(path)
 
 
-def train_enriched_input_models(enriched_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def load_legacy_matchup_dataset() -> pd.DataFrame:
+    """Load the legacy matchup table used to derive M1 ablation feature sets."""
+    path = PROCESSED_DIR / "matchup_rows" / "matchup_dataset.parquet"
+    if not path.exists():
+        msg = (
+            f"Missing legacy matchup dataset at {path}. "
+            "Run `python -m src.features.build_matchup_dataset` first."
+        )
+        raise FileNotFoundError(msg)
+    return pd.read_parquet(path)
+
+
+def build_enriched_input_feature_config(
+    enriched_df: pd.DataFrame,
+    *,
+    legacy_df: pd.DataFrame | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Build model-specific enriched input feature selections.
+
+    The next-gen meta-model consumes probabilities, not raw columns. Each probability
+    producer can therefore use the feature family that scored best for that learner.
+    """
+    legacy = legacy_df if legacy_df is not None else load_legacy_matchup_dataset()
+    feature_sets = get_experiment_feature_sets(legacy, enriched_df)
+    feature_config: dict[str, dict[str, Any]] = {}
+    for model_name, model_config in ENRICHED_INPUT_MODEL_CONFIGS.items():
+        feature_set_name = model_config["feature_set"]
+        if feature_set_name not in feature_sets:
+            msg = f"Unknown enriched feature set for {model_name}: {feature_set_name}"
+            raise KeyError(msg)
+        _, feature_cols = feature_sets[feature_set_name]
+        feature_config[model_name] = {
+            "feature_set": feature_set_name,
+            "prob_col": model_config["prob_col"],
+            "feature_cols": feature_cols,
+        }
+    return feature_config
+
+
+def _feature_config_payload(feature_config: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """Render model-specific feature columns as a stable artifact payload."""
+    return {
+        "schema_version": ENRICHED_INPUT_CONFIG_VERSION,
+        "models": {
+            model_name: {
+                "feature_set": config["feature_set"],
+                "prob_col": config["prob_col"],
+                "feature_count": len(config["feature_cols"]),
+                "columns": config["feature_cols"],
+            }
+            for model_name, config in feature_config.items()
+        },
+    }
+
+
+def _feature_column_cache_matches(feature_config: dict[str, dict[str, Any]]) -> bool:
+    """Return whether saved feature-column metadata matches the current input config."""
+    if not ENRICHED_FEATURE_COLUMNS_PATH.exists():
+        logger.info("Cached enriched feature-column metadata is missing.")
+        return False
+    try:
+        payload = json.loads(ENRICHED_FEATURE_COLUMNS_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        logger.info("Cached enriched feature-column metadata is not valid JSON.")
+        return False
+    if not isinstance(payload, dict):
+        logger.info("Cached enriched feature-column metadata uses the legacy shared schema.")
+        return False
+    if payload.get("schema_version") != ENRICHED_INPUT_CONFIG_VERSION:
+        logger.info(
+            "Cached enriched feature-column metadata is stale: expected %s, found %s.",
+            ENRICHED_INPUT_CONFIG_VERSION,
+            payload.get("schema_version"),
+        )
+        return False
+
+    cached_models = payload.get("models", {})
+    for model_name, config in feature_config.items():
+        cached = cached_models.get(model_name)
+        if not isinstance(cached, dict):
+            logger.info("Cached enriched metadata is missing model config for %s.", model_name)
+            return False
+        if cached.get("feature_set") != config["feature_set"]:
+            logger.info("Cached %s feature set is stale.", model_name)
+            return False
+        if cached.get("prob_col") != config["prob_col"]:
+            logger.info("Cached %s probability column is stale.", model_name)
+            return False
+        if cached.get("columns") != config["feature_cols"]:
+            logger.info("Cached %s feature columns are stale.", model_name)
+            return False
+    return True
+
+
+def _write_feature_column_metadata(feature_config: dict[str, dict[str, Any]]) -> None:
+    ENRICHED_FEATURE_COLUMNS_PATH.write_text(
+        json.dumps(_feature_config_payload(feature_config), indent=2),
+        encoding="utf-8",
+    )
+
+
+def train_enriched_input_models(
+    enriched_df: pd.DataFrame,
+    *,
+    feature_config: dict[str, dict[str, Any]] | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Train enriched CatBoost/LightGBM inputs and return validation/test probabilities."""
-    feature_cols = get_feature_columns(enriched_df)
+    feature_config = feature_config or build_enriched_input_feature_config(enriched_df)
     train_df, val_df, test_df = split_by_season(enriched_df)
 
-    X_train = train_df[feature_cols].fillna(0)
     y_train = train_df["target_home_win"].to_numpy()
-    X_val = val_df[feature_cols].fillna(0)
     y_val = val_df["target_home_win"].to_numpy()
-    X_test = test_df[feature_cols].fillna(0)
 
-    logger.info("Training enriched CatBoost ensemble input...")
+    catboost_cols = feature_config["catboost"]["feature_cols"]
+    lightgbm_cols = feature_config["lightgbm"]["feature_cols"]
+    X_train_catboost = train_df[catboost_cols].fillna(0)
+    X_val_catboost = val_df[catboost_cols].fillna(0)
+    X_test_catboost = test_df[catboost_cols].fillna(0)
+    X_train_lightgbm = train_df[lightgbm_cols].fillna(0)
+    X_val_lightgbm = val_df[lightgbm_cols].fillna(0)
+    X_test_lightgbm = test_df[lightgbm_cols].fillna(0)
+
+    logger.info(
+        "Training enriched CatBoost ensemble input on %s (%d features)...",
+        feature_config["catboost"]["feature_set"],
+        len(catboost_cols),
+    )
     catboost = train_catboost(
-        X_train.to_numpy(),
+        X_train_catboost.to_numpy(),
         y_train,
-        X_val.to_numpy(),
+        X_val_catboost.to_numpy(),
         y_val,
     )
-    logger.info("Training enriched LightGBM ensemble input...")
-    lightgbm = train_lightgbm(X_train, y_train, X_val, y_val)
+    logger.info(
+        "Training enriched LightGBM ensemble input on %s (%d features)...",
+        feature_config["lightgbm"]["feature_set"],
+        len(lightgbm_cols),
+    )
+    lightgbm = train_lightgbm(X_train_lightgbm, y_train, X_val_lightgbm, y_val)
 
     NEXTGEN_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump(catboost, NEXTGEN_DIR / "enriched_catboost.joblib")
     joblib.dump(lightgbm, NEXTGEN_DIR / "enriched_lightgbm.joblib")
-    (NEXTGEN_DIR / "enriched_feature_columns.json").write_text(
-        json.dumps(feature_cols, indent=2),
-        encoding="utf-8",
-    )
+    _write_feature_column_metadata(feature_config)
 
     val_probs = pd.DataFrame(
         {
             "game_id": val_df["game_id"].astype(str).to_numpy(),
             "actual_home_win": y_val,
-            "enriched_catboost_prob": catboost.predict_proba(X_val.to_numpy())[:, 1],
-            "enriched_lightgbm_prob": lightgbm.predict_proba(X_val)[:, 1],
+            "enriched_catboost_prob": catboost.predict_proba(
+                X_val_catboost.to_numpy()
+            )[:, 1],
+            "enriched_lightgbm_prob": lightgbm.predict_proba(X_val_lightgbm)[:, 1],
         }
     )
     test_probs = pd.DataFrame(
         {
             "game_id": test_df["game_id"].astype(str).to_numpy(),
             "actual_home_win": test_df["target_home_win"].to_numpy(),
-            "enriched_catboost_prob": catboost.predict_proba(X_test.to_numpy())[:, 1],
-            "enriched_lightgbm_prob": lightgbm.predict_proba(X_test)[:, 1],
+            "enriched_catboost_prob": catboost.predict_proba(
+                X_test_catboost.to_numpy()
+            )[:, 1],
+            "enriched_lightgbm_prob": lightgbm.predict_proba(X_test_lightgbm)[:, 1],
         }
     )
     val_probs.to_parquet(NEXTGEN_DIR / "enriched_input_predictions_val.parquet", index=False)
@@ -101,8 +240,10 @@ def load_or_train_enriched_input_predictions(
     enriched_df: pd.DataFrame,
     *,
     refresh: bool = False,
+    feature_config: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Load cached enriched input probabilities or train them if needed."""
+    feature_config = feature_config or build_enriched_input_feature_config(enriched_df)
     val_path = NEXTGEN_DIR / "enriched_input_predictions_val.parquet"
     test_path = NEXTGEN_DIR / "enriched_input_predictions_test.parquet"
     if not refresh and val_path.exists() and test_path.exists():
@@ -117,11 +258,11 @@ def load_or_train_enriched_input_predictions(
             test_predictions,
             test_df,
             label="test enriched input predictions",
-        ):
+        ) and _feature_column_cache_matches(feature_config):
             logger.info("Loading cached enriched ensemble input predictions from %s", NEXTGEN_DIR)
             return val_predictions, test_predictions
         logger.info("Cached enriched input predictions are stale; retraining input models.")
-    return train_enriched_input_models(enriched_df)
+    return train_enriched_input_models(enriched_df, feature_config=feature_config)
 
 
 def _prediction_cache_matches_split(
@@ -336,6 +477,22 @@ def build_summary_markdown(results: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
+            "## Enriched Input Feature Sets",
+            "",
+        ]
+    )
+    enriched_input_models = results.get("enriched_input_config", {}).get("models", {})
+    if not enriched_input_models:
+        lines.append("- Not recorded for this run.")
+    for model_name, config in enriched_input_models.items():
+        lines.append(
+            f"- `{model_name}` uses `{config['feature_set']}` "
+            f"({config['feature_count']} features) -> `{config['prob_col']}`"
+        )
+
+    lines.extend(
+        [
+            "",
             "## Notes",
             "",
             "- `production ensemble raw` is the current saved production meta-model output.",
@@ -355,9 +512,11 @@ def run_nextgen_ensemble(*, refresh_enriched_inputs: bool = False) -> dict[str, 
     from src.models.run_enriched_experiments import build_test_slice_masks
 
     slice_masks = build_test_slice_masks(enriched_df)
+    feature_config = build_enriched_input_feature_config(enriched_df)
     enriched_val, enriched_test = load_or_train_enriched_input_predictions(
         enriched_df,
         refresh=refresh_enriched_inputs,
+        feature_config=feature_config,
     )
     production_val = load_model_predictions("val")
     production_test = load_model_predictions("test")
@@ -390,6 +549,7 @@ def run_nextgen_ensemble(*, refresh_enriched_inputs: bool = False) -> dict[str, 
     results = {
         "generated_at_utc": datetime.now(UTC).isoformat(),
         "test_rows": int(len(test_df)),
+        "enriched_input_config": _feature_config_payload(feature_config),
         "production_results": production_results,
         "variants": variants,
         "leaderboard": leaderboard,
@@ -416,8 +576,15 @@ def run_nextgen_ensemble(*, refresh_enriched_inputs: bool = False) -> dict[str, 
 
 def main() -> None:
     """Run and persist the next-generation ensemble report."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--refresh-enriched-inputs",
+        action="store_true",
+        help="Retrain enriched input models even if cached probabilities exist.",
+    )
+    args = parser.parse_args()
     setup_logging()
-    results = run_nextgen_ensemble()
+    results = run_nextgen_ensemble(refresh_enriched_inputs=args.refresh_enriched_inputs)
     best = results["verdict"]["best_overall"]
     logger.info(
         "Next-gen ensemble winner: %s with log_loss=%.4f accuracy=%.4f",

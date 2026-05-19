@@ -105,15 +105,15 @@ def test_health_endpoint_reports_ok(monkeypatch):
 def test_health_endpoint_exposes_shadow_model_version(monkeypatch):
     """Health metadata should label active shadow candidates when present."""
     payload = _payload()
-    payload["shadow_model_version"] = "nextgen_full_raw_v1"
+    payload["shadow_model_version"] = "nextgen_full_value_tuned_v2"
     manifest = _manifest()
-    manifest["shadow_model_version"] = "nextgen_full_raw_v1"
+    manifest["shadow_model_version"] = "nextgen_full_value_tuned_v2"
     client = _client(monkeypatch, payload=payload, manifest=manifest)
 
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json()["shadow_model_version"] == "nextgen_full_raw_v1"
+    assert response.json()["shadow_model_version"] == "nextgen_full_value_tuned_v2"
 
 
 def test_health_endpoint_returns_503_when_forecast_is_missing(monkeypatch):
