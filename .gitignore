@@ -22,6 +22,7 @@ data/processed/
 
 # Environment
 .env
+.python-version
 *.log
 logs/
 
