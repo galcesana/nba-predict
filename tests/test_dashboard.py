@@ -131,6 +131,26 @@ def test_shadow_model_frame_compares_candidate_outputs():
     assert not bool(row["pick_changed"])
 
 
+def test_streamlit_shadow_frame_fallback_handles_stale_data_module(monkeypatch):
+    """Model Lab should render if Streamlit Cloud keeps an older dashboard_data module."""
+    payload = _payload_for_date("2026-05-16")
+    payload["shadow_model_version"] = "nextgen_full_raw_v1"
+    prediction = payload["predictions"][0]
+    prediction["component_outputs"] = {
+        "final_probability": 0.49,
+        "nextgen_shadow_probability": 0.52,
+    }
+    monkeypatch.delattr(streamlit_app.data, "build_shadow_model_frame")
+
+    frame = streamlit_app._shadow_model_frame(payload)
+
+    assert len(frame) == 1
+    row = frame.iloc[0]
+    assert row["production_pick"] == "away"
+    assert row["shadow_pick"] == "home"
+    assert bool(row["pick_changed"])
+
+
 def test_calibration_chart_generates():
     """Calibration bins are built with probabilities in range."""
     calibration = dashboard_data.build_calibration_frame()
