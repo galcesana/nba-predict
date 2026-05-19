@@ -562,6 +562,10 @@ tracked deployment slates refresh both the promoted production forecast and the 
 It runs twice per day at `15:05 UTC` and `22:05 UTC`; the later refresh is designed to capture
 more submitted official injury-report rows before the evening games.
 
+The separate CI workflow runs `python -m ruff check .` and `python -m pytest tests -q` on code
+pushes, pull requests, and manual dispatches. It ignores publish-only changes under `published/**`
+so routine forecast JSON commits do not trigger full quality runs.
+
 The Streamlit dashboard exposes those outputs in `Model Lab`, a dedicated review page that shows
 the previous `ensemble_v1` baseline vs promoted next-gen home-win probabilities, deltas, pick flips,
 candidate component probabilities, and the active artifact version for the loaded slate.

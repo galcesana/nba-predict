@@ -235,3 +235,14 @@ class TestProjectFiles:
         assert 'cron: "5 15 * * *"' in text
         assert 'cron: "5 22 * * *"' in text
         assert "python -m src.app.publish_today --nextgen-shadow" in text
+
+    def test_ci_workflow_runs_lint_and_tests(self):
+        """CI should enforce the current Ruff and pytest baseline."""
+        workflow = _project_root() / ".github" / "workflows" / "ci.yml"
+        text = workflow.read_text(encoding="utf-8")
+
+        assert "python -m ruff check ." in text
+        assert "python -m pytest tests -q" in text
+        assert "pull_request:" in text
+        assert "workflow_dispatch:" in text
+        assert "published/**" in text

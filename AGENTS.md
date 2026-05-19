@@ -28,7 +28,7 @@ NBA game outcome prediction system that outputs **calibrated win probabilities**
 - See `docs/m1_player_lineup_foundation.md` for the concrete next implementation target
 - See `docs/player_lineup_availability_upgrade_plan.md` for the current roster-intelligence upgrade plan
 - `docs/nba_game_prediction_project_plan.md` is retained only as a legacy archive
-- Latest verification: repo-wide Ruff passes; 214 tests passing after lint cleanup.
+- Latest verification: repo-wide Ruff passes; 215 tests passing after CI gate coverage was added. A CI workflow now enforces `python -m ruff check .` and `python -m pytest tests -q` on code pushes/PRs while ignoring publish-only `published/**` refresh commits.
 
 ## Project Structure
 
@@ -140,6 +140,10 @@ so those feature changes force rebuilds.
 The scheduled GitHub Actions publisher runs `python -m src.app.publish_today --nextgen-shadow`, so
 the deployed slate refreshes production probabilities and `Model Lab` baseline comparisons together.
 It runs at `15:05 UTC` and `22:05 UTC` daily; the second run is an injury-report refresh pass.
+
+A separate CI workflow runs `python -m ruff check .` and `python -m pytest tests -q` on code changes
+and pull requests. Forecast-only commits under `published/**` are ignored so automated slate refreshes
+stay lightweight.
 
 ## Architecture (Target)
 

@@ -406,8 +406,13 @@ For day-to-day use, the simplest flow is:
 
 ```bash
 make test
-ruff check src/ tests/
+python -m ruff check .
+python -m pytest tests -q
 ```
+
+GitHub Actions also runs those same Ruff and pytest checks on pushes to `main`, pull requests, and
+manual dispatches. Publish-only commits under `published/**` are intentionally ignored so the
+scheduled forecast bot can refresh deployment JSONs without burning a full CI run.
 
 ---
 
