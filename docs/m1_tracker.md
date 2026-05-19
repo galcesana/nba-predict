@@ -24,6 +24,7 @@
 - `src/models/run_nextgen_validation.py` now runs a promotion gate across aggregate, per-season, schedule-stress, context-confidence, playoff, and missing-player slices before any live model promotion.
 - `src/models/predict.py`, `src/app/predict_today.py`, and `src/app/publish_today.py` now promote `nextgen_full_value_tuned_v2` as the default production model while retaining `ensemble_v1_probability` as a baseline comparison field.
 - The Streamlit dashboard now includes a `Model Lab` page that compares the promoted next-gen probability against the previous `ensemble_v1` baseline, candidate deltas, pick flips, and enriched CatBoost/LightGBM component outputs for the loaded slate.
+- The Streamlit dashboard now includes a `Benchmark` page that presents the proof ladder from home-team baseline through Elo, XGBoost, LightGBM, previous production ensemble, next-gen model, and optional real market-implied probabilities.
 - The daily GitHub Actions publisher runs `python -m src.app.publish_today --nextgen-shadow`, so the deployed slate refreshes the promoted next-gen forecast and comparison fields together.
 - The small next-gen artifact bundle and historical player-log inference bundle are tracked so clean checkouts can emit promoted next-gen probabilities.
 - `src/data/fetch_games.py` and `src/data/fetch_player_logs.py` now support configured `Regular Season` + `Playoffs` ingestion and preserve `season_type` into processed rows for regime-aware evaluation.

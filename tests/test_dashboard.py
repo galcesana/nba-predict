@@ -65,6 +65,7 @@ def _write_json(path: Path, payload: dict) -> None:
 def test_streamlit_app_imports():
     """Streamlit app module imports with expected page definitions."""
     assert "This Week's Games" in streamlit_app.PAGES
+    assert "Benchmark" in streamlit_app.PAGES
     assert "Model Lab" in streamlit_app.PAGES
     assert "Calibration" in streamlit_app.PAGES
 
@@ -103,6 +104,48 @@ def test_game_detail_page_renders():
     assert detail["game_id"] == prediction["game_id"]
     frame = dashboard_data.build_component_output_frame(detail)
     assert not frame.empty
+
+
+def test_benchmark_table_loads_model_ladder():
+    """Benchmark page data should include naive, classic, and next-gen rows."""
+    frame = dashboard_data.build_benchmark_table()
+
+    assert not frame.empty
+    assert {
+        "Home-team baseline",
+        "Elo",
+        "XGBoost",
+        "Next-gen model",
+    }.issubset(set(frame["model"]))
+    assert frame["log_loss"].notna().any()
+    assert "log_loss_gain_vs_home" in frame.columns
+
+
+def test_market_odds_benchmark_requires_real_odds(tmp_path):
+    """Market comparison should stay empty until a real odds file is provided."""
+    missing = dashboard_data.build_market_odds_benchmark(tmp_path / "missing.parquet")
+    assert missing.empty
+
+    odds_path = tmp_path / "market.csv"
+    odds_path.write_text(
+        "\n".join(
+            [
+                "game_id,actual_home_win,home_implied_probability",
+                "g1,1,0.65",
+                "g2,0,0.45",
+                "g3,1,0.55",
+                "g4,0,0.48",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    frame = dashboard_data.build_market_odds_benchmark(odds_path)
+
+    assert len(frame) == 1
+    assert frame.iloc[0]["model"] == "Market-implied probability"
+    assert frame.iloc[0]["test_games"] == 4
+    assert frame.iloc[0]["log_loss"] < 0.7
 
 
 def test_shadow_model_frame_compares_candidate_outputs():

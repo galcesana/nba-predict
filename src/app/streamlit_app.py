@@ -22,6 +22,7 @@ PAGES = [
     "This Week's Games",
     "Game Detail",
     "Archive",
+    "Benchmark",
     "Performance",
     "Model Lab",
     "Calibration",
@@ -351,6 +352,16 @@ def _archive_frame() -> pd.DataFrame:
 @st.cache_data(show_spinner=False)
 def _model_comparison() -> pd.DataFrame:
     return data.build_model_performance_table()
+
+
+@st.cache_data(show_spinner=False)
+def _benchmark_table() -> pd.DataFrame:
+    return data.build_benchmark_table()
+
+
+@st.cache_data(show_spinner=False)
+def _market_odds_benchmark() -> pd.DataFrame:
+    return data.build_market_odds_benchmark()
 
 
 @st.cache_data(show_spinner=False)
@@ -691,6 +702,144 @@ def render_archive_page() -> None:
         ],
         width="stretch",
         hide_index=True,
+    )
+
+
+def render_benchmark_page() -> None:
+    benchmark = _benchmark_table()
+    market = _market_odds_benchmark()
+
+    st.subheader("Benchmark")
+    st.caption(
+        "Same held-out test seasons and metrics where saved reports are available. "
+        "Lower log loss is better; market odds are comparison-only and never used as inputs."
+    )
+    if benchmark.empty:
+        st.info("Benchmark reports are not available in this deployment yet.")
+        return
+
+    best = benchmark.iloc[0]
+    home_row = benchmark[benchmark["model"] == "Home-team baseline"]
+    home_loss = (
+        float(home_row.iloc[0]["log_loss"])
+        if not home_row.empty and pd.notna(home_row.iloc[0]["log_loss"])
+        else None
+    )
+    nextgen = benchmark[benchmark["model"] == "Next-gen model"]
+    nextgen_loss = (
+        float(nextgen.iloc[0]["log_loss"])
+        if not nextgen.empty and pd.notna(nextgen.iloc[0]["log_loss"])
+        else None
+    )
+    improvement = "n/a"
+    if home_loss is not None and nextgen_loss is not None:
+        improvement = f"{(home_loss - nextgen_loss):.4f}"
+
+    _metric_row(
+        [
+            ("Best Model", str(best["model"]), f"Log loss {float(best['log_loss']):.4f}"),
+            (
+                "Held-Out Games",
+                str(int(best["test_games"])) if pd.notna(best.get("test_games")) else "n/a",
+                "Latest comparable benchmark split",
+            ),
+            (
+                "Gain vs Home Baseline",
+                improvement,
+                "Absolute log-loss reduction",
+            ),
+            (
+                "Market Comparison",
+                "Ready" if not market.empty else "Not loaded",
+                "Uses real odds only when provided",
+            ),
+        ]
+    )
+
+    display = benchmark.copy()
+    display["accuracy"] = display["accuracy"] * 100.0
+    display["roc_auc"] = display["roc_auc"] * 100.0
+    display["log_loss_gain_vs_home"] = display["log_loss_gain_vs_home"].fillna(0.0)
+
+    st.markdown("#### Model Ladder")
+    st.dataframe(
+        display[
+            [
+                "model",
+                "family",
+                "test_games",
+                "accuracy",
+                "log_loss",
+                "brier_score",
+                "roc_auc",
+                "calibration_error",
+                "log_loss_gain_vs_home",
+                "notes",
+            ]
+        ],
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "accuracy": st.column_config.NumberColumn("Accuracy %", format="%.1f"),
+            "log_loss": st.column_config.NumberColumn("Log loss", format="%.4f"),
+            "brier_score": st.column_config.NumberColumn("Brier", format="%.4f"),
+            "roc_auc": st.column_config.NumberColumn("ROC-AUC %", format="%.1f"),
+            "calibration_error": st.column_config.NumberColumn("ECE", format="%.4f"),
+            "log_loss_gain_vs_home": st.column_config.NumberColumn(
+                "Gain vs home",
+                format="%+.4f",
+            ),
+        },
+    )
+
+    chart_frame = benchmark.dropna(subset=["log_loss"]).set_index("model")[["log_loss"]]
+    st.bar_chart(chart_frame, width="stretch")
+
+    st.markdown("#### Market-Implied Probability")
+    if market.empty:
+        st.info(
+            "No real Vegas/market odds file is configured yet. Add a real historical odds file at "
+            "`data/processed/market_odds/market_implied_probabilities.parquet` with "
+            "`game_id`, `actual_home_win`, and `home_implied_probability` to enable this "
+            "comparison."
+        )
+    else:
+        market_display = market.copy()
+        market_display["accuracy"] = market_display["accuracy"] * 100.0
+        market_display["roc_auc"] = market_display["roc_auc"] * 100.0
+        st.dataframe(
+            market_display[
+                [
+                    "model",
+                    "test_games",
+                    "accuracy",
+                    "log_loss",
+                    "brier_score",
+                    "roc_auc",
+                    "calibration_error",
+                    "notes",
+                ]
+            ],
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "accuracy": st.column_config.NumberColumn("Accuracy %", format="%.1f"),
+                "log_loss": st.column_config.NumberColumn("Log loss", format="%.4f"),
+                "brier_score": st.column_config.NumberColumn("Brier", format="%.4f"),
+                "roc_auc": st.column_config.NumberColumn("ROC-AUC %", format="%.1f"),
+                "calibration_error": st.column_config.NumberColumn("ECE", format="%.4f"),
+            },
+        )
+
+    st.markdown("#### Why This Beats A Basic Predictor")
+    st.markdown(
+        """
+        - The naive home baseline knows only that home teams usually win more often.
+        - Elo adds team strength, but not current schedule, injuries, news, or lineup context.
+        - Tabular baselines add rolling form and schedule structure.
+        - The promoted next-gen model keeps those signals and adds player/lineup-aware enriched
+          probabilities before final ensembling.
+        """
     )
 
 
@@ -1181,6 +1330,8 @@ def render_dashboard() -> None:
         render_game_detail_page()
     elif selected_page == "Archive":
         render_archive_page()
+    elif selected_page == "Benchmark":
+        render_benchmark_page()
     elif selected_page == "Performance":
         render_performance_page()
     elif selected_page == "Model Lab":

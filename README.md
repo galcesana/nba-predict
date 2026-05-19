@@ -1,12 +1,75 @@
-# NBA Game Outcome Prediction Model
+# NBA Predict
 
-> Predict calibrated win probabilities for NBA games using historical performance, team sequences, injury impact, and structured live news/team-spirit signals.
+> Live NBA win-probability forecasts with calibrated probabilities, player/lineup context,
+> injury/news awareness, and a published Streamlit dashboard.
 
----
+**Live demo:** [nba-predict-gc.streamlit.app](https://nba-predict-gc.streamlit.app/)
 
-## Overview
+![Weekly forecast dashboard](docs/screenshots/dashboard_today.png)
 
-This project builds an NBA game-outcome prediction system that outputs **calibrated probabilities**, not just hard picks. For a scheduled game, the model outputs:
+## The 30-Second Pitch
+
+NBA Predict is a production-style sports analytics system that answers:
+
+> "Given what we know before tipoff, what is the calibrated probability the home team wins?"
+
+Headline held-out benchmark:
+
+| Model | Accuracy | Log Loss | ROC-AUC | What It Knows |
+|---|---:|---:|---:|---|
+| Home-team baseline | 54.4% | 0.6907 | 0.500 | Only home-court prior |
+| Elo | 63.7% | 0.6286 | 0.714 | Team strength ratings |
+| XGBoost | 64.5% | 0.6217 | 0.710 | Rolling form + schedule |
+| LightGBM enriched | 65.6% | 0.6175 | 0.715 | Player/lineup enriched tabular features |
+| **Next-gen model** | **65.4%** | **0.6159** | **0.723** | Ensemble of sequence, tabular, Elo, and enriched player/lineup models |
+
+The promoted next-gen model cuts log loss by about **0.075** versus the naive home-team baseline
+on the held-out benchmark split and improves on the previous production ensemble.
+
+Why this is better than a basic NBA predictor:
+
+- It predicts **probabilities**, not just winners.
+- It is leakage-safe: target-game stats and postgame lineups are never used.
+- It combines team form, rest/schedule, injuries, news sentiment, and player/lineup-aware features.
+- It publishes a live weekly slate and tracks source freshness, injury/news coverage, and model components.
+- It keeps benchmark evidence visible in the app instead of hiding it in notebooks.
+
+Market comparison:
+
+- The app has a dedicated Benchmark page with a Vegas/market-implied probability slot.
+- Market odds are **comparison-only**, not model inputs.
+- No fake odds are shipped. Add real historical odds at
+  `data/processed/market_odds/market_implied_probabilities.parquet` with
+  `game_id`, `actual_home_win`, and `home_implied_probability` to compare against market-implied probabilities.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A["Historical team logs"] --> B["Rolling form + schedule features"]
+    C["Player game logs"] --> D["Projected availability + lineup features"]
+    E["Live injury reports"] --> F["Injury feature stream"]
+    G["Live/news articles"] --> H["News sentiment stream"]
+    B --> I["Sequence model + XGBoost"]
+    D --> J["Enriched CatBoost + LightGBM"]
+    F --> I
+    H --> I
+    I --> K["Next-gen ensemble"]
+    J --> K
+    L["Elo ratings"] --> K
+    K --> M["Calibrated P(home win)"]
+    M --> N["Published JSON + Streamlit + API"]
+```
+
+## Screenshots
+
+![Weekly forecast slate](docs/screenshots/dashboard_today.png)
+
+![Calibration diagnostics](docs/screenshots/dashboard_calibration.png)
+
+## Output Example
+
+For a scheduled game, the model outputs:
 
 ```json
 {
@@ -16,7 +79,9 @@ This project builds an NBA game-outcome prediction system that outputs **calibra
 }
 ```
 
-The system fuses four signal streams:
+## Signal Streams
+
+The system fuses several signal streams:
 
 | Stream | Source | Encoder |
 |--------|--------|---------|
@@ -24,6 +89,7 @@ The system fuses four signal streams:
 | **Injury Impact** | Official injury reports / proxy injury signals | MLP |
 | **News / Team Spirit** | Structured sentiment from recent team articles | MLP |
 | **Schedule Context** | Rest days, back-to-back, travel | MLP |
+| **Player / Lineup Context** | Player logs, projected availability, rotation stability | CatBoost / LightGBM |
 
 All streams feed into a **matchup fusion model** -> **calibration layer** -> `P(home_win)`.
 
@@ -374,6 +440,7 @@ The Streamlit app is organized into the following pages:
 - `This Week's Games` shows the live forecast window, date-grouped matchups, confidence bands, probability bars, top factors, and live context coverage for each publish.
 - `Game Detail` lets you inspect one matchup in depth, including component model outputs and recent team form.
 - `Archive` combines local forecasts, published forecasts, and historical backtests into one searchable table.
+- `Benchmark` compares the home-team baseline, Elo, XGBoost, LightGBM, previous production ensemble, next-gen model, and optional real market-implied probabilities on the same held-out reporting surface.
 - `Performance` summarizes model comparison results, rolling validation trends, and ensemble behavior.
 - `Model Lab` compares the promoted next-gen production probability with the previous `ensemble_v1` baseline, including deltas, pick flips, and enriched CatBoost/LightGBM component outputs.
 - `Calibration` shows how well predicted probabilities line up with actual outcomes, including error by probability bucket.

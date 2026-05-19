@@ -474,6 +474,8 @@ The dashboard shows:
 - weekly slate
 - game detail
 - archive
+- benchmark ladder with home baseline, Elo, XGBoost, LightGBM, previous production ensemble,
+  next-gen model, and optional real market-implied probabilities
 - performance
 - calibration
 - team form
@@ -597,6 +599,11 @@ Streamlit Cloud deployments, but the recommended production runtime is Python `3
 The Streamlit dashboard exposes those outputs in `Model Lab`, a dedicated review page that shows
 the previous `ensemble_v1` baseline vs promoted next-gen home-win probabilities, deltas, pick flips,
 candidate component probabilities, and the active artifact version for the loaded slate.
+
+The dashboard also includes a `Benchmark` page designed for first-impression proof: it summarizes
+the held-out model ladder from home-team baseline through next-gen, shows log-loss gain versus the
+naive home baseline, and reserves a comparison-only Vegas/market-implied probability section that
+activates only when real odds data is provided.
 
 The first coverage fix is complete: historical game and player-log fetchers request playoff rows,
 carry `season_type` forward, and the rebuilt evaluation now includes 166 held-out playoff games.

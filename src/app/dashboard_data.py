@@ -13,6 +13,7 @@ import pandas as pd
 
 from src.anonymization.team_mapping import load_idx_to_team
 from src.utils.paths import (
+    DOCS_DIR,
     MODELS_DIR,
     PREDICTIONS_DIR,
     PROCESSED_DIR,
@@ -26,6 +27,8 @@ PUBLISHED_DAILY_DIR = PUBLISHED_DIR / "daily"
 PUBLISHED_MANIFEST_PATH = PUBLISHED_DIR / "manifest.json"
 BUNDLED_DATA_DIR = PROJECT_ROOT / "src" / "app" / "bundled_data"
 DEFAULT_PUBLISH_TIMEZONE = "America/New_York"
+EXPERIMENTS_DIR = DOCS_DIR / "experiments"
+MARKET_ODDS_PATH = PROCESSED_DIR / "market_odds" / "market_implied_probabilities.parquet"
 
 
 def _bundled_path(filename: str) -> Path:
@@ -643,6 +646,295 @@ def build_model_performance_table(
             frame[column] = pd.to_numeric(frame[column], errors="coerce")
     return frame.sort_values(["log_loss", "accuracy"], ascending=[True, False]).reset_index(
         drop=True
+    )
+
+
+def _probability_metrics(y_true: pd.Series, probabilities: pd.Series) -> dict[str, float]:
+    """Compute common binary probability metrics without requiring saved model objects."""
+    y = pd.to_numeric(y_true, errors="coerce")
+    probs = pd.to_numeric(probabilities, errors="coerce")
+    valid = y.notna() & probs.notna()
+    y = y[valid].astype(int)
+    probs = probs[valid].clip(1e-6, 1 - 1e-6)
+    if y.empty:
+        return {
+            "accuracy": float("nan"),
+            "log_loss": float("nan"),
+            "brier_score": float("nan"),
+            "roc_auc": float("nan"),
+            "calibration_error": float("nan"),
+        }
+
+    accuracy = float(((probs >= 0.5).astype(int) == y).mean())
+    log_loss = float(-(y * np.log(probs) + (1 - y) * np.log(1 - probs)).mean())
+    brier = float(((probs - y) ** 2).mean())
+
+    positive_count = int(y.sum())
+    negative_count = int(len(y) - positive_count)
+    if positive_count == 0 or negative_count == 0:
+        roc_auc = float("nan")
+    else:
+        ranks = probs.rank(method="average")
+        rank_sum_positive = float(ranks[y == 1].sum())
+        roc_auc = (
+            rank_sum_positive - positive_count * (positive_count + 1) / 2
+        ) / (positive_count * negative_count)
+
+    calibration_input = pd.DataFrame({"probability": probs, "actual": y})
+    bins = pd.cut(
+        calibration_input["probability"],
+        bins=np.linspace(0.0, 1.0, 11),
+        include_lowest=True,
+        duplicates="drop",
+    )
+    grouped = calibration_input.groupby(bins, observed=True).agg(
+        avg_pred=("probability", "mean"),
+        actual_rate=("actual", "mean"),
+        count=("actual", "size"),
+    )
+    calibration_error = float(
+        ((grouped["avg_pred"] - grouped["actual_rate"]).abs() * grouped["count"]).sum()
+        / grouped["count"].sum()
+    )
+    return {
+        "accuracy": accuracy,
+        "log_loss": log_loss,
+        "brier_score": brier,
+        "roc_auc": float(roc_auc),
+        "calibration_error": calibration_error,
+    }
+
+
+def _benchmark_row(
+    *,
+    model: str,
+    family: str,
+    metrics: dict[str, Any],
+    test_games: int | None,
+    source: str,
+    notes: str,
+) -> dict[str, Any]:
+    return {
+        "model": model,
+        "family": family,
+        "test_games": test_games,
+        "accuracy": _numeric_or_none(metrics.get("accuracy")),
+        "log_loss": _numeric_or_none(metrics.get("log_loss")),
+        "brier_score": _numeric_or_none(metrics.get("brier_score")),
+        "roc_auc": _numeric_or_none(metrics.get("roc_auc")),
+        "calibration_error": _numeric_or_none(
+            metrics.get("calibration_error", metrics.get("ece"))
+        ),
+        "source": source,
+        "notes": notes,
+    }
+
+
+def _find_leaderboard_metrics(payload: dict[str, Any], label: str) -> dict[str, Any] | None:
+    for row in payload.get("leaderboard", []):
+        if row.get("label") == label:
+            metrics = row.get("metrics")
+            return metrics if isinstance(metrics, dict) else None
+    return None
+
+
+def _find_best_feature_model_metrics(
+    payload: dict[str, Any],
+    *,
+    model_name: str,
+) -> tuple[str, dict[str, Any]] | None:
+    best: tuple[float, str, dict[str, Any]] | None = None
+    for feature_set, feature_payload in payload.get("feature_sets", {}).items():
+        if not isinstance(feature_payload, dict):
+            continue
+        model_payload = feature_payload.get(model_name)
+        if not isinstance(model_payload, dict):
+            continue
+        metrics = model_payload.get("test")
+        if not isinstance(metrics, dict):
+            continue
+        log_loss = _numeric_or_none(metrics.get("log_loss"))
+        if log_loss is None:
+            continue
+        if best is None or log_loss < best[0]:
+            best = (log_loss, str(feature_set), metrics)
+    if best is None:
+        return None
+    _, feature_set, metrics = best
+    return feature_set, metrics
+
+
+def build_benchmark_table(
+    *,
+    baseline_path: Path | None = None,
+    enriched_path: Path | None = None,
+    nextgen_path: Path | None = None,
+) -> pd.DataFrame:
+    """Build the proof-oriented benchmark table used by the dashboard and README."""
+    rows: list[dict[str, Any]] = []
+
+    baseline_source = baseline_path or (MODELS_DIR / "baselines" / "evaluation_results.json")
+    baseline_results = _load_json(baseline_source) if baseline_source.exists() else {}
+
+    enriched_source = enriched_path or (EXPERIMENTS_DIR / "m1_enriched_matchup_results.json")
+    enriched_results = _load_json(enriched_source) if enriched_source.exists() else {}
+    enriched_test_rows = None
+    for feature_payload in enriched_results.get("feature_sets", {}).values():
+        if isinstance(feature_payload, dict) and feature_payload.get("test_rows"):
+            enriched_test_rows = int(feature_payload["test_rows"])
+            break
+
+    nextgen_source = nextgen_path or (EXPERIMENTS_DIR / "nextgen_ensemble_results.json")
+    nextgen_results = _load_json(nextgen_source) if nextgen_source.exists() else {}
+    nextgen_test_rows = (
+        int(nextgen_results["test_rows"]) if nextgen_results.get("test_rows") else None
+    )
+
+    benchmark_specs = [
+        (
+            "Home-team baseline",
+            "naive",
+            baseline_results.get("home_baseline_test"),
+            "models/baselines/evaluation_results.json",
+            "Always predicts the historical home-win prior.",
+        ),
+        (
+            "Elo",
+            "rating baseline",
+            baseline_results.get("elo_test"),
+            "models/baselines/evaluation_results.json",
+            "Classic team-strength rating baseline.",
+        ),
+        (
+            "XGBoost",
+            "tabular baseline",
+            baseline_results.get("xgboost_test"),
+            "models/baselines/evaluation_results.json",
+            "Legacy rolling/schedule tabular model.",
+        ),
+    ]
+    for model, family, metrics, source, notes in benchmark_specs:
+        if isinstance(metrics, dict):
+            rows.append(
+                _benchmark_row(
+                    model=model,
+                    family=family,
+                    metrics=metrics,
+                    test_games=enriched_test_rows,
+                    source=source,
+                    notes=notes,
+                )
+            )
+
+    lightgbm = _find_best_feature_model_metrics(enriched_results, model_name="lightgbm")
+    if lightgbm is not None:
+        feature_set, metrics = lightgbm
+        rows.append(
+            _benchmark_row(
+                model="LightGBM",
+                family="enriched tabular",
+                metrics=metrics,
+                test_games=enriched_test_rows,
+                source="docs/experiments/m1_enriched_matchup_results.json",
+                notes=f"Best LightGBM entry on the enriched benchmark: {feature_set}.",
+            )
+        )
+
+    production_metrics = _find_leaderboard_metrics(
+        nextgen_results,
+        "production ensemble raw",
+    )
+    if production_metrics:
+        rows.append(
+            _benchmark_row(
+                model="Production ensemble v1",
+                family="ensemble baseline",
+                metrics=production_metrics,
+                test_games=nextgen_test_rows,
+                source="docs/experiments/nextgen_ensemble_results.json",
+                notes="Previous neural + XGBoost + Elo production ensemble.",
+            )
+        )
+
+    nextgen_metrics = _find_leaderboard_metrics(nextgen_results, "nextgen_full / raw")
+    if nextgen_metrics:
+        rows.append(
+            _benchmark_row(
+                model="Next-gen model",
+                family="promoted ensemble",
+                metrics=nextgen_metrics,
+                test_games=nextgen_test_rows,
+                source="docs/experiments/nextgen_ensemble_results.json",
+                notes="Adds enriched CatBoost and LightGBM player/lineup probabilities.",
+            )
+        )
+
+    if not rows:
+        return pd.DataFrame()
+
+    frame = pd.DataFrame(rows)
+    home_loss_values = frame.loc[frame["model"] == "Home-team baseline", "log_loss"].dropna()
+    if not home_loss_values.empty:
+        home_loss = float(home_loss_values.iloc[0])
+        frame["log_loss_gain_vs_home"] = home_loss - frame["log_loss"]
+    else:
+        frame["log_loss_gain_vs_home"] = np.nan
+    return frame.sort_values("log_loss", ascending=True).reset_index(drop=True)
+
+
+def _load_market_odds_frame(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame()
+    if path.suffix == ".parquet":
+        return pd.read_parquet(path)
+    if path.suffix == ".json":
+        return _load_frame_from_json(path, date_columns=("date",))
+    if path.suffix == ".csv":
+        return pd.read_csv(path)
+    return pd.DataFrame()
+
+
+def build_market_odds_benchmark(path: Path | None = None) -> pd.DataFrame:
+    """Compare against real market-implied probabilities when an odds file is provided.
+
+    Expected columns: `game_id`, `actual_home_win`, and one of
+    `home_implied_probability`, `market_home_implied_probability`, or
+    `home_market_probability`.
+    """
+    source = path or MARKET_ODDS_PATH
+    odds = _load_market_odds_frame(source)
+    if odds.empty or "actual_home_win" not in odds.columns:
+        return pd.DataFrame()
+
+    probability_col = next(
+        (
+            column
+            for column in (
+                "home_implied_probability",
+                "market_home_implied_probability",
+                "home_market_probability",
+            )
+            if column in odds.columns
+        ),
+        None,
+    )
+    if probability_col is None:
+        return pd.DataFrame()
+
+    metrics = _probability_metrics(odds["actual_home_win"], odds[probability_col])
+    return pd.DataFrame(
+        [
+            _benchmark_row(
+                model="Market-implied probability",
+                family="market comparison",
+                metrics=metrics,
+                test_games=int(len(odds)),
+                source=str(source.relative_to(PROJECT_ROOT))
+                if source.is_relative_to(PROJECT_ROOT)
+                else str(source),
+                notes="Comparison only; market odds are not used as model inputs.",
+            )
+        ]
     )
 
 
