@@ -1,26 +1,25 @@
 {
   "status": "published",
-  "target_date": "2026-05-18",
-  "attempted_at": "2026-05-18T17:37:25Z",
-  "latest_available_date": "2026-05-18",
-  "published_file": "published/daily/2026-05-18.json",
+  "target_date": "2026-05-19",
+  "attempted_at": "2026-05-19T09:36:13Z",
+  "latest_available_date": "2026-05-19",
+  "published_file": "published/daily/2026-05-19.json",
   "games_count": 2,
   "model_version": "ensemble_v1",
+  "shadow_model_version": "nextgen_full_value_tuned_v2",
   "slate_type": "week",
-  "window_start": "2026-05-18",
-  "window_end": "2026-05-24",
+  "window_start": "2026-05-19",
+  "window_end": "2026-05-25",
   "days_with_games": 2,
   "context_summary": {
-    "injury_live_games": 1,
+    "injury_live_games": 0,
     "injury_partial_games": 0,
     "news_live_games": 1,
-    "news_partial_games": 0,
-    "injury_coverage_rate": 0.5,
-    "news_coverage_rate": 0.5,
-    "latest_injury_report_at": "2026-05-18T13:30:00-0400",
-    "latest_news_article_at": "2026-05-18T17:30:00Z",
-    "latest_news_collection_at": "2026-05-18T17:36:59Z"
-  },
-  "shadow_model_version": "nextgen_full_raw_v1",
-  "shadow_generated_at": "2026-05-18T21:52:18Z"
+    "news_partial_games": 1,
+    "injury_coverage_rate": 0.0,
+    "news_coverage_rate": 0.75,
+    "latest_injury_report_at": null,
+    "latest_news_article_at": "2026-05-18T21:35:27Z",
+    "latest_news_collection_at": "2026-05-18T21:51:05Z"
+  }
 }
