@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from time import perf_counter
 from typing import Any
 
@@ -999,7 +999,7 @@ def run_experiments() -> dict[str, Any]:
     slice_masks = build_test_slice_masks(enriched_df)
 
     results: dict[str, Any] = {
-        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "slice_descriptions": SLICE_DESCRIPTIONS,
         "feature_sets": {},
     }

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -382,7 +382,7 @@ def run_showdown() -> dict[str, Any]:
     best_calibrated = _best_calibrated_row(combined_leaderboard)
 
     return {
-        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "source_experiment_path": str(ENRICHED_RESULTS_PATH),
         "production_results": production_results,
         "combined_leaderboard": combined_leaderboard,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -397,6 +398,8 @@ def test_forecast_status_descriptions():
 
 def test_dashboard_startup():
     """Streamlit server starts without import/runtime errors."""
+    env = os.environ.copy()
+    env["STREAMLIT_GLOBAL_DEVELOPMENT_MODE"] = "false"
     cmd = [
         sys.executable,
         "-m",
@@ -412,6 +415,7 @@ def test_dashboard_startup():
         subprocess.run(
             cmd,
             cwd=str(PROJECT_ROOT),
+            env=env,
             check=True,
             capture_output=True,
             text=True,

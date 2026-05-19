@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import joblib
@@ -546,7 +546,7 @@ def run_nextgen_validation() -> dict[str, Any]:
     verdict = build_promotion_verdict(slice_results)
 
     results = {
-        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "test_rows": int(len(test_df)),
         "criteria": {
             "min_overall_log_loss_gain": MIN_OVERALL_LOG_LOSS_GAIN,
