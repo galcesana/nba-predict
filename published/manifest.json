@@ -1,7 +1,7 @@
 {
   "status": "published",
   "target_date": "2026-05-19",
-  "attempted_at": "2026-05-19T14:46:30Z",
+  "attempted_at": "2026-05-19T17:57:46Z",
   "latest_available_date": "2026-05-19",
   "published_file": "published/daily/2026-05-19.json",
   "games_count": 2,
@@ -26,10 +26,10 @@
   "publish_observability": {
     "status": "success",
     "publish_status": "published",
-    "started_at": "2026-05-19T14:46:30Z",
-    "completed_at": "2026-05-19T14:46:57Z",
-    "duration_seconds": 27.397,
-    "prediction_runtime_seconds": 27.386,
+    "started_at": "2026-05-19T17:57:46Z",
+    "completed_at": "2026-05-19T17:58:21Z",
+    "duration_seconds": 34.997,
+    "prediction_runtime_seconds": 34.977,
     "timezone": "America/New_York",
     "forecast_window_days": 7,
     "api_status": {
