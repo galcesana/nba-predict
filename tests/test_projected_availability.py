@@ -244,6 +244,42 @@ def test_build_projected_availability_marks_prior_absence_without_target_leakage
     projected, unresolved = projected_availability.build_projected_availability(
         games,
         pd.DataFrame(rows),
+        team_game_logs=pd.DataFrame(
+            [
+                {
+                    "game_id": "hist-1",
+                    "date": "2026-05-10",
+                    "season": "2025-26",
+                    "team_idx": 5,
+                    "net_rating": 10.0,
+                    "point_diff": 11,
+                },
+                {
+                    "game_id": "hist-2",
+                    "date": "2026-05-12",
+                    "season": "2025-26",
+                    "team_idx": 5,
+                    "net_rating": 8.0,
+                    "point_diff": 9,
+                },
+                {
+                    "game_id": "hist-3",
+                    "date": "2026-05-14",
+                    "season": "2025-26",
+                    "team_idx": 5,
+                    "net_rating": -12.0,
+                    "point_diff": -14,
+                },
+                {
+                    "game_id": "hist-4",
+                    "date": "2026-05-16",
+                    "season": "2025-26",
+                    "team_idx": 5,
+                    "net_rating": -15.0,
+                    "point_diff": -16,
+                },
+            ]
+        ),
         recent_team_games=5,
         max_players=5,
     )
@@ -257,6 +293,11 @@ def test_build_projected_availability_marks_prior_absence_without_target_leakage
     assert absent_player["source_type"] == "historical_absence_proxy"
     assert absent_player["availability_score"] < 1.0
     assert absent_player["projected_value_missing"] > 0
+    assert absent_player["replacement_risk_score"] > 0
+    assert (
+        absent_player["projected_replacement_value_missing"]
+        > absent_player["projected_value_missing"]
+    )
     assert absent_player["projected_minutes"] < absent_player["expected_minutes"]
     assert absent_player["availability_model_version"] == (
         projected_availability.PROJECTED_AVAILABILITY_VERSION

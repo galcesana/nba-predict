@@ -191,6 +191,7 @@ def test_build_enriched_matchup_dataset_adds_player_and_lineup_columns():
     value_features = build_player_value_features(
         games,
         player_logs,
+        team_game_logs=team_logs,
         recent_team_games=5,
         max_players=5,
     )
@@ -220,9 +221,12 @@ def test_build_enriched_matchup_dataset_adds_player_and_lineup_columns():
 
     assert "home_projected_player_value_available" in enriched.columns
     assert "home_projected_top8_value_confidence_mean" in enriched.columns
+    assert "home_projected_top8_replacement_value_missing" in enriched.columns
+    assert "away_expected_missing_replacement_risk" in enriched.columns
     assert "away_projected_top8_minutes_missing" in enriched.columns
     assert "away_expected_missing_starter_value" in enriched.columns
     assert "diff_projected_player_value_missing" in enriched.columns
+    assert "diff_projected_top8_replacement_value_missing" in enriched.columns
     assert target["away_projected_player_value_missing"] > 0
     assert target["away_projected_top8_minutes_missing"] > 0
 
@@ -249,6 +253,7 @@ def test_append_enriched_features_matches_full_enriched_builder():
     value_features = build_player_value_features(
         games,
         player_logs,
+        team_game_logs=team_logs,
         recent_team_games=5,
         max_players=5,
     )

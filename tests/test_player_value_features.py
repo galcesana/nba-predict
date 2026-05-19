@@ -123,6 +123,37 @@ def _player_logs() -> pd.DataFrame:
     return pd.DataFrame(cavs_rows)
 
 
+def _team_logs_for_absence_risk() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "game_id": "hist-1",
+                "date": "2026-05-10",
+                "season": "2025-26",
+                "team_idx": 5,
+                "net_rating": 12.0,
+                "point_diff": 14,
+            },
+            {
+                "game_id": "hist-2",
+                "date": "2026-05-12",
+                "season": "2025-26",
+                "team_idx": 5,
+                "net_rating": 9.0,
+                "point_diff": 10,
+            },
+            {
+                "game_id": "hist-3",
+                "date": "2026-05-14",
+                "season": "2025-26",
+                "team_idx": 5,
+                "net_rating": -13.0,
+                "point_diff": -15,
+            },
+        ]
+    )
+
+
 def test_build_player_value_features_uses_only_prior_games():
     """Pregame player values should summarize only historical games before the target date."""
     features = player_value_features.build_player_value_features(
@@ -176,3 +207,65 @@ def test_build_player_value_features_rank_top_players_above_depth():
     assert cavs.iloc[0]["player_id"] == 101
     assert cavs.iloc[0]["player_value_score"] > cavs.iloc[-1]["player_value_score"]
     assert cavs.iloc[0]["role_tier"] == 3
+
+
+def test_build_player_value_features_scores_replacement_risk_from_prior_absences():
+    """Team drop-off in prior missed games should become a leakage-safe risk signal."""
+    logs = pd.concat(
+        [
+            _player_logs(),
+            pd.DataFrame(
+                [
+                    {
+                        "game_id": "hist-3",
+                        "date": "2026-05-14",
+                        "season": "2025-26",
+                        "team_idx": 5,
+                        "opponent_team_idx": 8,
+                        "player_id": 102,
+                        "player_idx": 2,
+                        "player_name": "Jarrett Allen",
+                        "minutes": 33,
+                        "points": 17,
+                        "rebounds": 12,
+                        "assists": 2,
+                        "plus_minus": -4,
+                        "fantasy_points": 39.0,
+                    },
+                    {
+                        "game_id": "hist-3",
+                        "date": "2026-05-14",
+                        "season": "2025-26",
+                        "team_idx": 5,
+                        "opponent_team_idx": 8,
+                        "player_id": 109,
+                        "player_idx": 9,
+                        "player_name": "Depth Wing",
+                        "minutes": 18,
+                        "points": 6,
+                        "rebounds": 3,
+                        "assists": 1,
+                        "plus_minus": -6,
+                        "fantasy_points": 13.0,
+                    },
+                ]
+            ),
+        ],
+        ignore_index=True,
+    )
+
+    features = player_value_features.build_player_value_features(
+        _games(),
+        logs,
+        team_game_logs=_team_logs_for_absence_risk(),
+        recent_team_games=5,
+        max_players=5,
+    )
+
+    mitchell = features[features["player_id"] == 101].iloc[0]
+    allen = features[features["player_id"] == 102].iloc[0]
+
+    assert mitchell["recent_absence_games"] == 1
+    assert mitchell["recent_absence_net_rating_delta"] > 0
+    assert mitchell["replacement_risk_score"] > 0
+    assert allen["replacement_risk_score"] == 0

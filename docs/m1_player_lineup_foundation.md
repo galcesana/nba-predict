@@ -171,6 +171,7 @@ Requirements:
   - rolling minutes
   - rolling usage
   - rolling on/off or plus-minus proxy
+  - prior missed-game team drop-off / replacement-risk proxy
   - starter indicator
   - recent role stability
 
@@ -224,6 +225,9 @@ Implementation note:
 - `historical_absence_proxy_v1` is a leakage-safe proxy, not an official inactive feed.
 - It uses only team games before the target date and never inspects whether the player appeared in the target game.
 - It exists to create measurable historical missing-player coverage until richer official inactive history is available.
+- `replacement_risk_v1` extends this by comparing team net rating or point differential in prior
+  games when a player played versus prior games he missed, then carrying a risk-weighted missing
+  value into projected availability.
 
 ### D6. Lineup and rotation features
 
@@ -241,6 +245,7 @@ Feature families should include:
 - lineup familiarity / shared minutes proxy
 - expected missing starter value
 - expected missing rotation value
+- expected missing replacement risk
 
 ### D7. Matchup-row integration
 

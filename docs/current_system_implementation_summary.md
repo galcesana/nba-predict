@@ -14,9 +14,11 @@ The current system is a calibrated NBA pregame forecasting pipeline that:
 - publishes weekly live forecast windows
 - exposes results through Streamlit and FastAPI
 
-The system is primarily **team-level**.
+The system still has a strong **team-level** backbone, but production inference now also uses the
+promoted next-gen enriched stack with player-value, projected-availability, and lineup summaries.
 
-It already includes live injury/news overlays, but those overlays are still limited compared to a full player- and lineup-aware system.
+It already includes live injury/news overlays, but those overlays are still limited compared to a
+fully learned player- and lineup-aware system.
 
 ---
 
@@ -53,7 +55,8 @@ New M1 foundation code now also exists for:
 - lineup and rotation feature building
 - enriched matchup-row generation
 
-These utilities are present, but they are not yet fully integrated into the deployed forecasting model.
+These utilities now feed the promoted next-gen production stack, while the older team-level
+`ensemble_v1_probability` remains available as a rollback/baseline comparison.
 
 Historical modeling is built around anonymous team IDs `0-29`, with team names reserved for collection and UI only.
 
@@ -179,12 +182,14 @@ These provide:
 - season roster metadata normalization
 - processed historical player-game logs
 - leakage-safe pregame player-value estimates
+- leakage-safe player absence-impact / replacement-risk estimates
 - team-aware player-name resolution for injury-style aliases
 - leakage-safe projected availability rows with explicit source type, timestamp, and confidence
 - lineup continuity, depth, and missing-value features derived from those projected rows
-- a parallel enriched matchup dataset for future model experiments
+- enriched matchup rows used by the next-gen CatBoost/LightGBM inputs
 
-They are the first real player-and-lineup feature slice of the new roadmap, but they do not yet change the deployed forecast representation.
+They are the first real player-and-lineup feature slice of the new roadmap and are now part of the
+promoted next-gen forecast representation.
 
 ### 4.2 Neural model
 
@@ -368,7 +373,11 @@ Current output fields include:
 - `projected_minutes`
 - `projected_value_available`
 - `projected_value_missing`
+- `projected_replacement_value_missing`
 - `player_value_score`
+- `recent_absence_games`
+- `recent_absence_net_rating_delta`
+- `replacement_risk_score`
 - `role_score`
 
 ### 8.2 Lineup and rotation feature foundation
@@ -382,9 +391,12 @@ Current behavior:
 - ranks projected players by effective role value after availability discounts
 - infers projected starters and top-8 rotations
 - compares those projected groups against the last prior game and recent prior games only
-- computes leakage-safe team-game features such as starter continuity, top-8 continuity, minutes concentration, bench depth quality, rotation stability, lineup familiarity, and missing value
+- computes leakage-safe team-game features such as starter continuity, top-8 continuity, minutes
+  concentration, bench depth quality, rotation stability, lineup familiarity, missing value, and
+  expected missing replacement risk
 
-These new M1 outputs are not yet joined into the deployed training and inference rows, but the historical feature layer now exists and is test-covered.
+These M1 outputs are joined into enriched training and live inference rows for the promoted
+next-gen stack, while the rollback ensemble remains intact.
 
 ### 8.3 Player-value foundation
 
@@ -398,6 +410,7 @@ Current behavior:
 - uses only prior games before the target date
 - estimates role/value from recent minutes, minutes share, fantasy production, plus-minus, starter-rate proxy, role stability, usage proxy, and value per minute
 - emits a value-confidence score and role tier for downstream availability/lineup aggregation
+- estimates replacement risk from prior missed-game team net-rating drop-off without using target-game participation
 - ranks players within each team-game by a simple composite `player_value_score`
 
 Current output fields include:
@@ -410,6 +423,9 @@ Current output fields include:
 - `recent_value_per_minute`
 - `recent_starter_rate`
 - `recent_role_stability`
+- `recent_absence_games`
+- `recent_absence_net_rating_delta`
+- `replacement_risk_score`
 - `value_confidence`
 - `player_value_score`
 - `rotation_rank`
@@ -430,7 +446,8 @@ Current behavior:
 - now also writes a parallel `matchup_dataset_enriched.parquet`
 - merges in home/away lineup features and projected player-value summaries
 - computes diff columns for the new player-aware team aggregates
-- includes projected available/missing minutes and top-8 value-confidence summaries
+- includes projected available/missing minutes, top-8 value-confidence summaries, and
+  replacement-risk-weighted missing-value summaries
 
 Important note:
 
@@ -583,9 +600,11 @@ candidate component probabilities, and the active artifact version for the loade
 
 The first coverage fix is complete: historical game and player-log fetchers request playoff rows,
 carry `season_type` forward, and the rebuilt evaluation now includes 166 held-out playoff games.
-The second coverage fix is implemented as `historical_absence_proxy_v1`; the rebuilt evaluation now
-includes 2,602 held-out missing-player-impact games. Longer-term availability work should replace
-this proxy with richer official inactive history when available.
+The second coverage fix started as `historical_absence_proxy_v1`; the current `replacement_risk_v1`
+slice extends it by comparing prior games played versus missed and carrying replacement-risk-weighted
+missing value into the enriched stack. The rebuilt evaluation includes 2,602 held-out
+missing-player-impact games. Longer-term availability work should replace this proxy with richer
+official inactive history when available.
 
 ---
 

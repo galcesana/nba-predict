@@ -12,6 +12,7 @@ import joblib
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
+from src.features.build_matchup_dataset import ENRICHED_FEATURE_STACK_VERSION
 from src.models.calibrate import PlattCalibrator
 from src.models.ensemble import load_model_predictions
 from src.models.run_enriched_experiments import (
@@ -37,7 +38,7 @@ NEXTGEN_RESULTS_PATH = DOCS_DIR / "experiments" / "nextgen_ensemble_results.json
 NEXTGEN_SUMMARY_PATH = DOCS_DIR / "experiments" / "nextgen_ensemble_results.md"
 
 PRODUCTION_INPUT_COLS = ["neural_prob", "xgboost_prob", "elo_prob"]
-ENRICHED_INPUT_CONFIG_VERSION = "value_tuned_inputs_v1"
+ENRICHED_INPUT_CONFIG_VERSION = "replacement_risk_inputs_v1"
 ENRICHED_INPUT_MODEL_CONFIGS = {
     "catboost": {
         "prob_col": "enriched_catboost_prob",
@@ -63,7 +64,23 @@ def load_enriched_matchup_dataset() -> pd.DataFrame:
             "Run `python -m src.models.run_enriched_experiments` first."
         )
         raise FileNotFoundError(msg)
-    return pd.read_parquet(path)
+    enriched = pd.read_parquet(path)
+    if "enriched_feature_stack_version" not in enriched.columns:
+        msg = (
+            f"Stale enriched matchup dataset at {path}: missing "
+            "`enriched_feature_stack_version`. Run "
+            "`python -m src.models.run_enriched_experiments` first."
+        )
+        raise RuntimeError(msg)
+    versions = set(enriched["enriched_feature_stack_version"].dropna().astype(str))
+    if versions != {ENRICHED_FEATURE_STACK_VERSION}:
+        msg = (
+            f"Stale enriched matchup dataset at {path}: found versions "
+            f"{sorted(versions)}, expected {ENRICHED_FEATURE_STACK_VERSION}. Run "
+            "`python -m src.models.run_enriched_experiments` first."
+        )
+        raise RuntimeError(msg)
+    return enriched
 
 
 def load_legacy_matchup_dataset() -> pd.DataFrame:

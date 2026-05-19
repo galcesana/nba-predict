@@ -14,7 +14,7 @@ from src.utils.paths import PROCESSED_DIR, RAW_DIR
 
 logger = logging.getLogger(__name__)
 
-PROJECTED_AVAILABILITY_VERSION = "availability_value_confidence_v1"
+PROJECTED_AVAILABILITY_VERSION = "replacement_risk_v1"
 
 STATUS_TO_AVAILABILITY = {
     "AVAILABLE": 1.0,
@@ -65,10 +65,14 @@ AVAILABILITY_COLUMNS = [
     "projected_minutes",
     "projected_value_available",
     "projected_value_missing",
+    "projected_replacement_value_missing",
     "player_value_score",
     "minutes_share_recent",
     "starter_rate_recent",
     "recent_role_stability",
+    "recent_absence_games",
+    "recent_absence_net_rating_delta",
+    "replacement_risk_score",
     "role_score",
     "resolved_from_name",
 ]
@@ -339,6 +343,9 @@ def _fallback_role_snapshot(
             "minutes_share_recent": 0.0,
             "starter_rate_recent": 0.0,
             "recent_role_stability": 0.0,
+            "recent_absence_games": 0.0,
+            "recent_absence_net_rating_delta": 0.0,
+            "replacement_risk_score": 0.0,
             "role_score": 0.0,
             "projection_confidence": 0.35,
             "source_timestamp": None,
@@ -393,6 +400,9 @@ def _fallback_role_snapshot(
         ),
         "starter_rate_recent": float(min(recent_games_played, 5) / max(recent_team_games, 1)),
         "recent_role_stability": float(recent_games_played / max(recent_team_games, 1)),
+        "recent_absence_games": 0.0,
+        "recent_absence_net_rating_delta": 0.0,
+        "replacement_risk_score": 0.0,
         "role_score": weighted_minutes + 0.15 * avg_fantasy_points,
         "projection_confidence": projection_confidence,
         "source_timestamp": pd.Timestamp(recent_history["date"].max()).strftime(
@@ -433,6 +443,15 @@ def _enrich_resolved_report_rows(
                         "minutes_share_recent": float(snapshot["recent_minutes_share"]),
                         "starter_rate_recent": float(snapshot["recent_starter_rate"]),
                         "recent_role_stability": float(snapshot["recent_role_stability"]),
+                        "recent_absence_games": float(
+                            snapshot.get("recent_absence_games", 0.0)
+                        ),
+                        "recent_absence_net_rating_delta": float(
+                            snapshot.get("recent_absence_net_rating_delta", 0.0)
+                        ),
+                        "replacement_risk_score": float(
+                            snapshot.get("replacement_risk_score", 0.0)
+                        ),
                         "role_score": float(snapshot["player_value_score"]),
                         "projection_confidence": None,
                         "source_timestamp": None,
@@ -461,6 +480,9 @@ def _enrich_resolved_report_rows(
         "minutes_share_recent",
         "starter_rate_recent",
         "recent_role_stability",
+        "recent_absence_games",
+        "recent_absence_net_rating_delta",
+        "replacement_risk_score",
         "role_score",
         "projection_confidence",
         "source_timestamp",
@@ -544,6 +566,9 @@ def resolve_injury_report_players(
                 "expected_usage_proxy": None,
                 "value_confidence": None,
                 "role_tier": None,
+                "recent_absence_games": None,
+                "recent_absence_net_rating_delta": None,
+                "replacement_risk_score": None,
             }
         )
 
@@ -560,6 +585,7 @@ def build_projected_availability(
     injury_reports: pd.DataFrame | None = None,
     metadata_by_season: dict[str, pd.DataFrame] | None = None,
     player_value_features: pd.DataFrame | None = None,
+    team_game_logs: pd.DataFrame | None = None,
     recent_team_games: int = 10,
     max_players: int = 12,
     use_historical_absence_proxy: bool = True,
@@ -582,6 +608,7 @@ def build_projected_availability(
         player_value_features = build_player_value_features(
             games,
             logs,
+            team_game_logs=team_game_logs,
             recent_team_games=recent_team_games,
             max_players=max_players,
         )
@@ -648,6 +675,15 @@ def build_projected_availability(
                         "minutes_share_recent": float(player["recent_minutes_share"]),
                         "starter_rate_recent": float(player["recent_starter_rate"]),
                         "recent_role_stability": float(player["recent_role_stability"]),
+                        "recent_absence_games": float(
+                            player.get("recent_absence_games", 0.0)
+                        ),
+                        "recent_absence_net_rating_delta": float(
+                            player.get("recent_absence_net_rating_delta", 0.0)
+                        ),
+                        "replacement_risk_score": float(
+                            player.get("replacement_risk_score", 0.0)
+                        ),
                         "role_score": float(player["player_value_score"]),
                         "resolved_from_name": None,
                     }
@@ -707,6 +743,9 @@ def build_projected_availability(
                     "recent_role_stability": float(
                         player["recent_games_played"] / max(recent_team_games, 1)
                     ),
+                    "recent_absence_games": 0.0,
+                    "recent_absence_net_rating_delta": 0.0,
+                    "replacement_risk_score": 0.0,
                     "role_score": float(player["role_score"]),
                     "resolved_from_name": None,
                 }
@@ -785,6 +824,15 @@ def build_projected_availability(
                     new_rows["recent_role_stability"] = new_rows[
                         "recent_role_stability"
                     ].fillna(0.0)
+                    new_rows["recent_absence_games"] = new_rows[
+                        "recent_absence_games"
+                    ].fillna(0.0)
+                    new_rows["recent_absence_net_rating_delta"] = new_rows[
+                        "recent_absence_net_rating_delta"
+                    ].fillna(0.0)
+                    new_rows["replacement_risk_score"] = new_rows[
+                        "replacement_risk_score"
+                    ].fillna(0.0)
                     new_rows["role_score"] = new_rows["role_score"].fillna(0.0)
                     availability = pd.concat([availability, new_rows], axis=0)
 
@@ -821,6 +869,15 @@ def build_projected_availability(
         availability["recent_role_stability"] = pd.to_numeric(
             availability["recent_role_stability"], errors="coerce"
         ).fillna(0.0)
+        availability["recent_absence_games"] = pd.to_numeric(
+            availability["recent_absence_games"], errors="coerce"
+        ).fillna(0.0)
+        availability["recent_absence_net_rating_delta"] = pd.to_numeric(
+            availability["recent_absence_net_rating_delta"], errors="coerce"
+        ).fillna(0.0)
+        availability["replacement_risk_score"] = pd.to_numeric(
+            availability["replacement_risk_score"], errors="coerce"
+        ).fillna(0.0).clip(lower=0.0, upper=1.0)
         availability["role_score"] = pd.to_numeric(
             availability["role_score"],
             errors="coerce",
@@ -840,6 +897,10 @@ def build_projected_availability(
         availability["projected_value_missing"] = (
             availability["player_value_score"] * (1.0 - availability["availability_score"])
         ).round(4)
+        availability["projected_replacement_value_missing"] = (
+            availability["projected_value_missing"]
+            * (1.0 + availability["replacement_risk_score"])
+        ).round(4)
         availability = availability.sort_values(
             ["date", "game_id", "team_idx", "role_score", "player_id"],
             ascending=[True, True, True, False, True],
@@ -854,6 +915,8 @@ def main() -> None:
 
     games = pd.read_parquet(PROCESSED_DIR / "games.parquet")
     player_logs = pd.read_parquet(PROCESSED_DIR / "player_game_logs" / "player_game_logs.parquet")
+    team_logs_path = PROCESSED_DIR / "team_game_logs" / "team_game_logs.parquet"
+    team_logs = pd.read_parquet(team_logs_path) if team_logs_path.exists() else None
     injury_dir = RAW_DIR / "injuries"
     injury_reports = pd.DataFrame()
     if injury_dir.exists():
@@ -867,7 +930,12 @@ def main() -> None:
     projected, unresolved = build_projected_availability(
         games,
         player_logs,
-        player_value_features=build_player_value_features(games, player_logs),
+        player_value_features=build_player_value_features(
+            games,
+            player_logs,
+            team_game_logs=team_logs,
+        ),
+        team_game_logs=team_logs,
         injury_reports=injury_reports,
     )
 

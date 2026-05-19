@@ -79,6 +79,7 @@ def _availability() -> pd.DataFrame:
                 "report_reason": None,
                 "recent_games_played": 2,
                 "expected_minutes": role_score,
+                "replacement_risk_score": 0.6 if player_id == 101 else 0.0,
                 "role_score": role_score,
             }
         )
@@ -95,6 +96,7 @@ def test_build_lineup_features_captures_missing_starter_value():
 
     team_row = features[features["team_idx"] == 5].iloc[0]
     assert team_row["expected_missing_starter_value"] > 0
+    assert team_row["expected_missing_replacement_risk"] > 0
     assert team_row["available_top8_players"] == 8
     assert team_row["projected_available_rotation_value"] < sum(
         _availability()[_availability()["team_idx"] == 5]["role_score"]

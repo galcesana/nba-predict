@@ -12,7 +12,7 @@ from src.utils.paths import PROCESSED_DIR
 
 logger = logging.getLogger(__name__)
 
-PLAYER_VALUE_FEATURE_VERSION = "value_confidence_usage_v1"
+PLAYER_VALUE_FEATURE_VERSION = "replacement_risk_v1"
 
 PLAYER_VALUE_FEATURE_COLUMNS = [
     "game_id",
@@ -34,6 +34,9 @@ PLAYER_VALUE_FEATURE_COLUMNS = [
     "recent_value_per_minute",
     "recent_starter_rate",
     "recent_role_stability",
+    "recent_absence_games",
+    "recent_absence_net_rating_delta",
+    "replacement_risk_score",
     "value_confidence",
     "last_game_minutes",
     "last_game_date",
@@ -84,6 +87,7 @@ def _build_team_player_value_rows(
     team_idx: int,
     team_targets: pd.DataFrame,
     team_logs: pd.DataFrame,
+    team_game_logs: pd.DataFrame | None = None,
     *,
     recent_team_games: int,
     max_players: int,
@@ -159,6 +163,33 @@ def _build_team_player_value_rows(
     starter_proxy = _pivot_stat("starter_proxy").reindex(expanded_index, fill_value=0.0)
     starter_proxy = starter_proxy.reindex(columns=player_ids, fill_value=0.0)
 
+    team_signal = pd.Series(0.0, index=expanded_index, dtype=float)
+    if team_game_logs is not None and not team_game_logs.empty:
+        signal_logs = team_game_logs[team_game_logs["team_idx"].astype(int) == int(team_idx)].copy()
+        signal_column = (
+            "net_rating"
+            if "net_rating" in signal_logs.columns
+            else "point_diff"
+            if "point_diff" in signal_logs.columns
+            else None
+        )
+        if signal_column is not None and not signal_logs.empty:
+            signal_logs["game_id"] = signal_logs["game_id"].astype(str)
+            signal_lookup = (
+                signal_logs.sort_values(["date", "game_id"])
+                .drop_duplicates("game_id", keep="last")
+                .set_index("game_id")[signal_column]
+            )
+            team_signal.iloc[: len(team_games)] = pd.to_numeric(
+                team_games["game_id"].astype(str).map(signal_lookup),
+                errors="coerce",
+            ).fillna(0.0).to_numpy()
+    team_signal_frame = pd.DataFrame(
+        np.repeat(team_signal.to_numpy()[:, None], len(player_ids), axis=1),
+        index=expanded_index,
+        columns=player_ids,
+    )
+
     recent_games_played = _rolling_sum(appearances, recent_team_games)
     recent_minutes_total = _rolling_sum(minutes, recent_team_games)
     recent_fantasy_points_total = _rolling_sum(fantasy_points, recent_team_games)
@@ -167,6 +198,17 @@ def _build_team_player_value_rows(
     recent_assists_total = _rolling_sum(assists, recent_team_games)
     recent_rebounds_total = _rolling_sum(rebounds, recent_team_games)
     recent_starter_count = _rolling_sum(starter_proxy, recent_team_games)
+    had_prior_team_appearance = appearances.cumsum().shift(1).fillna(0.0) > 0
+    absence_indicator = ((appearances == 0.0) & had_prior_team_appearance).astype(float)
+    recent_absence_games = _rolling_sum(absence_indicator, recent_team_games)
+    recent_played_signal_total = _rolling_sum(
+        team_signal_frame * appearances,
+        recent_team_games,
+    )
+    recent_absent_signal_total = _rolling_sum(
+        team_signal_frame * absence_indicator,
+        recent_team_games,
+    )
 
     recent_minutes_avg = _rolling_mean_from_sum(recent_minutes_total, recent_games_played)
     recent_fantasy_points_avg = _rolling_mean_from_sum(
@@ -177,6 +219,21 @@ def _build_team_player_value_rows(
     recent_points_avg = _rolling_mean_from_sum(recent_points_total, recent_games_played)
     recent_assists_avg = _rolling_mean_from_sum(recent_assists_total, recent_games_played)
     recent_rebounds_avg = _rolling_mean_from_sum(recent_rebounds_total, recent_games_played)
+    recent_played_signal_avg = _rolling_mean_from_sum(
+        recent_played_signal_total,
+        recent_games_played,
+    )
+    recent_absent_signal_avg = _rolling_mean_from_sum(
+        recent_absent_signal_total,
+        recent_absence_games,
+    )
+    recent_absence_net_rating_delta = (
+        recent_played_signal_avg - recent_absent_signal_avg
+    ).where(recent_absence_games > 0, 0.0)
+    recent_absence_net_rating_delta = recent_absence_net_rating_delta.clip(
+        lower=-40.0,
+        upper=40.0,
+    )
     recent_usage_proxy = (
         recent_points_avg + 1.5 * recent_assists_avg + 1.2 * recent_rebounds_avg
     ).round(4)
@@ -212,6 +269,13 @@ def _build_team_player_value_rows(
         + 0.35 * recent_games_played.div(prior_game_counts_frame).fillna(0.0)
         + 0.20 * (recent_minutes_share * 5.0).clip(lower=0.0, upper=1.0)
     ).clip(lower=0.0, upper=1.0)
+    replacement_risk_score = (
+        recent_absence_net_rating_delta.clip(lower=0.0)
+        .div(12.0)
+        .clip(lower=0.0, upper=1.0)
+        * (0.35 + 0.65 * value_confidence)
+        * recent_role_stability.clip(lower=0.0, upper=1.0)
+    ).clip(lower=0.0, upper=1.0)
 
     last_game_minutes = minutes.replace(0.0, np.nan).ffill().shift(1)
     expanded_dates = pd.Index([*game_dates.to_list(), pd.NaT], dtype="datetime64[ns]")
@@ -236,6 +300,11 @@ def _build_team_player_value_rows(
             recent_value_per_minute.stack().rename("recent_value_per_minute"),
             recent_starter_rate.stack().rename("recent_starter_rate"),
             recent_role_stability.stack().rename("recent_role_stability"),
+            recent_absence_games.stack().rename("recent_absence_games"),
+            recent_absence_net_rating_delta.stack().rename(
+                "recent_absence_net_rating_delta"
+            ),
+            replacement_risk_score.stack().rename("replacement_risk_score"),
             value_confidence.stack().rename("value_confidence"),
             last_game_minutes.stack(future_stack=True).rename("last_game_minutes"),
             last_game_date.stack(future_stack=True).rename("last_game_date"),
@@ -292,6 +361,7 @@ def build_player_value_features(
     games: pd.DataFrame,
     player_logs: pd.DataFrame,
     *,
+    team_game_logs: pd.DataFrame | None = None,
     recent_team_games: int = 10,
     max_players: int = 12,
     starter_size: int = 5,
@@ -310,6 +380,14 @@ def build_player_value_features(
         int(team_idx): group.sort_values(["date", "game_id", "player_id"]).reset_index(drop=True)
         for team_idx, group in logs.groupby("team_idx", sort=False)
     }
+    team_log_groups: dict[int, pd.DataFrame] = {}
+    if team_game_logs is not None and not team_game_logs.empty:
+        team_logs_source = team_game_logs.copy()
+        team_logs_source["date"] = pd.to_datetime(team_logs_source["date"])
+        team_log_groups = {
+            int(team_idx): group.sort_values(["date", "game_id"]).reset_index(drop=True)
+            for team_idx, group in team_logs_source.groupby("team_idx", sort=False)
+        }
 
     team_frames: list[pd.DataFrame] = []
     team_count = target_rows["team_idx"].nunique()
@@ -331,6 +409,7 @@ def build_player_value_features(
             int(team_idx),
             team_targets,
             team_logs,
+            team_log_groups.get(int(team_idx)),
             recent_team_games=recent_team_games,
             max_players=max_players,
             starter_size=starter_size,
@@ -353,7 +432,9 @@ def main() -> None:
 
     games = pd.read_parquet(PROCESSED_DIR / "games.parquet")
     player_logs = pd.read_parquet(PROCESSED_DIR / "player_game_logs" / "player_game_logs.parquet")
-    features = build_player_value_features(games, player_logs)
+    team_logs_path = PROCESSED_DIR / "team_game_logs" / "team_game_logs.parquet"
+    team_logs = pd.read_parquet(team_logs_path) if team_logs_path.exists() else None
+    features = build_player_value_features(games, player_logs, team_game_logs=team_logs)
 
     out_dir = PROCESSED_DIR / "player_value_features"
     out_dir.mkdir(parents=True, exist_ok=True)

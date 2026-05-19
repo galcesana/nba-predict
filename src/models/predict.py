@@ -44,6 +44,7 @@ NEXTGEN_INPUT_COLS = [
 ]
 NEXTGEN_SHADOW_MODEL_VERSION = "nextgen_full_raw_v1"
 NEXTGEN_VALUE_TUNED_SHADOW_MODEL_VERSION = "nextgen_full_value_tuned_v2"
+NEXTGEN_REPLACEMENT_RISK_SHADOW_MODEL_VERSION = "nextgen_full_replacement_risk_v1"
 DEFAULT_PRODUCTION_MODEL = "nextgen"
 
 
@@ -190,9 +191,14 @@ class PredictionPipeline:
                 model_features = feature_payload["models"]
                 self.nextgen_catboost_feature_cols = model_features["catboost"]["columns"]
                 self.nextgen_lightgbm_feature_cols = model_features["lightgbm"]["columns"]
-                if feature_payload.get("schema_version") == "value_tuned_inputs_v1":
+                schema_version = feature_payload.get("schema_version")
+                if schema_version == "value_tuned_inputs_v1":
                     self.nextgen_shadow_model_version = (
                         NEXTGEN_VALUE_TUNED_SHADOW_MODEL_VERSION
+                    )
+                elif schema_version == "replacement_risk_inputs_v1":
+                    self.nextgen_shadow_model_version = (
+                        NEXTGEN_REPLACEMENT_RISK_SHADOW_MODEL_VERSION
                     )
         except (KeyError, TypeError, json.JSONDecodeError) as exc:
             logger.warning(
@@ -468,6 +474,7 @@ class PredictionPipeline:
         *,
         target_games: pd.DataFrame,
         target_matchups: pd.DataFrame,
+        historical_team_logs: pd.DataFrame,
         neural_probs: np.ndarray,
         xgb_probs: np.ndarray,
     ) -> dict[str, dict[str, float | str]]:
@@ -484,6 +491,9 @@ class PredictionPipeline:
         target_dates = pd.to_datetime(target_games["date"])
         cutoff = pd.Timestamp(target_dates.min())
         historical_player_logs = player_logs[player_logs["date"] < cutoff].copy()
+        historical_team_logs = historical_team_logs.copy()
+        historical_team_logs["date"] = pd.to_datetime(historical_team_logs["date"])
+        historical_team_logs = historical_team_logs[historical_team_logs["date"] < cutoff].copy()
         if historical_player_logs.empty:
             logger.warning(
                 "Next-gen shadow unavailable; no historical player logs before %s.",
@@ -494,11 +504,13 @@ class PredictionPipeline:
         player_value_features = build_player_value_features(
             target_games,
             historical_player_logs,
+            team_game_logs=historical_team_logs,
         )
         projected_availability, _ = build_projected_availability(
             target_games,
             historical_player_logs,
             player_value_features=player_value_features,
+            team_game_logs=historical_team_logs,
         )
         lineup_features = build_lineup_features(
             target_games,
@@ -739,6 +751,7 @@ class PredictionPipeline:
         nextgen_shadow = self._build_nextgen_shadow_probabilities(
             target_games=target_games,
             target_matchups=target_matchups,
+            historical_team_logs=historical_team_logs,
             neural_probs=neural_probs,
             xgb_probs=xgb_probs,
         )

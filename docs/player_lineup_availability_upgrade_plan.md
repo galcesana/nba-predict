@@ -53,6 +53,18 @@ Initial implementation slice:
   - `role_tier`
   - `player_value_model_version`
 
+Replacement-risk implementation slice:
+
+- `PLAYER_VALUE_FEATURE_VERSION = replacement_risk_v1`
+- New columns:
+  - `recent_absence_games`
+  - `recent_absence_net_rating_delta`
+  - `replacement_risk_score`
+- The feature compares a player's prior games played versus prior games missed within the same
+  rolling window, using only pre-target team net rating or point differential.
+- Positive replacement risk means the team has recently performed worse when that player missed
+  games, scaled by role stability and player-value confidence.
+
 ## Workstream 2: Projected Availability
 
 Current state:
@@ -78,6 +90,17 @@ Initial implementation slice:
   - `projected_value_available`
   - `projected_value_missing`
 
+Replacement-risk implementation slice:
+
+- `PROJECTED_AVAILABILITY_VERSION = replacement_risk_v1`
+- New columns:
+  - `recent_absence_games`
+  - `recent_absence_net_rating_delta`
+  - `replacement_risk_score`
+  - `projected_replacement_value_missing`
+- `projected_replacement_value_missing` keeps the original missing-value estimate but increases it
+  when the player's historical missed-game signal indicates harder replacement conditions.
+
 ## Workstream 3: Team-Level Lineup Summaries
 
 Current state:
@@ -102,6 +125,19 @@ Initial implementation slice:
   - `projected_top8_minutes_missing`
   - `projected_top8_value_confidence_mean`
 
+Replacement-risk implementation slice:
+
+- `LINEUP_FEATURE_VERSION = replacement_risk_v1`
+- `ENRICHED_FEATURE_STACK_VERSION = replacement_risk_v1`
+- New matchup and lineup summary columns:
+  - `expected_missing_replacement_risk`
+  - `projected_replacement_value_missing`
+  - `projected_top5_replacement_value_missing`
+  - `projected_top8_replacement_value_missing`
+  - `projected_top8_replacement_risk_mean`
+- The experiment loaders now require the enriched parquet stack version to match the code version
+  before next-gen enriched input training can proceed.
+
 ## Workstream 4: Modeling Experiments
 
 After the feature slice lands:
@@ -111,6 +147,7 @@ After the feature slice lands:
 3. Rerun next-gen ensemble with refreshed value-tuned enriched inputs. Complete: `nextgen_full / raw` reached `0.6159` log loss and `0.6536` accuracy.
 4. Rerun promotion gate. Complete: gate status is `ready`.
 5. Compare against the prior `nextgen_full_raw_v1` shadow baseline, then label the rebuilt value-tuned bundle as `nextgen_full_value_tuned_v2`. Complete.
+6. Rebuild and benchmark `replacement_risk_v1`. Pending heavy local run after this code slice lands.
 
 Commands:
 

@@ -11,7 +11,7 @@ from src.utils.paths import PROCESSED_DIR
 
 logger = logging.getLogger(__name__)
 
-LINEUP_FEATURE_VERSION = "historical_absence_proxy_v1"
+LINEUP_FEATURE_VERSION = "replacement_risk_v1"
 
 LINEUP_FEATURE_COLS = [
     "expected_starter_continuity",
@@ -22,6 +22,7 @@ LINEUP_FEATURE_COLS = [
     "lineup_familiarity",
     "expected_missing_starter_value",
     "expected_missing_rotation_value",
+    "expected_missing_replacement_risk",
     "projected_available_starter_value",
     "projected_available_rotation_value",
     "available_top8_players",
@@ -138,6 +139,15 @@ def build_lineup_features(
             team_projection["effective_minutes"] = (
                 team_projection["expected_minutes"] * team_projection["availability_score"]
             )
+            team_projection["replacement_risk_score"] = pd.to_numeric(
+                team_projection.get("replacement_risk_score", 0.0),
+                errors="coerce",
+            ).fillna(0.0)
+            team_projection["replacement_risk_missing_value"] = (
+                team_projection[value_column]
+                * (1.0 - team_projection["availability_score"])
+                * team_projection["replacement_risk_score"]
+            )
             team_projection = team_projection.sort_values(
                 ["effective_role_value", value_column, "player_id"],
                 ascending=[False, False, True],
@@ -215,6 +225,9 @@ def build_lineup_features(
             expected_missing_rotation_value = float(
                 (rotation[value_column] * (1.0 - rotation["availability_score"])).sum()
             )
+            expected_missing_replacement_risk = float(
+                rotation["replacement_risk_missing_value"].sum()
+            )
             available_top8_players = int((rotation["availability_score"] >= 0.5).sum())
 
             rows.append(
@@ -230,6 +243,10 @@ def build_lineup_features(
                     "lineup_familiarity": round(lineup_familiarity, 4),
                     "expected_missing_starter_value": round(expected_missing_starter_value, 4),
                     "expected_missing_rotation_value": round(expected_missing_rotation_value, 4),
+                    "expected_missing_replacement_risk": round(
+                        expected_missing_replacement_risk,
+                        4,
+                    ),
                     "projected_available_starter_value": round(starter_value, 4),
                     "projected_available_rotation_value": round(total_rotation_value, 4),
                     "available_top8_players": available_top8_players,

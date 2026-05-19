@@ -21,7 +21,7 @@ from src.utils.paths import PROCESSED_DIR
 
 logger = logging.getLogger(__name__)
 
-ENRICHED_FEATURE_STACK_VERSION = "player_lineup_value_confidence_v1"
+ENRICHED_FEATURE_STACK_VERSION = "replacement_risk_v1"
 
 # Key features to compute home-minus-away differences for
 DIFF_FEATURES = [
@@ -42,6 +42,10 @@ PROJECTED_VALUE_SUMMARY_COLS = [
     "projected_top5_value_missing",
     "projected_top8_value_available",
     "projected_top8_value_missing",
+    "projected_replacement_value_missing",
+    "projected_top5_replacement_value_missing",
+    "projected_top8_replacement_value_missing",
+    "projected_top8_replacement_risk_mean",
     "projected_top8_availability_mean",
     "projected_top8_confidence_mean",
     "projected_minutes_available",
@@ -167,6 +171,19 @@ def summarize_projected_player_values(
         ).copy()
         ordered["effective_value"] = ordered[value_column] * ordered["availability_score"]
         ordered["missing_value"] = ordered[value_column] * (1.0 - ordered["availability_score"])
+        ordered["replacement_risk_score"] = pd.to_numeric(
+            ordered.get("replacement_risk_score", 0.0),
+            errors="coerce",
+        ).fillna(0.0)
+        if "projected_replacement_value_missing" in ordered.columns:
+            ordered["replacement_value_missing"] = pd.to_numeric(
+                ordered["projected_replacement_value_missing"],
+                errors="coerce",
+            ).fillna(ordered["missing_value"])
+        else:
+            ordered["replacement_value_missing"] = (
+                ordered["missing_value"] * (1.0 + ordered["replacement_risk_score"])
+            )
         ordered["expected_minutes"] = pd.to_numeric(
             ordered.get("expected_minutes", 0.0),
             errors="coerce",
@@ -194,6 +211,18 @@ def summarize_projected_player_values(
                 "projected_top5_value_missing": float(starters["missing_value"].sum()),
                 "projected_top8_value_available": float(rotation["effective_value"].sum()),
                 "projected_top8_value_missing": float(rotation["missing_value"].sum()),
+                "projected_replacement_value_missing": float(
+                    ordered["replacement_value_missing"].sum()
+                ),
+                "projected_top5_replacement_value_missing": float(
+                    starters["replacement_value_missing"].sum()
+                ),
+                "projected_top8_replacement_value_missing": float(
+                    rotation["replacement_value_missing"].sum()
+                ),
+                "projected_top8_replacement_risk_mean": float(
+                    rotation["replacement_risk_score"].mean()
+                ),
                 "projected_top8_availability_mean": float(rotation["availability_score"].mean()),
                 "projected_top8_confidence_mean": float(rotation["projection_confidence"].mean()),
                 "projected_minutes_available": float(ordered["projected_minutes"].sum()),
@@ -223,7 +252,11 @@ def build_enriched_matchup_dataset(
 
     value_features = player_value_features
     if value_features is None:
-        value_features = build_player_value_features(games, player_logs)
+        value_features = build_player_value_features(
+            games,
+            player_logs,
+            team_game_logs=team_logs,
+        )
 
     projected = projected_availability
     if projected is None:
@@ -327,7 +360,11 @@ def main():
         return
 
     player_logs = pd.read_parquet(player_logs_path)
-    player_value_features = build_player_value_features(games, player_logs)
+    player_value_features = build_player_value_features(
+        games,
+        player_logs,
+        team_game_logs=team_logs,
+    )
     value_out_dir = PROCESSED_DIR / "player_value_features"
     value_out_dir.mkdir(parents=True, exist_ok=True)
     player_value_features.to_parquet(
@@ -339,6 +376,7 @@ def main():
         games,
         player_logs,
         player_value_features=player_value_features,
+        team_game_logs=team_logs,
     )
     projected_out_dir = PROCESSED_DIR / "projected_availability"
     projected_out_dir.mkdir(parents=True, exist_ok=True)

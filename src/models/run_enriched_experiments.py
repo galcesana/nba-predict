@@ -74,15 +74,19 @@ LINEUP_TOKENS = [
 AVAILABILITY_TOKENS = [
     "expected_missing_starter_value",
     "expected_missing_rotation_value",
+    "expected_missing_replacement_risk",
     "projected_top8_availability_mean",
     "projected_top8_confidence_mean",
+    "projected_top8_replacement_risk_mean",
 ]
 
 VALUE_TOKENS = [
     "projected_player_value_",
     "projected_top5_value_",
     "projected_top8_value_",
+    "projected_replacement_value_",
     "projected_available_",
+    "replacement_value_missing",
 ]
 
 SLICE_DESCRIPTIONS = {
@@ -290,7 +294,11 @@ def ensure_experiment_datasets() -> tuple[pd.DataFrame, pd.DataFrame]:
     player_value_rebuilt = False
     if player_value_features is None:
         logger.info("Building player value features...")
-        player_value_features = build_player_value_features(games, player_logs)
+        player_value_features = build_player_value_features(
+            games,
+            player_logs,
+            team_game_logs=team_logs,
+        )
         player_value_features.to_parquet(player_value_path, index=False)
         player_value_rebuilt = True
         logger.info(
