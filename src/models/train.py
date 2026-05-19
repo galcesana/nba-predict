@@ -15,19 +15,17 @@ Usage:
 import argparse
 import json
 import logging
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
 import yaml
+from torch.utils.data import DataLoader, TensorDataset
 
 from src.features.injury_features import INJURY_FEATURE_COLS
 from src.features.news_features import NEWS_FEATURE_COLS
 from src.features.sequence_builder import (
-    SEQUENCE_FEATURES,
     build_context_features,
     build_team_sequences,
 )
@@ -348,11 +346,21 @@ def train_model(
     if has_injury:
         dl_kwargs.update(home_injury=home_injury, away_injury=away_injury)
     if has_news:
-        dl_kwargs.update(home_news=home_news, away_news=away_news, news_available=news_available)
+        dl_kwargs.update(
+            home_news=home_news,
+            away_news=away_news,
+            news_available=news_available,
+        )
 
-    train_loader = create_dataloader(sequences, context, train_idx, batch_size, shuffle=True, **dl_kwargs)
-    val_loader = create_dataloader(sequences, context, val_idx, batch_size, shuffle=False, **dl_kwargs)
-    test_loader = create_dataloader(sequences, context, test_idx, batch_size, shuffle=False, **dl_kwargs)
+    train_loader = create_dataloader(
+        sequences, context, train_idx, batch_size, shuffle=True, **dl_kwargs
+    )
+    val_loader = create_dataloader(
+        sequences, context, val_idx, batch_size, shuffle=False, **dl_kwargs
+    )
+    test_loader = create_dataloader(
+        sequences, context, test_idx, batch_size, shuffle=False, **dl_kwargs
+    )
 
     # Build model
     game_feature_dim = sequences["home_sequences"].shape[2]
@@ -524,7 +532,11 @@ def run_ablation(
 
         news_args = {}
         if "news" in streams:
-            news_args = dict(home_news=home_news, away_news=away_news, news_available=news_available)
+            news_args = dict(
+                home_news=home_news,
+                away_news=away_news,
+                news_available=news_available,
+            )
 
         _, results = train_model(
             sequences=sequences,
@@ -614,7 +626,11 @@ def main():
         )
 
         logger.info("Training complete!")
-        logger.info("Test accuracy: %.3f, Test loss: %.4f", results["test_accuracy"], results["test_loss"])
+        logger.info(
+            "Test accuracy: %.3f, Test loss: %.4f",
+            results["test_accuracy"],
+            results["test_loss"],
+        )
 
 
 if __name__ == "__main__":

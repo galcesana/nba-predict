@@ -9,13 +9,9 @@ Usage:
 
 import logging
 
-import joblib
 import numpy as np
-from sklearn.calibration import CalibratedClassifierCV
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
-
-from src.utils.paths import MODELS_DIR
 
 logger = logging.getLogger(__name__)
 

@@ -28,7 +28,7 @@ NBA game outcome prediction system that outputs **calibrated win probabilities**
 - See `docs/m1_player_lineup_foundation.md` for the concrete next implementation target
 - See `docs/player_lineup_availability_upgrade_plan.md` for the current roster-intelligence upgrade plan
 - `docs/nba_game_prediction_project_plan.md` is retained only as a legacy archive
-- Latest verification: 210 tests passing after the publish-speed optimization.
+- Latest verification: repo-wide Ruff passes; 214 tests passing after lint cleanup.
 
 ## Project Structure
 

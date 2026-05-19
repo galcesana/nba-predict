@@ -3,12 +3,11 @@
 Run with: pytest tests/test_fusion_model.py -v
 """
 
-import numpy as np
 import pytest
 import torch
 
-from src.models.matchup_fusion_model import MatchupFusionModel
 from src.models.injury_encoder import InjuryEncoder
+from src.models.matchup_fusion_model import MatchupFusionModel
 from src.models.news_encoder import NewsEncoder
 
 
@@ -41,13 +40,13 @@ class TestMatchupFusionModel:
         home_seq = torch.randn(batch_size, seq_len, 16)
         away_seq = torch.randn(batch_size, seq_len, 16)
         context = torch.randn(batch_size, 8)
-        
+
         home_mask = torch.ones(batch_size, seq_len)
         away_mask = torch.ones(batch_size, seq_len)
-        
+
         home_injury = torch.randn(batch_size, 6)
         away_injury = torch.randn(batch_size, 6)
-        
+
         home_news = torch.randn(batch_size, 6)
         away_news = torch.randn(batch_size, 6)
         news_available = torch.ones(batch_size, 1)
@@ -78,12 +77,12 @@ class TestMatchupFusionModel:
         )
         assert ablation.injury_encoder is None
         assert ablation.news_encoder is None
-        
+
         batch_size = 2
         seq_len = 5
         home_seq = torch.randn(batch_size, seq_len, 16)
         away_seq = torch.randn(batch_size, seq_len, 16)
         context = torch.randn(batch_size, 8)
-        
+
         pred = ablation(home_seq, away_seq, context)
         assert pred.shape == (batch_size, 1)

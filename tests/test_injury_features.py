@@ -4,14 +4,11 @@ Run with: pytest tests/test_injury_features.py -v
 Expected: 10/10 pass
 """
 
-import numpy as np
 import pandas as pd
 import pytest
 
 from src.features.injury_features import (
     INJURY_FEATURE_COLS,
-    build_injury_features,
-    build_injury_features_default,
 )
 from src.utils.paths import PROCESSED_DIR
 

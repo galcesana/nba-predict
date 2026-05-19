@@ -4,14 +4,11 @@ Run with: pytest tests/test_sentiment.py -v
 Expected: 10/10 pass
 """
 
-import numpy as np
 import pandas as pd
 import pytest
 
 from src.features.news_features import (
     NEWS_FEATURE_COLS,
-    build_news_features,
-    build_news_features_default,
 )
 from src.utils.paths import PROCESSED_DIR
 

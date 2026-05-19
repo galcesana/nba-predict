@@ -5,7 +5,6 @@ Loads team_to_idx.json and provides bidirectional lookups.
 
 import json
 from functools import lru_cache
-from pathlib import Path
 
 from src.utils.paths import MAPPINGS_DIR
 

@@ -13,17 +13,15 @@ Usage:
 
 import json
 import logging
-from pathlib import Path
 
-import numpy as np
+import joblib
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import log_loss, brier_score_loss, roc_auc_score
-import joblib
+from sklearn.metrics import brier_score_loss, log_loss, roc_auc_score
 
 from src.models.calibrate import PlattCalibrator
 from src.utils.logging import setup_logging
-from src.utils.paths import MODELS_DIR, PROCESSED_DIR
+from src.utils.paths import MODELS_DIR
 
 logger = logging.getLogger(__name__)
 

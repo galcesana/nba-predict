@@ -10,11 +10,11 @@ import logging
 from pathlib import Path
 
 import pandas as pd
-from sklearn.metrics import log_loss, accuracy_score
+from sklearn.metrics import accuracy_score, log_loss
 
 from src.models.predict import PredictionPipeline
 from src.utils.logging import setup_logging
-from src.utils.paths import PROCESSED_DIR, PREDICTIONS_DIR
+from src.utils.paths import PREDICTIONS_DIR, PROCESSED_DIR
 
 logger = logging.getLogger(__name__)
 

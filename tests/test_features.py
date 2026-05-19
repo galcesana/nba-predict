@@ -65,8 +65,10 @@ class TestMatchupDataset:
                 lambda x: x.iloc[60:] if len(x) > 60 else x.iloc[0:0]
             ).reset_index(drop=True)
 
-        key_cols = [c for c in late.columns
-                    if c.startswith(("home_season_", "away_season_", "home_last_10", "away_last_10"))]
+        key_cols = [
+            c for c in late.columns
+            if c.startswith(("home_season_", "away_season_", "home_last_10", "away_last_10"))
+        ]
         for col in key_cols:
             null_pct = late[col].isna().mean()
             assert null_pct < 0.05, (
@@ -79,7 +81,9 @@ class TestMatchupDataset:
             col = f"{prefix}rest_days"
             if col in matchup_df.columns:
                 assert matchup_df[col].min() >= 0, f"{col} has negative values"
-                assert matchup_df[col].max() <= 200, f"{col} has absurd values (>{matchup_df[col].max()})"
+                assert matchup_df[col].max() <= 200, (
+                    f"{col} has absurd values (>{matchup_df[col].max()})"
+                )
 
     def test_back_to_back_correct(self, matchup_df):
         """When rest_days <= 1, back_to_back should be 1."""
@@ -89,7 +93,7 @@ class TestMatchupDataset:
             if rest_col in matchup_df.columns and b2b_col in matchup_df.columns:
                 b2b_mask = matchup_df[rest_col] <= 1
                 assert (matchup_df.loc[b2b_mask, b2b_col] == 1).all(), (
-                    f"Some games with rest_days<=1 have back_to_back=0"
+                    "Some games with rest_days<=1 have back_to_back=0"
                 )
 
     def test_diff_features_computed(self, matchup_df):

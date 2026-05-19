@@ -24,9 +24,9 @@ Supports ablation via feature_streams config:
 import torch
 import torch.nn as nn
 
-from src.models.team_encoder import TeamEncoder
 from src.models.injury_encoder import InjuryEncoder
 from src.models.news_encoder import NewsEncoder
+from src.models.team_encoder import TeamEncoder
 
 
 class ContextMLP(nn.Module):

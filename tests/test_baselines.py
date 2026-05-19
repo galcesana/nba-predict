@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.utils.paths import MODELS_DIR, PROCESSED_DIR
+from src.utils.paths import MODELS_DIR
 
 BASELINES_DIR = MODELS_DIR / "baselines"
 
