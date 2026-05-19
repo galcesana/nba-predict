@@ -295,6 +295,8 @@ Live publish metadata includes:
 - model version
 - games count
 - context coverage summary
+- publish observability with total runtime, prediction runtime, schedule status,
+  injury/news coverage mode, and normalized coverage metrics
 
 ---
 

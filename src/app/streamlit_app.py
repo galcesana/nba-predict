@@ -331,6 +331,18 @@ def _context_summary(payload: dict | None, manifest: dict | None) -> dict:
     return data.latest_context_summary(payload, manifest)
 
 
+def _publish_observability(manifest: dict | None) -> dict:
+    observability = (manifest or {}).get("publish_observability", {})
+    return observability if isinstance(observability, dict) else {}
+
+
+def _format_seconds(value: object) -> str:
+    try:
+        return f"{float(value):.1f}s"
+    except (TypeError, ValueError):
+        return "n/a"
+
+
 def _archive_frame() -> pd.DataFrame:
     # The archive includes published daily snapshots that can change after deploy.
     return data.build_archive_dataframe()
@@ -420,6 +432,32 @@ def render_today_page() -> None:
         f"{payload.get('generated_at', 'unknown')} | "
         f"Model {payload.get('model_version', 'unknown')}"
     )
+    observability = _publish_observability(manifest)
+    if observability:
+        api_status = observability.get("api_status", {})
+        _metric_row(
+            [
+                (
+                    "Publish Runtime",
+                    _format_seconds(observability.get("duration_seconds")),
+                    "Last tracked publish duration",
+                ),
+                (
+                    "Prediction Runtime",
+                    _format_seconds(observability.get("prediction_runtime_seconds")),
+                    "Inference portion of the publish",
+                ),
+                (
+                    "API Status",
+                    (
+                        f"Schedule {api_status.get('schedule', 'unknown')} | "
+                        f"Injury {api_status.get('injury', 'unknown')} | "
+                        f"News {api_status.get('news', 'unknown')}"
+                    ),
+                    "Live data coverage mode",
+                ),
+            ]
+        )
     if payload.get("shadow_model_version"):
         st.caption(
             "Shadow candidate active: "

@@ -325,6 +325,8 @@ This command:
 - writes `published/daily/YYYY-MM-DD.json`
 - updates `published/daily/latest.json`
 - writes `published/manifest.json`
+- records publish observability in the manifest, including runtime, schedule status,
+  injury/news coverage mode, and coverage metrics
 - leaves the current published slate untouched if publishing fails
 
 Automation is defined in `.github/workflows/publish_daily.yml`, which schedules the publish job daily at `15:05 UTC` and also supports `workflow_dispatch`. The scheduled job runs with `--nextgen-shadow`, so the deployed production forecast uses `nextgen_full_value_tuned_v2` while `Model Lab` receives fresh baseline comparison fields after each publish.

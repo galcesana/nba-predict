@@ -21,6 +21,10 @@ def _prediction_payload(date_str: str) -> dict:
         "model_version": "ensemble_v1",
         "dates_with_games": [{"date": date_str, "games_count": 1}],
         "context_summary": {
+            "injury_live_games": 0,
+            "injury_partial_games": 1,
+            "news_live_games": 1,
+            "news_partial_games": 0,
             "injury_coverage_rate": 0.5,
             "news_coverage_rate": 1.0,
         },
@@ -76,6 +80,14 @@ def test_publish_success_writes_dated_latest_and_manifest(tmp_path):
     assert manifest["window_end"] == "2026-01-15"
     assert manifest["slate_type"] == "week"
     assert manifest["context_summary"]["injury_coverage_rate"] == 0.5
+    assert manifest["publish_observability"]["duration_seconds"] >= 0
+    assert manifest["publish_observability"]["prediction_runtime_seconds"] >= 0
+    assert manifest["publish_observability"]["api_status"] == {
+        "schedule": "ok",
+        "injury": "partial",
+        "news": "live",
+    }
+    assert manifest["publish_observability"]["coverage_metrics"]["games_count"] == 1
     assert set(paths) == {dated_path, latest_path, manifest_path}
 
 
@@ -152,6 +164,9 @@ def test_publish_no_games_preserves_latest_and_writes_manifest(tmp_path):
     assert manifest["published_file"] == "published/daily/2026-01-14.json"
     assert manifest["window_start"] == "2026-01-15"
     assert manifest["window_end"] == "2026-01-15"
+    assert manifest["publish_observability"]["api_status"]["schedule"] == "no_games"
+    assert manifest["publish_observability"]["api_status"]["injury"] == "fallback"
+    assert manifest["publish_observability"]["coverage_metrics"]["games_count"] == 0
     assert paths == [publish_root / "manifest.json"]
 
 

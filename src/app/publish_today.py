@@ -8,6 +8,7 @@ import logging
 import os
 import shutil
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
@@ -29,6 +30,14 @@ PredictionGenerator = Callable[..., tuple[dict, Path] | None]
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _format_utc(dt: datetime) -> str:
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _round_seconds(value: float) -> float:
+    return round(max(0.0, float(value)), 3)
 
 
 def _read_json(path: Path) -> dict | None:
@@ -91,6 +100,69 @@ def _repo_relative_path(path: Path, root: Path) -> str | None:
         return None
 
 
+def _coverage_mode(context_summary: dict, prefix: str) -> str:
+    rate = float(context_summary.get(f"{prefix}_coverage_rate", 0.0) or 0.0)
+    live_games = int(context_summary.get(f"{prefix}_live_games", 0) or 0)
+    partial_games = int(context_summary.get(f"{prefix}_partial_games", 0) or 0)
+    if rate >= 0.999 and live_games > 0 and partial_games == 0:
+        return "live"
+    if rate > 0:
+        return "partial"
+    return "fallback"
+
+
+def _coverage_metrics(
+    context_summary: dict,
+    *,
+    games_count: int,
+    days_with_games: int,
+) -> dict[str, object]:
+    return {
+        "games_count": games_count,
+        "days_with_games": days_with_games,
+        "injury_coverage_rate": float(context_summary.get("injury_coverage_rate", 0.0) or 0.0),
+        "news_coverage_rate": float(context_summary.get("news_coverage_rate", 0.0) or 0.0),
+        "injury_live_games": int(context_summary.get("injury_live_games", 0) or 0),
+        "injury_partial_games": int(context_summary.get("injury_partial_games", 0) or 0),
+        "news_live_games": int(context_summary.get("news_live_games", 0) or 0),
+        "news_partial_games": int(context_summary.get("news_partial_games", 0) or 0),
+    }
+
+
+def _publish_observability(
+    *,
+    status: str,
+    started_at: str,
+    completed_at: str,
+    duration_seconds: float,
+    prediction_runtime_seconds: float,
+    timezone_name: str,
+    context_summary: dict,
+    games_count: int,
+    days_with_games: int,
+) -> dict[str, object]:
+    return {
+        "status": "success",
+        "publish_status": status,
+        "started_at": started_at,
+        "completed_at": completed_at,
+        "duration_seconds": _round_seconds(duration_seconds),
+        "prediction_runtime_seconds": _round_seconds(prediction_runtime_seconds),
+        "timezone": timezone_name,
+        "forecast_window_days": DEFAULT_FORECAST_WINDOW_DAYS,
+        "api_status": {
+            "schedule": "ok" if games_count > 0 else "no_games",
+            "injury": _coverage_mode(context_summary, "injury"),
+            "news": _coverage_mode(context_summary, "news"),
+        },
+        "coverage_metrics": _coverage_metrics(
+            context_summary,
+            games_count=games_count,
+            days_with_games=days_with_games,
+        ),
+    }
+
+
 def publish_predictions_for_date(
     date_str: str,
     *,
@@ -100,6 +172,10 @@ def publish_predictions_for_date(
     enable_nextgen_shadow: bool = False,
 ) -> tuple[dict, list[Path]]:
     """Publish a forecast snapshot for the requested date."""
+    started_dt = datetime.now(timezone.utc)
+    started_at = _format_utc(started_dt)
+    started_perf = time.perf_counter()
+    prediction_runtime_seconds = 0.0
     publish_root = Path(published_root)
     repo_root = publish_root.parent
     manifest_path = publish_root / "manifest.json"
@@ -110,11 +186,13 @@ def publish_predictions_for_date(
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         temp_root = Path(tmp_dir)
+        prediction_started = time.perf_counter()
         result = prediction_generator(
             date_str,
             output_dir=temp_root,
             enable_nextgen_shadow=enable_nextgen_shadow,
         )
+        prediction_runtime_seconds = time.perf_counter() - prediction_started
 
         if result is None:
             previous_date = previous_latest.get("date") if previous_latest else None
@@ -126,10 +204,16 @@ def publish_predictions_for_date(
                 if previous_date
                 else None
             )
+            context_summary = {
+                "injury_coverage_rate": 0.0,
+                "news_coverage_rate": 0.0,
+            }
+            completed_at = _utc_now_iso()
+            duration_seconds = time.perf_counter() - started_perf
             manifest = {
                 "status": "no_games",
                 "target_date": date_str,
-                "attempted_at": _utc_now_iso(),
+                "attempted_at": started_at,
                 "latest_available_date": previous_date,
                 "published_file": previous_file,
                 "games_count": 0,
@@ -137,10 +221,18 @@ def publish_predictions_for_date(
                 "slate_type": "week",
                 "window_start": date_str,
                 "window_end": date_str,
-                "context_summary": {
-                    "injury_coverage_rate": 0.0,
-                    "news_coverage_rate": 0.0,
-                },
+                "context_summary": context_summary,
+                "publish_observability": _publish_observability(
+                    status="no_games",
+                    started_at=started_at,
+                    completed_at=completed_at,
+                    duration_seconds=duration_seconds,
+                    prediction_runtime_seconds=prediction_runtime_seconds,
+                    timezone_name=timezone_name,
+                    context_summary=context_summary,
+                    games_count=0,
+                    days_with_games=0,
+                ),
             }
             _write_json_atomic(manifest_path, manifest)
             return manifest, [manifest_path]
@@ -151,20 +243,36 @@ def publish_predictions_for_date(
         _copy_file_atomic(temp_output_path, dated_path)
         _copy_file_atomic(temp_output_path, latest_path)
 
+    context_summary = payload.get("context_summary", {})
+    games_count = len(payload.get("predictions", []))
+    days_with_games = len(payload.get("dates_with_games", []))
+    completed_at = _utc_now_iso()
+    duration_seconds = time.perf_counter() - started_perf
     manifest = {
         "status": "published",
         "target_date": date_str,
-        "attempted_at": _utc_now_iso(),
+        "attempted_at": started_at,
         "latest_available_date": date_str,
         "published_file": _repo_relative_path(dated_path, repo_root),
-        "games_count": len(payload.get("predictions", [])),
+        "games_count": games_count,
         "model_version": payload.get("model_version"),
         "shadow_model_version": payload.get("shadow_model_version"),
         "slate_type": payload.get("slate_type", "week"),
         "window_start": payload.get("window_start", date_str),
         "window_end": payload.get("window_end", date_str),
-        "days_with_games": len(payload.get("dates_with_games", [])),
-        "context_summary": payload.get("context_summary", {}),
+        "days_with_games": days_with_games,
+        "context_summary": context_summary,
+        "publish_observability": _publish_observability(
+            status="published",
+            started_at=started_at,
+            completed_at=completed_at,
+            duration_seconds=duration_seconds,
+            prediction_runtime_seconds=prediction_runtime_seconds,
+            timezone_name=timezone_name,
+            context_summary=context_summary,
+            games_count=games_count,
+            days_with_games=days_with_games,
+        ),
     }
     _write_json_atomic(manifest_path, manifest)
     return manifest, [dated_path, latest_path, manifest_path]

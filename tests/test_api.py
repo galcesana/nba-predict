@@ -71,6 +71,22 @@ def _manifest(status: str = "published") -> dict[str, Any]:
             "injury_coverage_rate": 0.5,
             "news_coverage_rate": 1.0,
         },
+        "publish_observability": {
+            "status": "success",
+            "duration_seconds": 31.2,
+            "prediction_runtime_seconds": 30.8,
+            "api_status": {
+                "schedule": "ok",
+                "injury": "partial",
+                "news": "live",
+            },
+            "coverage_metrics": {
+                "games_count": 2,
+                "days_with_games": 2,
+                "injury_coverage_rate": 0.5,
+                "news_coverage_rate": 1.0,
+            },
+        },
     }
 
 
@@ -100,6 +116,8 @@ def test_health_endpoint_reports_ok(monkeypatch):
     assert body["service_status"] == "ok"
     assert body["forecast_status"]["state"] == "published_this_week"
     assert body["games_count"] == 2
+    assert body["publish_observability"]["duration_seconds"] == 31.2
+    assert body["publish_observability"]["api_status"]["schedule"] == "ok"
 
 
 def test_health_endpoint_exposes_shadow_model_version(monkeypatch):

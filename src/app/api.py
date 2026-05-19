@@ -202,6 +202,9 @@ def create_app() -> FastAPI:
             "shadow_model_version": (payload or {}).get("shadow_model_version")
             or (manifest or {}).get("shadow_model_version"),
             "attempted_at": (manifest or {}).get("attempted_at"),
+            "publish_observability": _to_builtin(
+                (manifest or {}).get("publish_observability")
+            ),
             "context_summary": _to_builtin(
                 dashboard_data.latest_context_summary(payload, manifest)
             ),
