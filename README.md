@@ -320,6 +320,8 @@ This command:
 - attempts to enrich the slate with the latest official injury report snapshot and live team-news context
 - emits the promoted next-gen probability as the production final probability
 - retains `ensemble_v1_probability` and next-gen component probabilities for comparison
+- uses a live-optimized inference path that builds target-only neural sequences and reuses base
+  matchup rows for next-gen enrichment
 - writes `published/daily/YYYY-MM-DD.json`
 - updates `published/daily/latest.json`
 - writes `published/manifest.json`

@@ -259,6 +259,10 @@ Current behavior:
 - returns prediction payloads with `context_details`
 - uses `nextgen_full_value_tuned_v2` as the default production model
 - retains the previous `ensemble_v1_probability` in component outputs for baseline comparison
+- builds neural sequences only for the requested target slate during live inference, rather than
+  rebuilding sequence arrays for every historical game
+- reuses the already-built base matchup rows when attaching next-gen player/lineup enrichment,
+  avoiding a duplicate rolling/schedule feature pass in the publish path
 
 Important current limitation:
 
@@ -280,6 +284,8 @@ Current publish design:
 - manifest written to `published/manifest.json`
 - no-games windows preserve the previous `latest.json`
 - playoff filtering limits the board to the next scheduled game per series
+- future dates remain predicted one date at a time so placeholder target games cannot pollute
+  later-date rolling or sequence history
 
 Live publish metadata includes:
 

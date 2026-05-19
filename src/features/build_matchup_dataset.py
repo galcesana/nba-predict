@@ -237,8 +237,29 @@ def build_enriched_matchup_dataset(
     if lineup_rows is None:
         lineup_rows = build_lineup_features(games, player_logs, projected)
 
-    projected_summary = summarize_projected_player_values(projected)
-    team_enrichment = lineup_rows.merge(
+    return append_enriched_features(
+        matchup,
+        games,
+        projected_availability=projected,
+        lineup_features_df=lineup_rows,
+    )
+
+
+def append_enriched_features(
+    matchup: pd.DataFrame,
+    games: pd.DataFrame,
+    *,
+    projected_availability: pd.DataFrame,
+    lineup_features_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Append player-value and lineup summaries to precomputed matchup rows.
+
+    Live publishing already builds the base rolling/schedule matchup row once.
+    This helper lets inference attach the next-gen enrichment without repeating
+    the expensive base feature pass.
+    """
+    projected_summary = summarize_projected_player_values(projected_availability)
+    team_enrichment = lineup_features_df.merge(
         projected_summary,
         on=["game_id", "team_idx"],
         how="outer",

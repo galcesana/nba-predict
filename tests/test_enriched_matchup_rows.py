@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.features.build_matchup_dataset import build_enriched_matchup_dataset
+from src.features.build_matchup_dataset import (
+    append_enriched_features,
+    build_enriched_matchup_dataset,
+    build_matchup_dataset,
+)
 from src.features.lineup_features import build_lineup_features
 from src.features.player_value_features import build_player_value_features
 from src.features.projected_availability import build_projected_availability
@@ -234,3 +238,46 @@ def test_build_enriched_matchup_dataset_preserves_base_row_count():
 
     assert len(enriched) == len(games)
     assert set(enriched["game_id"]) == set(games["game_id"])
+
+
+def test_append_enriched_features_matches_full_enriched_builder():
+    """Live inference can reuse a base matchup row and attach the same M1 columns."""
+    games = _games()
+    team_logs = _team_logs()
+    player_logs = _player_logs()
+
+    value_features = build_player_value_features(
+        games,
+        player_logs,
+        recent_team_games=5,
+        max_players=5,
+    )
+    projected, _ = build_projected_availability(
+        games,
+        player_logs,
+        player_value_features=value_features,
+        recent_team_games=5,
+        max_players=5,
+    )
+    lineup_rows = build_lineup_features(games, player_logs, projected, recent_team_games=5)
+
+    base_matchup = build_matchup_dataset(games, team_logs)
+    appended = append_enriched_features(
+        base_matchup,
+        games,
+        projected_availability=projected,
+        lineup_features_df=lineup_rows,
+    )
+    full = build_enriched_matchup_dataset(
+        games,
+        team_logs,
+        player_logs,
+        player_value_features=value_features,
+        projected_availability=projected,
+        lineup_features_df=lineup_rows,
+    )
+
+    pd.testing.assert_frame_equal(
+        full.sort_index(axis=1),
+        appended.sort_index(axis=1),
+    )

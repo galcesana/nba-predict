@@ -17,13 +17,13 @@ import torch
 import xgboost as xgb
 import yaml
 
-from src.features.build_matchup_dataset import build_enriched_matchup_dataset, build_matchup_dataset
+from src.features.build_matchup_dataset import append_enriched_features, build_matchup_dataset
 from src.features.injury_features import INJURY_FEATURE_COLS, build_injury_features
 from src.features.lineup_features import build_lineup_features
 from src.features.news_features import NEWS_FEATURE_COLS, build_news_features
 from src.features.player_value_features import build_player_value_features
 from src.features.projected_availability import build_projected_availability
-from src.features.sequence_builder import build_context_features, build_team_sequences
+from src.features.sequence_builder import build_context_features, build_team_sequences_for_games
 from src.models.elo import EloModel
 from src.models.matchup_fusion_model import MatchupFusionModel
 from src.utils.paths import CONFIGS_DIR, MODELS_DIR, PROCESSED_DIR
@@ -90,6 +90,7 @@ class PredictionPipeline:
             else enable_nextgen_shadow
         )
         self.nextgen_shadow_enabled = False
+        self._nextgen_player_logs_cache: pd.DataFrame | None = None
         self._load_configs()
         self._load_models()
 
@@ -450,8 +451,6 @@ class PredictionPipeline:
     def _build_nextgen_shadow_probabilities(
         self,
         *,
-        combined_games: pd.DataFrame,
-        combined_logs: pd.DataFrame,
         target_games: pd.DataFrame,
         target_matchups: pd.DataFrame,
         neural_probs: np.ndarray,
@@ -461,8 +460,12 @@ class PredictionPipeline:
         if not self.nextgen_shadow_enabled:
             return {}
 
-        player_logs = pd.read_parquet(self.nextgen_player_logs_path)
-        player_logs["date"] = pd.to_datetime(player_logs["date"])
+        if self._nextgen_player_logs_cache is None:
+            player_logs = pd.read_parquet(self.nextgen_player_logs_path)
+            player_logs["date"] = pd.to_datetime(player_logs["date"])
+            self._nextgen_player_logs_cache = player_logs
+        else:
+            player_logs = self._nextgen_player_logs_cache
         target_dates = pd.to_datetime(target_games["date"])
         cutoff = pd.Timestamp(target_dates.min())
         historical_player_logs = player_logs[player_logs["date"] < cutoff].copy()
@@ -487,11 +490,9 @@ class PredictionPipeline:
             historical_player_logs,
             projected_availability,
         )
-        enriched = build_enriched_matchup_dataset(
-            combined_games,
-            combined_logs,
-            historical_player_logs,
-            player_value_features=player_value_features,
+        enriched = append_enriched_features(
+            target_matchups,
+            target_games,
             projected_availability=projected_availability,
             lineup_features_df=lineup_features,
         )
@@ -669,7 +670,11 @@ class PredictionPipeline:
 
         # 4. Neural Model features
         seq_len = self.model_config["sequence"]["length"]
-        sequences = build_team_sequences(combined_logs, combined_games, seq_len=seq_len)
+        sequences = build_team_sequences_for_games(
+            historical_team_logs,
+            target_matchups,
+            seq_len=seq_len,
+        )
         context = build_context_features(target_matchups, combined_games)
 
         # Find indices in sequences for target games
@@ -717,8 +722,6 @@ class PredictionPipeline:
             neural_probs = np.array([neural_probs])
 
         nextgen_shadow = self._build_nextgen_shadow_probabilities(
-            combined_games=combined_games,
-            combined_logs=combined_logs,
             target_games=target_games,
             target_matchups=target_matchups,
             neural_probs=neural_probs,

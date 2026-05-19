@@ -21,13 +21,14 @@ NBA game outcome prediction system that outputs **calibrated win probabilities**
 - **Phase 10 complete** - live publishing layer implemented with tracked published forecasts, dashboard source precedence, and GitHub Actions automation, 129 tests passing
 - **Phase 11 complete** - live context ingestion added for official injury reports and team news, weekly playoff publishing hardened, 140 tests passing
 - **Phase 12 complete** - FastAPI service layer implemented for health, manifest, weekly forecast, game detail, and metrics access, 148 tests passing
-- **Active milestone** - M1 Player + Lineup Foundation in progress; player mapping, season roster metadata, historical player-log ingestion, value-confidence player features, projected availability, availability-adjusted minutes/value, lineup/rotation features, enriched matchup rows, next-gen ensemble experiments, a promotion gate, playoff-capable ingestion, `historical_absence_proxy_v1` missing-player coverage, promoted `nextgen_full_value_tuned_v2` production inference, and a dashboard `Model Lab` review page are added. Current production model: `nextgen_full_value_tuned_v2`, with `ensemble_v1_probability` retained as the rollback/baseline comparison. Latest value-tuned candidate: `nextgen_full / raw` at 0.6159 log loss and 65.4% accuracy, validated with 166 held-out playoff games and 2,602 held-out missing-player-impact games.
+- **Active milestone** - M1 Player + Lineup Foundation in progress; player mapping, season roster metadata, historical player-log ingestion, value-confidence player features, projected availability, availability-adjusted minutes/value, lineup/rotation features, enriched matchup rows, next-gen ensemble experiments, a promotion gate, playoff-capable ingestion, `historical_absence_proxy_v1` missing-player coverage, promoted `nextgen_full_value_tuned_v2` production inference, target-only live sequence inference, base-matchup reuse for next-gen publish enrichment, and a dashboard `Model Lab` review page are added. Current production model: `nextgen_full_value_tuned_v2`, with `ensemble_v1_probability` retained as the rollback/baseline comparison. Latest value-tuned candidate: `nextgen_full / raw` at 0.6159 log loss and 65.4% accuracy, validated with 166 held-out playoff games and 2,602 held-out missing-player-impact games.
 - See `docs/phases/all_phases.md` for the full phase tracker
 - See `docs/current_system_implementation_summary.md` for the current implementation reference
 - See `docs/next_generation_model_roadmap.md` for the active forward roadmap
 - See `docs/m1_player_lineup_foundation.md` for the concrete next implementation target
 - See `docs/player_lineup_availability_upgrade_plan.md` for the current roster-intelligence upgrade plan
 - `docs/nba_game_prediction_project_plan.md` is retained only as a legacy archive
+- Latest verification: 210 tests passing after the publish-speed optimization.
 
 ## Project Structure
 

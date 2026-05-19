@@ -11,7 +11,11 @@ import pandas as pd
 import pytest
 import torch
 
-from src.features.sequence_builder import SEQUENCE_FEATURES, build_team_sequences
+from src.features.sequence_builder import (
+    SEQUENCE_FEATURES,
+    build_team_sequences,
+    build_team_sequences_for_games,
+)
 from src.models.matchup_fusion_model import MatchupFusionModel
 from src.models.team_encoder import TeamEncoder
 from src.utils.paths import MODELS_DIR, PROCESSED_DIR
@@ -92,6 +96,37 @@ class TestSequenceBuilder:
         real_count = int(mask_50.sum())
         assert real_count <= len(prior), (
             f"Sequence has {real_count} real entries but only {len(prior)} prior games exist"
+        )
+
+    def test_target_only_sequences_match_full_builder(self):
+        """Live inference can build only target rows without changing sequence values."""
+        games = pd.read_parquet(PROCESSED_DIR / "games.parquet").sort_values("date").head(120)
+        team_logs = pd.read_parquet(
+            PROCESSED_DIR / "team_game_logs" / "team_game_logs.parquet"
+        )
+        target_games = games.iloc[90:96].copy()
+
+        full = build_team_sequences(team_logs, games, seq_len=20)
+        target_only = build_team_sequences_for_games(team_logs, target_games, seq_len=20)
+
+        full_index = {game_id: idx for idx, game_id in enumerate(full["game_ids"])}
+        target_indices = [full_index[game_id] for game_id in target_only["game_ids"]]
+
+        np.testing.assert_allclose(
+            target_only["home_sequences"],
+            full["home_sequences"][target_indices],
+        )
+        np.testing.assert_allclose(
+            target_only["away_sequences"],
+            full["away_sequences"][target_indices],
+        )
+        np.testing.assert_allclose(
+            target_only["home_masks"],
+            full["home_masks"][target_indices],
+        )
+        np.testing.assert_allclose(
+            target_only["away_masks"],
+            full["away_masks"][target_indices],
         )
 
 
