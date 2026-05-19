@@ -139,6 +139,7 @@ so those feature changes force rebuilds.
 
 The scheduled GitHub Actions publisher runs `python -m src.app.publish_today --nextgen-shadow`, so
 the deployed slate refreshes production probabilities and `Model Lab` baseline comparisons together.
+It runs at `15:05 UTC` and `22:05 UTC` daily; the second run is an injury-report refresh pass.
 
 ## Architecture (Target)
 

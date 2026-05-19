@@ -2,7 +2,10 @@ name: Publish Daily Forecast
 
 on:
   schedule:
+    # Morning ET publish for the first public slate.
     - cron: "5 15 * * *"
+    # Evening ET refresh after more official injury reports have been submitted.
+    - cron: "5 22 * * *"
   workflow_dispatch:
 
 permissions:

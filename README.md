@@ -333,7 +333,7 @@ For injury context, `pending` means an official NBA injury-report snapshot was f
 both teams were still marked `NOT YET SUBMITTED`. That is different from `fallback`, where no
 official report row was available for the matchup.
 
-Automation is defined in `.github/workflows/publish_daily.yml`, which schedules the publish job daily at `15:05 UTC` and also supports `workflow_dispatch`. The scheduled job runs with `--nextgen-shadow`, so the deployed production forecast uses `nextgen_full_value_tuned_v2` while `Model Lab` receives fresh baseline comparison fields after each publish.
+Automation is defined in `.github/workflows/publish_daily.yml`, which schedules the publish job at `15:05 UTC` and `22:05 UTC` each day, and also supports `workflow_dispatch`. The later refresh is intentional: it gives official injury reports more time to move from `NOT YET SUBMITTED` to submitted player rows before game time. The scheduled job runs with `--nextgen-shadow`, so the deployed production forecast uses `nextgen_full_value_tuned_v2` while `Model Lab` receives fresh baseline comparison fields after each publish.
 
 ### 7. Launch the API Service
 

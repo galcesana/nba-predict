@@ -226,3 +226,12 @@ class TestProjectFiles:
     def test_env_example_exists(self):
         """.env.example exists at project root."""
         assert (_project_root() / ".env.example").exists()
+
+    def test_publish_workflow_has_morning_and_evening_refreshes(self):
+        """The deployed publisher should refresh once early and once after injury reports."""
+        workflow = _project_root() / ".github" / "workflows" / "publish_daily.yml"
+        text = workflow.read_text(encoding="utf-8")
+
+        assert 'cron: "5 15 * * *"' in text
+        assert 'cron: "5 22 * * *"' in text
+        assert "python -m src.app.publish_today --nextgen-shadow" in text

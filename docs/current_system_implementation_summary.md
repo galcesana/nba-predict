@@ -559,6 +559,8 @@ Live inference emits `home_win_probability` from `nextgen_full_value_tuned_v2`, 
 
 The scheduled GitHub Actions publisher uses `python -m src.app.publish_today --nextgen-shadow`, so
 tracked deployment slates refresh both the promoted production forecast and the comparison fields.
+It runs twice per day at `15:05 UTC` and `22:05 UTC`; the later refresh is designed to capture
+more submitted official injury-report rows before the evening games.
 
 The Streamlit dashboard exposes those outputs in `Model Lab`, a dedicated review page that shows
 the previous `ensemble_v1` baseline vs promoted next-gen home-win probabilities, deltas, pick flips,
