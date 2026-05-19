@@ -570,6 +570,11 @@ CI intentionally ignores older artifact-backed tests that require local raw cach
 prediction parquet files, or full matchup parquet outputs. Those remain part of the full local
 validation suite after generated artifacts exist.
 
+The saved joblib model artifacts were produced with `scikit-learn==1.6.0`. `requirements.txt` pins
+that version for Python runtimes below `3.14` so CI and GitHub Actions publishing load artifacts in
+the same sklearn family. Python `3.14` retains a newer sklearn fallback to avoid breaking existing
+Streamlit Cloud deployments, but the recommended production runtime is Python `3.10`-`3.12`.
+
 The Streamlit dashboard exposes those outputs in `Model Lab`, a dedicated review page that shows
 the previous `ensemble_v1` baseline vs promoted next-gen home-win probabilities, deltas, pick flips,
 candidate component probabilities, and the active artifact version for the loaded slate.

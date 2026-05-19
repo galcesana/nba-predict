@@ -1,7 +1,11 @@
 # Core
 pandas>=2.0
 numpy>=1.24
-scikit-learn>=1.3
+# Saved joblib artifacts were produced with scikit-learn 1.6.0. Use the same
+# version on Python runtimes that support it; keep a Python 3.14 fallback so
+# existing Streamlit Cloud apps on newer runtimes can still resolve.
+scikit-learn==1.6.0; python_version < "3.14"
+scikit-learn>=1.8,<1.9; python_version >= "3.14"
 pydantic>=2.0
 pyyaml>=6.0
 python-dotenv>=1.0

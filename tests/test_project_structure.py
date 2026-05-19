@@ -219,6 +219,13 @@ class TestProjectFiles:
         """requirements.txt exists at project root."""
         assert (_project_root() / "requirements.txt").exists()
 
+    def test_requirements_pin_artifact_sklearn_runtime(self):
+        """Production artifacts should load under the sklearn version they were saved with."""
+        text = (_project_root() / "requirements.txt").read_text(encoding="utf-8")
+
+        assert 'scikit-learn==1.6.0; python_version < "3.14"' in text
+        assert 'scikit-learn>=1.8,<1.9; python_version >= "3.14"' in text
+
     def test_readme_exists(self):
         """README.md exists at project root."""
         assert (_project_root() / "README.md").exists()

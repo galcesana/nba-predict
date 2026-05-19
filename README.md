@@ -293,6 +293,12 @@ For Streamlit Cloud deployment, set the main file path to:
 streamlit_app.py
 ```
 
+Recommended Streamlit Cloud Python runtime: `3.10`, `3.11`, or `3.12`. The tracked model
+artifacts were saved with `scikit-learn==1.6.0`, and `requirements.txt` pins that version for
+Python runtimes below `3.14`. If an existing Streamlit Cloud app is already running Python `3.14`,
+the requirements file intentionally falls back to `scikit-learn>=1.8,<1.9` so dependency resolution
+does not fail, but the artifact-compatible runtime is still preferred for production.
+
 ### 6. Publish a Deployment Forecast
 
 To publish a tracked forecast snapshot for the deployed app:
