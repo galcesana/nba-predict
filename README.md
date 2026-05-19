@@ -221,7 +221,7 @@ That writes:
 
 The gate scores production vs next-gen across regular-season, per-season, schedule-stress, context-confidence,
 playoff, and missing-player slices. The latest rebuilt gate is `ready` for shadow/live promotion
-review, with 166 held-out playoff games and 2,595 held-out missing-player-impact games.
+review, with 166 held-out playoff games and 2,602 held-out missing-player-impact games.
 
 If `games.parquet` changes after a new fetch, or if the enriched feature-stack version changes, the
 enriched experiment runner checks cached matchup/player artifacts and rebuilds stale caches automatically.
@@ -432,7 +432,7 @@ Historical implementation history is preserved in:
 | 11 | Live Context + Playoff Hardening | Complete |
 | 12 | API Service Layer | Complete |
 
-**Current data:** 15,412 games across 12 seasons (2014-2026), including 983 playoff games. The latest enriched-feature benchmark is `enriched_value_only / catboost` at 0.6163 log loss and 66.2% accuracy. The current tracked next-gen shadow candidate remains `nextgen_full / raw` at 0.6161 log loss until the value-tuned shadow ensemble is rebuilt; the tracked bundle reports `nextgen_full_raw_v1`, and the rebuilt value-tuned bundle will report `nextgen_full_value_tuned_v2`.
+**Current data:** 15,412 games across 12 seasons (2014-2026), including 983 playoff games. The latest enriched-feature benchmark is `enriched_value_only / catboost` at 0.6163 log loss and 66.2% accuracy. The value-tuned tracked next-gen shadow candidate is `nextgen_full / raw` at 0.6159 log loss and 65.4% accuracy, and the tracked shadow bundle reports `nextgen_full_value_tuned_v2`.
 
 ---
 

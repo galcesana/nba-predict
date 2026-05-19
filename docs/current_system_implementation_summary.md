@@ -527,9 +527,9 @@ value-tuned config trains CatBoost on `enriched_value_only` and LightGBM on `enr
 The latest enriched-feature benchmark after the roster-value upgrade is
 `enriched_value_only / catboost`: `0.6163` log loss, `0.6616` accuracy, and `0.7169` ROC-AUC.
 
-After rebuilding with playoff rows, `nextgen_full / raw` is the best candidate on the current
-held-out split: `0.6161` log loss, `0.6501` accuracy, and `0.7212` ROC-AUC. The saved production
-raw ensemble remains the comparison baseline at `0.6196` log loss.
+After the value-tuned enriched input rebuild, `nextgen_full / raw` is the best candidate on the
+current held-out split: `0.6159` log loss, `0.6536` accuracy, and `0.7225` ROC-AUC. The saved
+production raw ensemble remains the comparison baseline at `0.6196` log loss.
 
 Next-generation promotion gate outputs:
 
@@ -547,9 +547,7 @@ slice-regression gate.
 Shadow inference is available but opt-in. `python -m src.app.predict_today --nextgen-shadow` and
 `python -m src.app.publish_today --nextgen-shadow` keep the production final probability as
 `ensemble_v1` while adding `component_outputs.nextgen_shadow_probability`, enriched CatBoost/LightGBM
-probabilities, and a `shadow_model_version` for review. The current tracked bundle reports
-`nextgen_full_raw_v1`; once `run_nextgen_ensemble --refresh-enriched-inputs` regenerates the
-model-specific value-tuned artifacts, shadow output will report `nextgen_full_value_tuned_v2`.
+probabilities, and `shadow_model_version=nextgen_full_value_tuned_v2` for review.
 
 The scheduled GitHub Actions publisher uses `python -m src.app.publish_today --nextgen-shadow`, so
 tracked deployment slates refresh both the production forecast and the shadow review fields.
@@ -561,7 +559,7 @@ probabilities, and the shadow artifact version for the loaded slate.
 The first coverage fix is complete: historical game and player-log fetchers request playoff rows,
 carry `season_type` forward, and the rebuilt evaluation now includes 166 held-out playoff games.
 The second coverage fix is implemented as `historical_absence_proxy_v1`; the rebuilt evaluation now
-includes 2,595 held-out missing-player-impact games. Longer-term availability work should replace
+includes 2,602 held-out missing-player-impact games. Longer-term availability work should replace
 this proxy with richer official inactive history when available.
 
 ---

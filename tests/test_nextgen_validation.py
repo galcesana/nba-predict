@@ -196,3 +196,32 @@ def test_build_summary_markdown_reports_ready_next_step():
 
     assert "shadow/live promotion review" in markdown
     assert "then rerun this gate" not in markdown
+
+
+def test_build_promotion_manifest_uses_current_gate_metrics(monkeypatch):
+    """The tracked shadow manifest should stay aligned with the latest gate result."""
+    monkeypatch.setattr(
+        run_nextgen_validation,
+        "_current_shadow_model_version",
+        lambda: "nextgen_full_value_tuned_v2",
+    )
+    results = {
+        "test_rows": 2621,
+        "verdict": {"status": "ready"},
+        "slice_results": {
+            "all_test": {
+                "production": {"log_loss": 0.6196},
+                "nextgen": {"log_loss": 0.6159, "accuracy": 0.6536},
+                "delta": {"log_loss": -0.0037},
+            },
+            "playoffs": {"game_count": 166},
+            "missing_player_impact": {"game_count": 2602},
+        },
+    }
+
+    manifest = run_nextgen_validation.build_promotion_manifest(results)
+
+    assert manifest["model_version"] == "nextgen_full_value_tuned_v2"
+    assert manifest["promotion_status"] == "shadow_ready"
+    assert manifest["validation"]["candidate_log_loss"] == 0.6159
+    assert manifest["validation"]["missing_player_impact_games"] == 2602

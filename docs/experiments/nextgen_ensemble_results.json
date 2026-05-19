@@ -1,6 +1,332 @@
 {
-  "generated_at_utc": "2026-05-17T19:19:27.145539+00:00",
+  "generated_at_utc": "2026-05-19T09:18:12.364667+00:00",
   "test_rows": 2621,
+  "enriched_input_config": {
+    "schema_version": "value_tuned_inputs_v1",
+    "models": {
+      "catboost": {
+        "feature_set": "enriched_value_only",
+        "prob_col": "enriched_catboost_prob",
+        "feature_count": 131,
+        "columns": [
+          "home_season_win_pct",
+          "home_last_5_win_pct",
+          "home_last_10_win_pct",
+          "home_season_point_diff",
+          "home_last_5_point_diff",
+          "home_last_10_point_diff",
+          "home_season_net_rating",
+          "home_last_5_net_rating",
+          "home_last_10_net_rating",
+          "home_season_off_rating",
+          "home_last_5_off_rating",
+          "home_last_10_off_rating",
+          "home_season_def_rating",
+          "home_last_5_def_rating",
+          "home_last_10_def_rating",
+          "home_season_pace",
+          "home_last_5_pace",
+          "home_last_10_pace",
+          "home_season_ts_pct",
+          "home_last_5_ts_pct",
+          "home_last_10_ts_pct",
+          "home_season_efg_pct",
+          "home_last_5_efg_pct",
+          "home_last_10_efg_pct",
+          "home_season_turnover_pct",
+          "home_last_5_turnover_pct",
+          "home_last_10_turnover_pct",
+          "home_season_free_throw_rate",
+          "home_last_5_free_throw_rate",
+          "home_last_10_free_throw_rate",
+          "home_season_assist_pct",
+          "home_last_5_assist_pct",
+          "home_last_10_assist_pct",
+          "home_season_off_rebound_pct",
+          "home_last_5_off_rebound_pct",
+          "home_last_10_off_rebound_pct",
+          "home_season_def_rebound_pct",
+          "home_last_5_def_rebound_pct",
+          "home_last_10_def_rebound_pct",
+          "home_season_games_played",
+          "home_rest_days",
+          "home_back_to_back",
+          "home_games_last_7",
+          "home_games_last_14",
+          "away_season_win_pct",
+          "away_last_5_win_pct",
+          "away_last_10_win_pct",
+          "away_season_point_diff",
+          "away_last_5_point_diff",
+          "away_last_10_point_diff",
+          "away_season_net_rating",
+          "away_last_5_net_rating",
+          "away_last_10_net_rating",
+          "away_season_off_rating",
+          "away_last_5_off_rating",
+          "away_last_10_off_rating",
+          "away_season_def_rating",
+          "away_last_5_def_rating",
+          "away_last_10_def_rating",
+          "away_season_pace",
+          "away_last_5_pace",
+          "away_last_10_pace",
+          "away_season_ts_pct",
+          "away_last_5_ts_pct",
+          "away_last_10_ts_pct",
+          "away_season_efg_pct",
+          "away_last_5_efg_pct",
+          "away_last_10_efg_pct",
+          "away_season_turnover_pct",
+          "away_last_5_turnover_pct",
+          "away_last_10_turnover_pct",
+          "away_season_free_throw_rate",
+          "away_last_5_free_throw_rate",
+          "away_last_10_free_throw_rate",
+          "away_season_assist_pct",
+          "away_last_5_assist_pct",
+          "away_last_10_assist_pct",
+          "away_season_off_rebound_pct",
+          "away_last_5_off_rebound_pct",
+          "away_last_10_off_rebound_pct",
+          "away_season_def_rebound_pct",
+          "away_last_5_def_rebound_pct",
+          "away_last_10_def_rebound_pct",
+          "away_season_games_played",
+          "away_rest_days",
+          "away_back_to_back",
+          "away_games_last_7",
+          "away_games_last_14",
+          "diff_season_win_pct",
+          "diff_last_10_win_pct",
+          "diff_season_point_diff",
+          "diff_last_10_point_diff",
+          "diff_season_net_rating",
+          "diff_last_10_net_rating",
+          "diff_season_off_rating",
+          "diff_season_def_rating",
+          "diff_last_10_off_rating",
+          "diff_last_10_def_rating",
+          "diff_season_pace",
+          "diff_last_10_pace",
+          "diff_season_ts_pct",
+          "diff_season_efg_pct",
+          "diff_season_turnover_pct",
+          "diff_season_assist_pct",
+          "home_projected_available_starter_value",
+          "home_projected_available_rotation_value",
+          "home_projected_player_value_available",
+          "home_projected_player_value_missing",
+          "home_projected_top5_value_available",
+          "home_projected_top5_value_missing",
+          "home_projected_top8_value_available",
+          "home_projected_top8_value_missing",
+          "home_projected_top8_value_confidence_mean",
+          "away_projected_available_starter_value",
+          "away_projected_available_rotation_value",
+          "away_projected_player_value_available",
+          "away_projected_player_value_missing",
+          "away_projected_top5_value_available",
+          "away_projected_top5_value_missing",
+          "away_projected_top8_value_available",
+          "away_projected_top8_value_missing",
+          "away_projected_top8_value_confidence_mean",
+          "diff_projected_available_starter_value",
+          "diff_projected_available_rotation_value",
+          "diff_projected_player_value_available",
+          "diff_projected_player_value_missing",
+          "diff_projected_top5_value_available",
+          "diff_projected_top5_value_missing",
+          "diff_projected_top8_value_available",
+          "diff_projected_top8_value_missing",
+          "diff_projected_top8_value_confidence_mean"
+        ]
+      },
+      "lightgbm": {
+        "feature_set": "enriched_all",
+        "prob_col": "enriched_lightgbm_prob",
+        "feature_count": 176,
+        "columns": [
+          "home_season_win_pct",
+          "home_last_5_win_pct",
+          "home_last_10_win_pct",
+          "home_season_point_diff",
+          "home_last_5_point_diff",
+          "home_last_10_point_diff",
+          "home_season_net_rating",
+          "home_last_5_net_rating",
+          "home_last_10_net_rating",
+          "home_season_off_rating",
+          "home_last_5_off_rating",
+          "home_last_10_off_rating",
+          "home_season_def_rating",
+          "home_last_5_def_rating",
+          "home_last_10_def_rating",
+          "home_season_pace",
+          "home_last_5_pace",
+          "home_last_10_pace",
+          "home_season_ts_pct",
+          "home_last_5_ts_pct",
+          "home_last_10_ts_pct",
+          "home_season_efg_pct",
+          "home_last_5_efg_pct",
+          "home_last_10_efg_pct",
+          "home_season_turnover_pct",
+          "home_last_5_turnover_pct",
+          "home_last_10_turnover_pct",
+          "home_season_free_throw_rate",
+          "home_last_5_free_throw_rate",
+          "home_last_10_free_throw_rate",
+          "home_season_assist_pct",
+          "home_last_5_assist_pct",
+          "home_last_10_assist_pct",
+          "home_season_off_rebound_pct",
+          "home_last_5_off_rebound_pct",
+          "home_last_10_off_rebound_pct",
+          "home_season_def_rebound_pct",
+          "home_last_5_def_rebound_pct",
+          "home_last_10_def_rebound_pct",
+          "home_season_games_played",
+          "home_rest_days",
+          "home_back_to_back",
+          "home_games_last_7",
+          "home_games_last_14",
+          "away_season_win_pct",
+          "away_last_5_win_pct",
+          "away_last_10_win_pct",
+          "away_season_point_diff",
+          "away_last_5_point_diff",
+          "away_last_10_point_diff",
+          "away_season_net_rating",
+          "away_last_5_net_rating",
+          "away_last_10_net_rating",
+          "away_season_off_rating",
+          "away_last_5_off_rating",
+          "away_last_10_off_rating",
+          "away_season_def_rating",
+          "away_last_5_def_rating",
+          "away_last_10_def_rating",
+          "away_season_pace",
+          "away_last_5_pace",
+          "away_last_10_pace",
+          "away_season_ts_pct",
+          "away_last_5_ts_pct",
+          "away_last_10_ts_pct",
+          "away_season_efg_pct",
+          "away_last_5_efg_pct",
+          "away_last_10_efg_pct",
+          "away_season_turnover_pct",
+          "away_last_5_turnover_pct",
+          "away_last_10_turnover_pct",
+          "away_season_free_throw_rate",
+          "away_last_5_free_throw_rate",
+          "away_last_10_free_throw_rate",
+          "away_season_assist_pct",
+          "away_last_5_assist_pct",
+          "away_last_10_assist_pct",
+          "away_season_off_rebound_pct",
+          "away_last_5_off_rebound_pct",
+          "away_last_10_off_rebound_pct",
+          "away_season_def_rebound_pct",
+          "away_last_5_def_rebound_pct",
+          "away_last_10_def_rebound_pct",
+          "away_season_games_played",
+          "away_rest_days",
+          "away_back_to_back",
+          "away_games_last_7",
+          "away_games_last_14",
+          "diff_season_win_pct",
+          "diff_last_10_win_pct",
+          "diff_season_point_diff",
+          "diff_last_10_point_diff",
+          "diff_season_net_rating",
+          "diff_last_10_net_rating",
+          "diff_season_off_rating",
+          "diff_season_def_rating",
+          "diff_last_10_off_rating",
+          "diff_last_10_def_rating",
+          "diff_season_pace",
+          "diff_last_10_pace",
+          "diff_season_ts_pct",
+          "diff_season_efg_pct",
+          "diff_season_turnover_pct",
+          "diff_season_assist_pct",
+          "home_expected_starter_continuity",
+          "home_expected_top8_continuity",
+          "home_projected_minutes_concentration",
+          "home_bench_depth_quality",
+          "home_rotation_stability",
+          "home_lineup_familiarity",
+          "home_expected_missing_starter_value",
+          "home_expected_missing_rotation_value",
+          "home_projected_available_starter_value",
+          "home_projected_available_rotation_value",
+          "home_available_top8_players",
+          "home_projected_player_value_available",
+          "home_projected_player_value_missing",
+          "home_projected_top5_value_available",
+          "home_projected_top5_value_missing",
+          "home_projected_top8_value_available",
+          "home_projected_top8_value_missing",
+          "home_projected_top8_availability_mean",
+          "home_projected_top8_confidence_mean",
+          "home_projected_minutes_available",
+          "home_projected_minutes_missing",
+          "home_projected_top8_minutes_available",
+          "home_projected_top8_minutes_missing",
+          "home_projected_top8_value_confidence_mean",
+          "away_expected_starter_continuity",
+          "away_expected_top8_continuity",
+          "away_projected_minutes_concentration",
+          "away_bench_depth_quality",
+          "away_rotation_stability",
+          "away_lineup_familiarity",
+          "away_expected_missing_starter_value",
+          "away_expected_missing_rotation_value",
+          "away_projected_available_starter_value",
+          "away_projected_available_rotation_value",
+          "away_available_top8_players",
+          "away_projected_player_value_available",
+          "away_projected_player_value_missing",
+          "away_projected_top5_value_available",
+          "away_projected_top5_value_missing",
+          "away_projected_top8_value_available",
+          "away_projected_top8_value_missing",
+          "away_projected_top8_availability_mean",
+          "away_projected_top8_confidence_mean",
+          "away_projected_minutes_available",
+          "away_projected_minutes_missing",
+          "away_projected_top8_minutes_available",
+          "away_projected_top8_minutes_missing",
+          "away_projected_top8_value_confidence_mean",
+          "diff_expected_starter_continuity",
+          "diff_expected_top8_continuity",
+          "diff_projected_minutes_concentration",
+          "diff_bench_depth_quality",
+          "diff_rotation_stability",
+          "diff_lineup_familiarity",
+          "diff_expected_missing_starter_value",
+          "diff_expected_missing_rotation_value",
+          "diff_projected_available_starter_value",
+          "diff_projected_available_rotation_value",
+          "diff_available_top8_players",
+          "diff_projected_player_value_available",
+          "diff_projected_player_value_missing",
+          "diff_projected_top5_value_available",
+          "diff_projected_top5_value_missing",
+          "diff_projected_top8_value_available",
+          "diff_projected_top8_value_missing",
+          "diff_projected_top8_availability_mean",
+          "diff_projected_top8_confidence_mean",
+          "diff_projected_minutes_available",
+          "diff_projected_minutes_missing",
+          "diff_projected_top8_minutes_available",
+          "diff_projected_top8_minutes_missing",
+          "diff_projected_top8_value_confidence_mean"
+        ]
+      }
+    }
+  },
   "production_results": {
     "production_neural_full_fusion": {
       "status": "scored",
@@ -40,37 +366,37 @@
           "game_count": 656,
           "positive_rate": 0.5487804878048781,
           "accuracy": 0.6585365853658537,
-          "log_loss": 0.6177091108773292,
-          "brier_score": 0.2145415294396561,
-          "calibration_error": 0.03712839655941579,
-          "roc_auc": 0.7132413663663664
+          "log_loss": 0.6180558945097842,
+          "brier_score": 0.2147336572463893,
+          "calibration_error": 0.039692378353054926,
+          "roc_auc": 0.7124906156156157
         },
         "low_missing_value": {
           "game_count": 656,
-          "positive_rate": 0.5426829268292683,
-          "accuracy": 0.5990853658536586,
-          "log_loss": 0.651311009079069,
-          "brier_score": 0.2300105755872766,
-          "calibration_error": 0.04765314077277008,
-          "roc_auc": 0.6610112359550563
+          "positive_rate": 0.5442073170731707,
+          "accuracy": 0.600609756097561,
+          "log_loss": 0.6465454579972231,
+          "brier_score": 0.22800484994784692,
+          "calibration_error": 0.052139597808624184,
+          "roc_auc": 0.6697019945101788
         },
         "high_context_confidence": {
-          "game_count": 662,
-          "positive_rate": 0.5483383685800605,
-          "accuracy": 0.622356495468278,
-          "log_loss": 0.6314482874011429,
-          "brier_score": 0.2207614606503669,
-          "calibration_error": 0.04622218170374902,
-          "roc_auc": 0.6987847462155763
+          "game_count": 669,
+          "positive_rate": 0.554559043348281,
+          "accuracy": 0.624813153961136,
+          "log_loss": 0.629966805993635,
+          "brier_score": 0.22011495241569815,
+          "calibration_error": 0.04421561257008836,
+          "roc_auc": 0.697769496553845
         },
         "low_context_confidence": {
-          "game_count": 669,
-          "positive_rate": 0.5440956651718983,
-          "accuracy": 0.6651718983557549,
-          "log_loss": 0.6241751745705609,
-          "brier_score": 0.21726862163880709,
-          "calibration_error": 0.0398764710745291,
-          "roc_auc": 0.7067825617005944
+          "game_count": 657,
+          "positive_rate": 0.5296803652968036,
+          "accuracy": 0.6621004566210046,
+          "log_loss": 0.623867372001283,
+          "brier_score": 0.21710474218027123,
+          "calibration_error": 0.04155267126393281,
+          "roc_auc": 0.7147918759067068
         }
       }
     },
@@ -111,38 +437,38 @@
         "high_missing_value": {
           "game_count": 656,
           "positive_rate": 0.5487804878048781,
-          "accuracy": 0.6737804878048781,
-          "log_loss": 0.6129261641858978,
-          "brier_score": 0.21228877332864565,
-          "calibration_error": 0.045338083588850615,
-          "roc_auc": 0.7263138138138139
+          "accuracy": 0.6722560975609756,
+          "log_loss": 0.6133770748341834,
+          "brier_score": 0.21244460390051292,
+          "calibration_error": 0.03991003416506026,
+          "roc_auc": 0.7254129129129129
         },
         "low_missing_value": {
           "game_count": 656,
-          "positive_rate": 0.5426829268292683,
-          "accuracy": 0.5975609756097561,
-          "log_loss": 0.6514198366483672,
-          "brier_score": 0.23015105181443088,
-          "calibration_error": 0.059515340489270235,
-          "roc_auc": 0.6645131086142322
+          "positive_rate": 0.5442073170731707,
+          "accuracy": 0.6036585365853658,
+          "log_loss": 0.6464052544211822,
+          "brier_score": 0.22786551725442472,
+          "calibration_error": 0.05966001545948045,
+          "roc_auc": 0.673112054186223
         },
         "high_context_confidence": {
-          "game_count": 662,
-          "positive_rate": 0.5483383685800605,
-          "accuracy": 0.6299093655589124,
-          "log_loss": 0.6293365037852063,
-          "brier_score": 0.21968171488589638,
-          "calibration_error": 0.04382955468487292,
-          "roc_auc": 0.7033546163980946
+          "game_count": 669,
+          "positive_rate": 0.554559043348281,
+          "accuracy": 0.624813153961136,
+          "log_loss": 0.6284077124018134,
+          "brier_score": 0.21930074705096414,
+          "calibration_error": 0.04460970380538721,
+          "roc_auc": 0.7003835091083412
         },
         "low_context_confidence": {
-          "game_count": 669,
-          "positive_rate": 0.5440956651718983,
-          "accuracy": 0.6457399103139013,
-          "log_loss": 0.6223961186147419,
-          "brier_score": 0.21662430504434102,
-          "calibration_error": 0.037505892990524224,
-          "roc_auc": 0.7120789047018555
+          "game_count": 657,
+          "positive_rate": 0.5296803652968036,
+          "accuracy": 0.6484018264840182,
+          "log_loss": 0.6209177898508703,
+          "brier_score": 0.2159118551761392,
+          "calibration_error": 0.05424632938877701,
+          "roc_auc": 0.7222129226648812
         }
       }
     },
@@ -183,38 +509,38 @@
         "high_missing_value": {
           "game_count": 656,
           "positive_rate": 0.5487804878048781,
-          "accuracy": 0.6692073170731707,
-          "log_loss": 0.6185127592059673,
-          "brier_score": 0.21448861163197253,
-          "calibration_error": 0.06911782786628348,
-          "roc_auc": 0.7263138138138139
+          "accuracy": 0.6676829268292683,
+          "log_loss": 0.618726707555098,
+          "brier_score": 0.21455685487210205,
+          "calibration_error": 0.06294530291336395,
+          "roc_auc": 0.7254129129129129
         },
         "low_missing_value": {
           "game_count": 656,
-          "positive_rate": 0.5426829268292683,
-          "accuracy": 0.6021341463414634,
-          "log_loss": 0.6532978599556268,
-          "brier_score": 0.2309306725198226,
-          "calibration_error": 0.054762857852762144,
-          "roc_auc": 0.6645131086142322
+          "positive_rate": 0.5442073170731707,
+          "accuracy": 0.6082317073170732,
+          "log_loss": 0.6489460241867062,
+          "brier_score": 0.22889902410477728,
+          "calibration_error": 0.05927326166043119,
+          "roc_auc": 0.673112054186223
         },
         "high_context_confidence": {
-          "game_count": 662,
-          "positive_rate": 0.5483383685800605,
-          "accuracy": 0.6329305135951662,
-          "log_loss": 0.6335378733333071,
-          "brier_score": 0.22143711174315983,
-          "calibration_error": 0.0529426984315732,
-          "roc_auc": 0.7033546163980946
+          "game_count": 669,
+          "positive_rate": 0.554559043348281,
+          "accuracy": 0.6307922272047832,
+          "log_loss": 0.6324968635403138,
+          "brier_score": 0.22098059377705864,
+          "calibration_error": 0.047545761632288915,
+          "roc_auc": 0.7003835091083412
         },
         "low_context_confidence": {
-          "game_count": 669,
-          "positive_rate": 0.5440956651718983,
-          "accuracy": 0.6457399103139013,
-          "log_loss": 0.6270694850223993,
-          "brier_score": 0.21847775472788597,
-          "calibration_error": 0.058344701379745824,
-          "roc_auc": 0.7120789047018555
+          "game_count": 657,
+          "positive_rate": 0.5296803652968036,
+          "accuracy": 0.6484018264840182,
+          "log_loss": 0.6262294488475663,
+          "brier_score": 0.21806754807511752,
+          "calibration_error": 0.07312392008672826,
+          "roc_auc": 0.7222129226648812
         }
       }
     }
@@ -257,38 +583,38 @@
           "high_missing_value": {
             "game_count": 656,
             "positive_rate": 0.5487804878048781,
-            "accuracy": 0.6737804878048781,
-            "log_loss": 0.6129261641858978,
-            "brier_score": 0.21228877332864565,
-            "calibration_error": 0.045338083588850615,
-            "roc_auc": 0.7263138138138139
+            "accuracy": 0.6722560975609756,
+            "log_loss": 0.6133770748341834,
+            "brier_score": 0.21244460390051292,
+            "calibration_error": 0.03991003416506028,
+            "roc_auc": 0.7254129129129129
           },
           "low_missing_value": {
             "game_count": 656,
-            "positive_rate": 0.5426829268292683,
-            "accuracy": 0.5975609756097561,
-            "log_loss": 0.6514198366483672,
-            "brier_score": 0.23015105181443093,
-            "calibration_error": 0.0595153404892702,
-            "roc_auc": 0.6645131086142322
+            "positive_rate": 0.5442073170731707,
+            "accuracy": 0.6036585365853658,
+            "log_loss": 0.6464052544211822,
+            "brier_score": 0.22786551725442475,
+            "calibration_error": 0.059660015459480485,
+            "roc_auc": 0.673112054186223
           },
           "high_context_confidence": {
-            "game_count": 662,
-            "positive_rate": 0.5483383685800605,
-            "accuracy": 0.6299093655589124,
-            "log_loss": 0.6293365037852063,
-            "brier_score": 0.21968171488589638,
-            "calibration_error": 0.043829554684872866,
-            "roc_auc": 0.7033546163980946
+            "game_count": 669,
+            "positive_rate": 0.554559043348281,
+            "accuracy": 0.624813153961136,
+            "log_loss": 0.6284077124018134,
+            "brier_score": 0.21930074705096414,
+            "calibration_error": 0.04460970380538718,
+            "roc_auc": 0.7003835091083412
           },
           "low_context_confidence": {
-            "game_count": 669,
-            "positive_rate": 0.5440956651718983,
-            "accuracy": 0.6457399103139013,
-            "log_loss": 0.6223961186147419,
-            "brier_score": 0.21662430504434102,
-            "calibration_error": 0.03750589299052423,
-            "roc_auc": 0.7120789047018555
+            "game_count": 657,
+            "positive_rate": 0.5296803652968036,
+            "accuracy": 0.6484018264840182,
+            "log_loss": 0.6209177898508703,
+            "brier_score": 0.2159118551761392,
+            "calibration_error": 0.05424632938877705,
+            "roc_auc": 0.7222129226648812
           }
         }
       },
@@ -322,38 +648,38 @@
           "high_missing_value": {
             "game_count": 656,
             "positive_rate": 0.5487804878048781,
-            "accuracy": 0.6692073170731707,
-            "log_loss": 0.6185127592059673,
-            "brier_score": 0.21448861163197247,
-            "calibration_error": 0.06911782786628351,
-            "roc_auc": 0.7263138138138139
+            "accuracy": 0.6676829268292683,
+            "log_loss": 0.618726707555098,
+            "brier_score": 0.21455685487210205,
+            "calibration_error": 0.06294530291336398,
+            "roc_auc": 0.7254129129129129
           },
           "low_missing_value": {
             "game_count": 656,
-            "positive_rate": 0.5426829268292683,
-            "accuracy": 0.6021341463414634,
-            "log_loss": 0.6532978599556268,
-            "brier_score": 0.2309306725198226,
-            "calibration_error": 0.05476285785276212,
-            "roc_auc": 0.6645131086142322
+            "positive_rate": 0.5442073170731707,
+            "accuracy": 0.6082317073170732,
+            "log_loss": 0.6489460241867062,
+            "brier_score": 0.22889902410477728,
+            "calibration_error": 0.059273261660431315,
+            "roc_auc": 0.673112054186223
           },
           "high_context_confidence": {
-            "game_count": 662,
-            "positive_rate": 0.5483383685800605,
-            "accuracy": 0.6329305135951662,
-            "log_loss": 0.633537873333307,
-            "brier_score": 0.2214371117431599,
-            "calibration_error": 0.05294269843157317,
-            "roc_auc": 0.7033546163980946
+            "game_count": 669,
+            "positive_rate": 0.554559043348281,
+            "accuracy": 0.6307922272047832,
+            "log_loss": 0.6324968635403138,
+            "brier_score": 0.22098059377705864,
+            "calibration_error": 0.04754576163228892,
+            "roc_auc": 0.7003835091083412
           },
           "low_context_confidence": {
-            "game_count": 669,
-            "positive_rate": 0.5440956651718983,
-            "accuracy": 0.6457399103139013,
-            "log_loss": 0.6270694850223992,
-            "brier_score": 0.21847775472788597,
-            "calibration_error": 0.058344701379745824,
-            "roc_auc": 0.7120789047018555
+            "game_count": 657,
+            "positive_rate": 0.5296803652968036,
+            "accuracy": 0.6484018264840182,
+            "log_loss": 0.6262294488475663,
+            "brier_score": 0.21806754807511752,
+            "calibration_error": 0.07312392008672826,
+            "roc_auc": 0.7222129226648812
           }
         }
       },
@@ -374,141 +700,141 @@
       ],
       "raw": {
         "metrics": {
-          "accuracy": 0.6520412056466998,
-          "log_loss": 0.6165991616360607,
-          "brier_score": 0.21391131856803178,
-          "calibration_error": 0.05091721660509632,
-          "roc_auc": 0.7216179553582439
+          "accuracy": 0.6516596718809614,
+          "log_loss": 0.6168669795325987,
+          "brier_score": 0.21393149078390566,
+          "calibration_error": 0.04777032139407577,
+          "roc_auc": 0.7217547815772012
         },
         "test_slices": {
           "playoffs": {
             "game_count": 166,
             "positive_rate": 0.5783132530120482,
             "accuracy": 0.6204819277108434,
-            "log_loss": 0.643806613000048,
-            "brier_score": 0.22615528575436233,
-            "calibration_error": 0.03165819510620547,
-            "roc_auc": 0.6607142857142857
+            "log_loss": 0.6437132372690412,
+            "brier_score": 0.2259727183301828,
+            "calibration_error": 0.042104095651018,
+            "roc_auc": 0.6546130952380952
           },
           "regular_season": {
             "game_count": 2455,
             "positive_rate": 0.5437881873727087,
-            "accuracy": 0.6541751527494908,
-            "log_loss": 0.6147594724603288,
-            "brier_score": 0.21308341691714344,
-            "calibration_error": 0.052219455940662886,
-            "roc_auc": 0.7251157035848047
+            "accuracy": 0.6537678207739308,
+            "log_loss": 0.6150517132253687,
+            "brier_score": 0.21311729780114314,
+            "calibration_error": 0.04883760801619958,
+            "roc_auc": 0.7253932584269663
           },
           "high_missing_value": {
             "game_count": 656,
             "positive_rate": 0.5487804878048781,
-            "accuracy": 0.6600609756097561,
-            "log_loss": 0.6102624277534178,
-            "brier_score": 0.2112130085306058,
-            "calibration_error": 0.056007932810191494,
-            "roc_auc": 0.7284159159159159
+            "accuracy": 0.6646341463414634,
+            "log_loss": 0.6096580995625538,
+            "brier_score": 0.2106771222573893,
+            "calibration_error": 0.03899890763248646,
+            "roc_auc": 0.7305649399399399
           },
           "low_missing_value": {
             "game_count": 656,
-            "positive_rate": 0.5426829268292683,
-            "accuracy": 0.6067073170731707,
-            "log_loss": 0.6505718318000423,
-            "brier_score": 0.22968203338188856,
-            "calibration_error": 0.053121398682579285,
-            "roc_auc": 0.6666011235955056
+            "positive_rate": 0.5442073170731707,
+            "accuracy": 0.6173780487804879,
+            "log_loss": 0.6439157772747929,
+            "brier_score": 0.22664650509308887,
+            "calibration_error": 0.052987130714291494,
+            "roc_auc": 0.6781803022212229
           },
           "high_context_confidence": {
-            "game_count": 662,
-            "positive_rate": 0.5483383685800605,
-            "accuracy": 0.6374622356495468,
-            "log_loss": 0.6284166821812238,
-            "brier_score": 0.21920269276722074,
-            "calibration_error": 0.03983661781681603,
-            "roc_auc": 0.7021845085086192
+            "game_count": 669,
+            "positive_rate": 0.554559043348281,
+            "accuracy": 0.6397608370702541,
+            "log_loss": 0.626010105707557,
+            "brier_score": 0.21810433427342105,
+            "calibration_error": 0.04001105326345002,
+            "roc_auc": 0.7035854483619457
           },
           "low_context_confidence": {
-            "game_count": 669,
-            "positive_rate": 0.5440956651718983,
-            "accuracy": 0.6412556053811659,
-            "log_loss": 0.6205136265676241,
-            "brier_score": 0.215949668331699,
-            "calibration_error": 0.049972736874759935,
-            "roc_auc": 0.714997297784183
+            "game_count": 657,
+            "positive_rate": 0.5296803652968036,
+            "accuracy": 0.6453576864535768,
+            "log_loss": 0.6198710532997735,
+            "brier_score": 0.21541788159701333,
+            "calibration_error": 0.05085854180210263,
+            "roc_auc": 0.7235241602499721
           }
         }
       },
       "calibrated": {
         "metrics": {
-          "accuracy": 0.6520412056466998,
-          "log_loss": 0.6218900483559691,
-          "brier_score": 0.21603041011547916,
-          "calibration_error": 0.06702246695212159,
-          "roc_auc": 0.7216179553582439
+          "accuracy": 0.6508966043494849,
+          "log_loss": 0.6221871567910789,
+          "brier_score": 0.21609947974653218,
+          "calibration_error": 0.05931181751003162,
+          "roc_auc": 0.7217547815772012
         },
         "test_slices": {
           "playoffs": {
             "game_count": 166,
             "positive_rate": 0.5783132530120482,
             "accuracy": 0.608433734939759,
-            "log_loss": 0.6457901366805867,
-            "brier_score": 0.22702912400916914,
-            "calibration_error": 0.050593327210386625,
-            "roc_auc": 0.6607142857142857
+            "log_loss": 0.6454013731017458,
+            "brier_score": 0.22676348763315557,
+            "calibration_error": 0.04721566606817166,
+            "roc_auc": 0.6546130952380952
           },
           "regular_season": {
             "game_count": 2455,
             "positive_rate": 0.5437881873727087,
-            "accuracy": 0.654989816700611,
-            "log_loss": 0.6202739935038768,
-            "brier_score": 0.21528670889089566,
-            "calibration_error": 0.06868829156717261,
-            "roc_auc": 0.7251157035848047
+            "accuracy": 0.6537678207739308,
+            "log_loss": 0.6206174786209891,
+            "brier_score": 0.21537841037415764,
+            "calibration_error": 0.062324391410422064,
+            "roc_auc": 0.7253932584269663
           },
           "high_missing_value": {
             "game_count": 656,
             "positive_rate": 0.5487804878048781,
-            "accuracy": 0.6615853658536586,
-            "log_loss": 0.6163139269950658,
-            "brier_score": 0.21353614208158941,
-            "calibration_error": 0.06918966657044891,
-            "roc_auc": 0.7284159159159159
+            "accuracy": 0.663109756097561,
+            "log_loss": 0.6156138490229363,
+            "brier_score": 0.2130408107117099,
+            "calibration_error": 0.05450205369331998,
+            "roc_auc": 0.7305649399399399
           },
           "low_missing_value": {
             "game_count": 656,
-            "positive_rate": 0.5426829268292683,
-            "accuracy": 0.6051829268292683,
-            "log_loss": 0.6522549504321441,
-            "brier_score": 0.23038689910558727,
-            "calibration_error": 0.058165087536049515,
-            "roc_auc": 0.6666011235955056
+            "positive_rate": 0.5442073170731707,
+            "accuracy": 0.6112804878048781,
+            "log_loss": 0.6465736454477549,
+            "brier_score": 0.22773619922543328,
+            "calibration_error": 0.05954146119411837,
+            "roc_auc": 0.6781803022212229
           },
           "high_context_confidence": {
-            "game_count": 662,
-            "positive_rate": 0.5483383685800605,
-            "accuracy": 0.6344410876132931,
-            "log_loss": 0.6324559882463873,
-            "brier_score": 0.2208822597227349,
-            "calibration_error": 0.0509443246089798,
-            "roc_auc": 0.7021845085086192
+            "game_count": 669,
+            "positive_rate": 0.554559043348281,
+            "accuracy": 0.6278026905829597,
+            "log_loss": 0.6302584156849786,
+            "brier_score": 0.21986294624653016,
+            "calibration_error": 0.0508218713097471,
+            "roc_auc": 0.7035854483619457
           },
           "low_context_confidence": {
-            "game_count": 669,
-            "positive_rate": 0.5440956651718983,
-            "accuracy": 0.6427503736920778,
-            "log_loss": 0.6256533562377066,
-            "brier_score": 0.21793233793645517,
-            "calibration_error": 0.07706139038775768,
-            "roc_auc": 0.714997297784183
+            "game_count": 657,
+            "positive_rate": 0.5296803652968036,
+            "accuracy": 0.6453576864535768,
+            "log_loss": 0.6255121134384797,
+            "brier_score": 0.21771020372990785,
+            "calibration_error": 0.06875065537992725,
+            "roc_auc": 0.7235241602499721
           }
         }
       },
       "model_weights": {
-        "neural_prob": 0.5611682606844468,
-        "xgboost_prob": 0.6387370379887913,
-        "elo_prob": 1.4185270177148894,
-        "enriched_catboost_prob": 1.507017793364626
+        "neural_prob": 0.6485311269347458,
+        "xgboost_prob": 0.8481342549816486,
+        "elo_prob": 1.498650885318167,
+        "enriched_catboost_prob": 1.2165053944983564
       },
-      "model_intercept": -2.064469338404625
+      "model_intercept": -2.117642156063547
     },
     "nextgen_lightgbm": {
       "status": "trained",
@@ -520,141 +846,141 @@
       ],
       "raw": {
         "metrics": {
-          "accuracy": 0.6486074017550553,
-          "log_loss": 0.6173556393738241,
-          "brier_score": 0.21426567902081559,
-          "calibration_error": 0.04503803447133657,
-          "roc_auc": 0.7194128804561657
+          "accuracy": 0.6505150705837467,
+          "log_loss": 0.616670274529194,
+          "brier_score": 0.21388461781442286,
+          "calibration_error": 0.04628671720702803,
+          "roc_auc": 0.7210665398234766
         },
         "test_slices": {
           "playoffs": {
             "game_count": 166,
             "positive_rate": 0.5783132530120482,
             "accuracy": 0.6204819277108434,
-            "log_loss": 0.6437845985495371,
-            "brier_score": 0.22608761374241979,
-            "calibration_error": 0.031440669874531604,
-            "roc_auc": 0.659672619047619
+            "log_loss": 0.6428860388479304,
+            "brier_score": 0.2256846566790939,
+            "calibration_error": 0.04763146817809474,
+            "roc_auc": 0.6566964285714285
           },
           "regular_season": {
             "game_count": 2455,
             "positive_rate": 0.5437881873727087,
-            "accuracy": 0.6505091649694501,
-            "log_loss": 0.6155685895884195,
-            "brier_score": 0.21346631398465016,
-            "calibration_error": 0.04627821115497171,
-            "roc_auc": 0.7228752006420546
+            "accuracy": 0.6525458248472505,
+            "log_loss": 0.6148976403634464,
+            "brier_score": 0.21308673331277916,
+            "calibration_error": 0.04759200353978417,
+            "roc_auc": 0.7246074103798823
           },
           "high_missing_value": {
             "game_count": 656,
             "positive_rate": 0.5487804878048781,
-            "accuracy": 0.6585365853658537,
-            "log_loss": 0.6124298637444022,
-            "brier_score": 0.2122142561665378,
-            "calibration_error": 0.03846091934443052,
-            "roc_auc": 0.7229354354354354
+            "accuracy": 0.6539634146341463,
+            "log_loss": 0.6088915907878284,
+            "brier_score": 0.21039053389425114,
+            "calibration_error": 0.04312614604109211,
+            "roc_auc": 0.7309684684684684
           },
           "low_missing_value": {
             "game_count": 656,
-            "positive_rate": 0.5426829268292683,
-            "accuracy": 0.6021341463414634,
-            "log_loss": 0.6496529390152741,
-            "brier_score": 0.22926673035853162,
-            "calibration_error": 0.048567824890648544,
-            "roc_auc": 0.665936329588015
+            "positive_rate": 0.5442073170731707,
+            "accuracy": 0.6128048780487805,
+            "log_loss": 0.6435257489520401,
+            "brier_score": 0.22647174464547795,
+            "calibration_error": 0.051212256577802984,
+            "roc_auc": 0.6771591579775723
           },
           "high_context_confidence": {
-            "game_count": 662,
-            "positive_rate": 0.5483383685800605,
-            "accuracy": 0.6389728096676737,
-            "log_loss": 0.6263850925654794,
-            "brier_score": 0.21830526882459375,
-            "calibration_error": 0.041800459759396766,
-            "roc_auc": 0.7051051715083336
+            "game_count": 669,
+            "positive_rate": 0.554559043348281,
+            "accuracy": 0.6382660687593423,
+            "log_loss": 0.6257507835284059,
+            "brier_score": 0.2180133106507225,
+            "calibration_error": 0.037706019089588934,
+            "roc_auc": 0.7027713960093344
           },
           "low_context_confidence": {
-            "game_count": 669,
-            "positive_rate": 0.5440956651718983,
-            "accuracy": 0.6412556053811659,
-            "log_loss": 0.6227318405910525,
-            "brier_score": 0.21699198230802022,
-            "calibration_error": 0.043543793163176546,
-            "roc_auc": 0.7085840389119078
+            "game_count": 657,
+            "positive_rate": 0.5296803652968036,
+            "accuracy": 0.6377473363774734,
+            "log_loss": 0.6195361490492046,
+            "brier_score": 0.2153783612098493,
+            "calibration_error": 0.05902430254739683,
+            "roc_auc": 0.7228080943347097
           }
         }
       },
       "calibrated": {
         "metrics": {
-          "accuracy": 0.6489889355207936,
-          "log_loss": 0.6223627051583946,
-          "brier_score": 0.21626772391822138,
-          "calibration_error": 0.06252609811621222,
-          "roc_auc": 0.7194128804561657
+          "accuracy": 0.6497520030522701,
+          "log_loss": 0.6219350955687364,
+          "brier_score": 0.2160134444080344,
+          "calibration_error": 0.0593691027083007,
+          "roc_auc": 0.7210665398234766
         },
         "test_slices": {
           "playoffs": {
             "game_count": 166,
             "positive_rate": 0.5783132530120482,
-            "accuracy": 0.6144578313253012,
-            "log_loss": 0.6455801765004162,
-            "brier_score": 0.22691397200375907,
-            "calibration_error": 0.04653862795735295,
-            "roc_auc": 0.659672619047619
+            "accuracy": 0.6325301204819277,
+            "log_loss": 0.6448232347775968,
+            "brier_score": 0.22654849076975006,
+            "calibration_error": 0.039305567597353076,
+            "roc_auc": 0.6566964285714285
           },
           "regular_season": {
             "game_count": 2455,
             "positive_rate": 0.5437881873727087,
-            "accuracy": 0.6513238289205703,
-            "log_loss": 0.6207928068924983,
-            "brier_score": 0.21554785541223387,
-            "calibration_error": 0.06368704033561436,
-            "roc_auc": 0.7228752006420546
+            "accuracy": 0.6509164969450102,
+            "log_loss": 0.6203874657892371,
+            "brier_score": 0.21530109504101008,
+            "calibration_error": 0.06072574092761527,
+            "roc_auc": 0.7246074103798823
           },
           "high_missing_value": {
             "game_count": 656,
             "positive_rate": 0.5487804878048781,
-            "accuracy": 0.6585365853658537,
-            "log_loss": 0.618030475128772,
-            "brier_score": 0.21434958002124538,
-            "calibration_error": 0.06124733523624372,
-            "roc_auc": 0.7229354354354354
+            "accuracy": 0.663109756097561,
+            "log_loss": 0.6149753964633878,
+            "brier_score": 0.2127909984350731,
+            "calibration_error": 0.0549765177040238,
+            "roc_auc": 0.7309684684684684
           },
           "low_missing_value": {
             "game_count": 656,
-            "positive_rate": 0.5426829268292683,
-            "accuracy": 0.6051829268292683,
-            "log_loss": 0.6514113250016494,
-            "brier_score": 0.2300131132870352,
-            "calibration_error": 0.0647398070457639,
-            "roc_auc": 0.665936329588015
+            "positive_rate": 0.5442073170731707,
+            "accuracy": 0.6097560975609756,
+            "log_loss": 0.646079926731623,
+            "brier_score": 0.22751382770649134,
+            "calibration_error": 0.062080966884374665,
+            "roc_auc": 0.6771591579775723
           },
           "high_context_confidence": {
-            "game_count": 662,
-            "positive_rate": 0.5483383685800605,
-            "accuracy": 0.6404833836858006,
-            "log_loss": 0.6307033853923009,
-            "brier_score": 0.22008822341015516,
-            "calibration_error": 0.05933583253703678,
-            "roc_auc": 0.7051051715083336
+            "game_count": 669,
+            "positive_rate": 0.554559043348281,
+            "accuracy": 0.6352765321375187,
+            "log_loss": 0.6299317022420747,
+            "brier_score": 0.21972635131626214,
+            "calibration_error": 0.04985458695329098,
+            "roc_auc": 0.7027713960093344
           },
           "low_context_confidence": {
-            "game_count": 669,
-            "positive_rate": 0.5440956651718983,
-            "accuracy": 0.6322869955156951,
-            "log_loss": 0.6273717790438552,
-            "brier_score": 0.2187527495845558,
-            "calibration_error": 0.05560158262659055,
-            "roc_auc": 0.7085840389119078
+            "game_count": 657,
+            "positive_rate": 0.5296803652968036,
+            "accuracy": 0.6468797564687976,
+            "log_loss": 0.6253563089514358,
+            "brier_score": 0.21771198078387743,
+            "calibration_error": 0.07392996004144389,
+            "roc_auc": 0.7228080943347097
           }
         }
       },
       "model_weights": {
-        "neural_prob": 0.6082176444702829,
-        "xgboost_prob": 0.5956257469464368,
-        "elo_prob": 1.5012043507566326,
-        "enriched_lightgbm_prob": 1.5381745733686945
+        "neural_prob": 0.6494948312760308,
+        "xgboost_prob": 0.8113507572943255,
+        "elo_prob": 1.5235386419769998,
+        "enriched_lightgbm_prob": 1.267082421662711
       },
-      "model_intercept": -2.120799725111994
+      "model_intercept": -2.1335569648063712
     },
     "nextgen_full": {
       "status": "trained",
@@ -667,142 +993,142 @@
       ],
       "raw": {
         "metrics": {
-          "accuracy": 0.6501335368180083,
-          "log_loss": 0.6161352070659222,
-          "brier_score": 0.2137309007253024,
-          "calibration_error": 0.04825946378186111,
-          "roc_auc": 0.7212104128863285
+          "accuracy": 0.6535673407096528,
+          "log_loss": 0.6158882583211792,
+          "brier_score": 0.21349617314667,
+          "calibration_error": 0.045386313010778015,
+          "roc_auc": 0.7225205386137683
         },
         "test_slices": {
           "playoffs": {
             "game_count": 166,
             "positive_rate": 0.5783132530120482,
-            "accuracy": 0.6144578313253012,
-            "log_loss": 0.6424718162818089,
-            "brier_score": 0.22550013725375273,
-            "calibration_error": 0.05042708299297459,
-            "roc_auc": 0.6650297619047619
+            "accuracy": 0.6265060240963856,
+            "log_loss": 0.6417398527817675,
+            "brier_score": 0.22508570346248005,
+            "calibration_error": 0.04804194032632855,
+            "roc_auc": 0.6578869047619048
           },
           "regular_season": {
             "game_count": 2455,
             "positive_rate": 0.5437881873727087,
-            "accuracy": 0.6525458248472505,
-            "log_loss": 0.6143544017177197,
-            "brier_score": 0.21293509898855184,
-            "calibration_error": 0.050316527913268065,
-            "roc_auc": 0.7246268057784913
+            "accuracy": 0.655397148676171,
+            "log_loss": 0.6141402482680397,
+            "brier_score": 0.21271252262429757,
+            "calibration_error": 0.045950281689561744,
+            "roc_auc": 0.7259971910112359
           },
           "high_missing_value": {
             "game_count": 656,
             "positive_rate": 0.5487804878048781,
-            "accuracy": 0.6570121951219512,
-            "log_loss": 0.6110585121261731,
-            "brier_score": 0.2116512580542077,
-            "calibration_error": 0.050390253017628665,
-            "roc_auc": 0.7253003003003002
+            "accuracy": 0.6615853658536586,
+            "log_loss": 0.6079657132293674,
+            "brier_score": 0.20993048462180605,
+            "calibration_error": 0.034908487899899296,
+            "roc_auc": 0.7326576576576577
           },
           "low_missing_value": {
             "game_count": 656,
-            "positive_rate": 0.5426829268292683,
-            "accuracy": 0.6097560975609756,
-            "log_loss": 0.6497341353832513,
-            "brier_score": 0.22926515500725334,
-            "calibration_error": 0.05051842553589019,
-            "roc_auc": 0.6667790262172284
+            "positive_rate": 0.5442073170731707,
+            "accuracy": 0.6173780487804879,
+            "log_loss": 0.6428758959330408,
+            "brier_score": 0.2261435081239493,
+            "calibration_error": 0.056116278693252565,
+            "roc_auc": 0.6793419709020732
           },
           "high_context_confidence": {
-            "game_count": 662,
-            "positive_rate": 0.5483383685800605,
-            "accuracy": 0.6374622356495468,
-            "log_loss": 0.6267759694720768,
-            "brier_score": 0.21845676182552878,
-            "calibration_error": 0.03942740344994861,
-            "roc_auc": 0.7037784350037315
+            "game_count": 669,
+            "positive_rate": 0.554559043348281,
+            "accuracy": 0.6427503736920778,
+            "log_loss": 0.6251032488711413,
+            "brier_score": 0.21767536760216152,
+            "calibration_error": 0.038823488759992406,
+            "roc_auc": 0.7045261310805189
           },
           "low_context_confidence": {
-            "game_count": 669,
-            "positive_rate": 0.5440956651718983,
-            "accuracy": 0.6367713004484304,
-            "log_loss": 0.6216321225856407,
-            "brier_score": 0.2165661914817538,
-            "calibration_error": 0.05233769012544358,
-            "roc_auc": 0.711115114393803
+            "game_count": 657,
+            "positive_rate": 0.5296803652968036,
+            "accuracy": 0.6407914764079148,
+            "log_loss": 0.619412673896306,
+            "brier_score": 0.2152867703589199,
+            "calibration_error": 0.056674106372955245,
+            "roc_auc": 0.7236543540527471
           }
         }
       },
       "calibrated": {
         "metrics": {
-          "accuracy": 0.652422739412438,
-          "log_loss": 0.6215256840334814,
-          "brier_score": 0.21587681659300736,
-          "calibration_error": 0.06415607630204073,
-          "roc_auc": 0.7212104128863285
+          "accuracy": 0.6535673407096528,
+          "log_loss": 0.6214092042803128,
+          "brier_score": 0.21573645078609266,
+          "calibration_error": 0.0597821667687245,
+          "roc_auc": 0.7225205386137683
         },
         "test_slices": {
           "playoffs": {
             "game_count": 166,
             "positive_rate": 0.5783132530120482,
             "accuracy": 0.6144578313253012,
-            "log_loss": 0.6446063120505242,
-            "brier_score": 0.22645571278375642,
-            "calibration_error": 0.05082350625371698,
-            "roc_auc": 0.6650297619047619
+            "log_loss": 0.6437713573800032,
+            "brier_score": 0.22600717166546544,
+            "calibration_error": 0.04745381047971664,
+            "roc_auc": 0.6578869047619048
           },
           "regular_season": {
             "game_count": 2455,
             "positive_rate": 0.5437881873727087,
-            "accuracy": 0.654989816700611,
-            "log_loss": 0.6199650387174614,
-            "brier_score": 0.21516150222735997,
-            "calibration_error": 0.06543753769133792,
-            "roc_auc": 0.7246268057784913
+            "accuracy": 0.6562118126272912,
+            "log_loss": 0.6198971401603337,
+            "brier_score": 0.21504197434373995,
+            "calibration_error": 0.06143616803443582,
+            "roc_auc": 0.7259971910112359
           },
           "high_missing_value": {
             "game_count": 656,
             "positive_rate": 0.5487804878048781,
-            "accuracy": 0.6600609756097561,
-            "log_loss": 0.6171032210589222,
-            "brier_score": 0.21393762288916246,
-            "calibration_error": 0.06919956358754192,
-            "roc_auc": 0.7253003003003002
+            "accuracy": 0.6661585365853658,
+            "log_loss": 0.6143455993307771,
+            "brier_score": 0.21245579933982744,
+            "calibration_error": 0.05710959846084353,
+            "roc_auc": 0.7326576576576577
           },
           "low_missing_value": {
             "game_count": 656,
-            "positive_rate": 0.5426829268292683,
-            "accuracy": 0.6112804878048781,
-            "log_loss": 0.6514173128388564,
-            "brier_score": 0.22998176155174183,
-            "calibration_error": 0.06375932945552477,
-            "roc_auc": 0.6667790262172284
+            "positive_rate": 0.5442073170731707,
+            "accuracy": 0.614329268292683,
+            "log_loss": 0.6455168522707959,
+            "brier_score": 0.2272257475871552,
+            "calibration_error": 0.05536939888815519,
+            "roc_auc": 0.6793419709020732
           },
           "high_context_confidence": {
-            "game_count": 662,
-            "positive_rate": 0.5483383685800605,
-            "accuracy": 0.6419939577039275,
-            "log_loss": 0.6310837997488575,
-            "brier_score": 0.22023719321343033,
-            "calibration_error": 0.05422459495774815,
-            "roc_auc": 0.7037784350037315
+            "game_count": 669,
+            "positive_rate": 0.554559043348281,
+            "accuracy": 0.6352765321375187,
+            "log_loss": 0.6294325762640386,
+            "brier_score": 0.21946067057573454,
+            "calibration_error": 0.04967654208256797,
+            "roc_auc": 0.7045261310805189
           },
           "low_context_confidence": {
-            "game_count": 669,
-            "positive_rate": 0.5440956651718983,
-            "accuracy": 0.6397608370702541,
-            "log_loss": 0.6267080505421314,
-            "brier_score": 0.21848018450416132,
-            "calibration_error": 0.0681725308938,
-            "roc_auc": 0.711115114393803
+            "game_count": 657,
+            "positive_rate": 0.5296803652968036,
+            "accuracy": 0.6468797564687976,
+            "log_loss": 0.6253951746773501,
+            "brier_score": 0.21769491656912476,
+            "calibration_error": 0.07670897739944121,
+            "roc_auc": 0.7236543540527471
           }
         }
       },
       "model_weights": {
-        "neural_prob": 0.42921862140433914,
-        "xgboost_prob": 0.28866738200223463,
-        "elo_prob": 1.3051655437138912,
-        "enriched_catboost_prob": 1.0805907130562602,
-        "enriched_lightgbm_prob": 1.0790491959617523
+        "neural_prob": 0.5341617960627745,
+        "xgboost_prob": 0.5877203987408193,
+        "elo_prob": 1.4179416477648819,
+        "enriched_catboost_prob": 0.8165234699831603,
+        "enriched_lightgbm_prob": 0.8854948237468662
       },
-      "model_intercept": -2.0769292769735848
+      "model_intercept": -2.121428246863014
     }
   },
   "leaderboard": [
@@ -812,24 +1138,11 @@
       "variant": "nextgen_full",
       "mode": "raw",
       "metrics": {
-        "accuracy": 0.6501335368180083,
-        "log_loss": 0.6161352070659222,
-        "brier_score": 0.2137309007253024,
-        "calibration_error": 0.04825946378186111,
-        "roc_auc": 0.7212104128863285
-      }
-    },
-    {
-      "family": "nextgen_ensemble",
-      "label": "nextgen_catboost / raw",
-      "variant": "nextgen_catboost",
-      "mode": "raw",
-      "metrics": {
-        "accuracy": 0.6520412056466998,
-        "log_loss": 0.6165991616360607,
-        "brier_score": 0.21391131856803178,
-        "calibration_error": 0.05091721660509632,
-        "roc_auc": 0.7216179553582439
+        "accuracy": 0.6535673407096528,
+        "log_loss": 0.6158882583211792,
+        "brier_score": 0.21349617314667,
+        "calibration_error": 0.045386313010778015,
+        "roc_auc": 0.7225205386137683
       }
     },
     {
@@ -838,11 +1151,24 @@
       "variant": "nextgen_lightgbm",
       "mode": "raw",
       "metrics": {
-        "accuracy": 0.6486074017550553,
-        "log_loss": 0.6173556393738241,
-        "brier_score": 0.21426567902081559,
-        "calibration_error": 0.04503803447133657,
-        "roc_auc": 0.7194128804561657
+        "accuracy": 0.6505150705837467,
+        "log_loss": 0.616670274529194,
+        "brier_score": 0.21388461781442286,
+        "calibration_error": 0.04628671720702803,
+        "roc_auc": 0.7210665398234766
+      }
+    },
+    {
+      "family": "nextgen_ensemble",
+      "label": "nextgen_catboost / raw",
+      "variant": "nextgen_catboost",
+      "mode": "raw",
+      "metrics": {
+        "accuracy": 0.6516596718809614,
+        "log_loss": 0.6168669795325987,
+        "brier_score": 0.21393149078390566,
+        "calibration_error": 0.04777032139407577,
+        "roc_auc": 0.7217547815772012
       }
     },
     {
@@ -877,24 +1203,11 @@
       "variant": "nextgen_full",
       "mode": "calibrated",
       "metrics": {
-        "accuracy": 0.652422739412438,
-        "log_loss": 0.6215256840334814,
-        "brier_score": 0.21587681659300736,
-        "calibration_error": 0.06415607630204073,
-        "roc_auc": 0.7212104128863285
-      }
-    },
-    {
-      "family": "nextgen_ensemble",
-      "label": "nextgen_catboost / calibrated",
-      "variant": "nextgen_catboost",
-      "mode": "calibrated",
-      "metrics": {
-        "accuracy": 0.6520412056466998,
-        "log_loss": 0.6218900483559691,
-        "brier_score": 0.21603041011547916,
-        "calibration_error": 0.06702246695212159,
-        "roc_auc": 0.7216179553582439
+        "accuracy": 0.6535673407096528,
+        "log_loss": 0.6214092042803128,
+        "brier_score": 0.21573645078609266,
+        "calibration_error": 0.0597821667687245,
+        "roc_auc": 0.7225205386137683
       }
     },
     {
@@ -903,11 +1216,24 @@
       "variant": "nextgen_lightgbm",
       "mode": "calibrated",
       "metrics": {
-        "accuracy": 0.6489889355207936,
-        "log_loss": 0.6223627051583946,
-        "brier_score": 0.21626772391822138,
-        "calibration_error": 0.06252609811621222,
-        "roc_auc": 0.7194128804561657
+        "accuracy": 0.6497520030522701,
+        "log_loss": 0.6219350955687364,
+        "brier_score": 0.2160134444080344,
+        "calibration_error": 0.0593691027083007,
+        "roc_auc": 0.7210665398234766
+      }
+    },
+    {
+      "family": "nextgen_ensemble",
+      "label": "nextgen_catboost / calibrated",
+      "variant": "nextgen_catboost",
+      "mode": "calibrated",
+      "metrics": {
+        "accuracy": 0.6508966043494849,
+        "log_loss": 0.6221871567910789,
+        "brier_score": 0.21609947974653218,
+        "calibration_error": 0.05931181751003162,
+        "roc_auc": 0.7217547815772012
       }
     },
     {
@@ -957,11 +1283,11 @@
       "variant": "nextgen_full",
       "mode": "raw",
       "metrics": {
-        "accuracy": 0.6501335368180083,
-        "log_loss": 0.6161352070659222,
-        "brier_score": 0.2137309007253024,
-        "calibration_error": 0.04825946378186111,
-        "roc_auc": 0.7212104128863285
+        "accuracy": 0.6535673407096528,
+        "log_loss": 0.6158882583211792,
+        "brier_score": 0.21349617314667,
+        "calibration_error": 0.045386313010778015,
+        "roc_auc": 0.7225205386137683
       }
     },
     "best_nextgen": {
@@ -970,11 +1296,11 @@
       "variant": "nextgen_full",
       "mode": "raw",
       "metrics": {
-        "accuracy": 0.6501335368180083,
-        "log_loss": 0.6161352070659222,
-        "brier_score": 0.2137309007253024,
-        "calibration_error": 0.04825946378186111,
-        "roc_auc": 0.7212104128863285
+        "accuracy": 0.6535673407096528,
+        "log_loss": 0.6158882583211792,
+        "brier_score": 0.21349617314667,
+        "calibration_error": 0.045386313010778015,
+        "roc_auc": 0.7225205386137683
       }
     },
     "production_baseline": {
@@ -990,6 +1316,6 @@
         "roc_auc": 0.7176546929044153
       }
     },
-    "nextgen_minus_production_log_loss": -0.00345838147530686
+    "nextgen_minus_production_log_loss": -0.0037053302200498184
   }
 }

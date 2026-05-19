@@ -1,5 +1,5 @@
 {
-  "model_version": "nextgen_full_raw_v1",
+  "model_version": "nextgen_full_value_tuned_v2",
   "promotion_status": "shadow_ready",
   "candidate": "nextgen_full / raw",
   "production_baseline": "production ensemble raw",
@@ -23,11 +23,11 @@
     "gate_status": "ready",
     "test_rows": 2621,
     "production_log_loss": 0.6196,
-    "candidate_log_loss": 0.6161,
-    "log_loss_delta": -0.0035,
-    "candidate_accuracy": 0.6501,
+    "candidate_log_loss": 0.6159,
+    "log_loss_delta": -0.0037,
+    "candidate_accuracy": 0.6536,
     "playoff_heldout_games": 166,
-    "missing_player_impact_games": 2595
+    "missing_player_impact_games": 2602
   },
   "shadow_mode": {
     "production_probability_remains": "ensemble_v1",

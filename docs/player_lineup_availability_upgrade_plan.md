@@ -108,9 +108,9 @@ After the feature slice lands:
 
 1. Rebuild M1 feature stack. Complete.
 2. Rerun enriched experiments. Complete: `enriched_value_only / catboost` reached `0.6163` log loss and `0.6616` accuracy.
-3. Rerun next-gen ensemble with refreshed value-tuned enriched inputs.
-4. Rerun promotion gate.
-5. Compare against the current `nextgen_full_raw_v1` shadow baseline, then label the rebuilt value-tuned bundle as `nextgen_full_value_tuned_v2`.
+3. Rerun next-gen ensemble with refreshed value-tuned enriched inputs. Complete: `nextgen_full / raw` reached `0.6159` log loss and `0.6536` accuracy.
+4. Rerun promotion gate. Complete: gate status is `ready`.
+5. Compare against the prior `nextgen_full_raw_v1` shadow baseline, then label the rebuilt value-tuned bundle as `nextgen_full_value_tuned_v2`. Complete.
 
 Commands:
 

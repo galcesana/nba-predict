@@ -12,7 +12,12 @@ import numpy as np
 import pandas as pd
 
 from src.models.ensemble import ENSEMBLE_DIR, load_model_predictions
-from src.models.run_nextgen_ensemble import NEXTGEN_DIR, load_enriched_matchup_dataset
+from src.models.run_nextgen_ensemble import (
+    ENRICHED_INPUT_COLS,
+    NEXTGEN_DIR,
+    PRODUCTION_INPUT_COLS,
+    load_enriched_matchup_dataset,
+)
 from src.models.run_production_showdown import evaluate_probabilities
 from src.models.tabular_model import split_by_season
 from src.utils.logging import setup_logging
@@ -22,6 +27,9 @@ logger = logging.getLogger(__name__)
 
 VALIDATION_RESULTS_PATH = DOCS_DIR / "experiments" / "nextgen_promotion_gate.json"
 VALIDATION_SUMMARY_PATH = DOCS_DIR / "experiments" / "nextgen_promotion_gate.md"
+PROMOTION_MANIFEST_PATH = NEXTGEN_DIR / "promotion_manifest.json"
+RAW_SHADOW_MODEL_VERSION = "nextgen_full_raw_v1"
+VALUE_TUNED_SHADOW_MODEL_VERSION = "nextgen_full_value_tuned_v2"
 
 MIN_OVERALL_LOG_LOSS_GAIN = 0.001
 MIN_PLAYOFF_GAMES = 100
@@ -470,6 +478,64 @@ def build_summary_markdown(results: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _current_shadow_model_version() -> str:
+    """Infer the shadow artifact version from the enriched feature-column metadata."""
+    feature_path = NEXTGEN_DIR / "enriched_feature_columns.json"
+    if not feature_path.exists():
+        return RAW_SHADOW_MODEL_VERSION
+    try:
+        payload = json.loads(feature_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return RAW_SHADOW_MODEL_VERSION
+    if isinstance(payload, dict) and payload.get("schema_version") == "value_tuned_inputs_v1":
+        return VALUE_TUNED_SHADOW_MODEL_VERSION
+    return RAW_SHADOW_MODEL_VERSION
+
+
+def build_promotion_manifest(results: dict[str, Any]) -> dict[str, Any]:
+    """Build the tracked shadow artifact manifest from validation results."""
+    all_test = results["slice_results"]["all_test"]
+    playoffs = results["slice_results"].get("playoffs", {})
+    missing = results["slice_results"].get("missing_player_impact", {})
+    return {
+        "model_version": _current_shadow_model_version(),
+        "promotion_status": "shadow_ready"
+        if results["verdict"]["status"] == "ready"
+        else "blocked",
+        "candidate": "nextgen_full / raw",
+        "production_baseline": "production ensemble raw",
+        "final_probability_mode": "raw",
+        "input_columns": [*PRODUCTION_INPUT_COLS, *ENRICHED_INPUT_COLS],
+        "required_artifacts": [
+            "models/ensembles_nextgen/enriched_catboost.joblib",
+            "models/ensembles_nextgen/enriched_lightgbm.joblib",
+            "models/ensembles_nextgen/enriched_feature_columns.json",
+            "models/ensembles_nextgen/meta_model.joblib",
+            "models/ensembles_nextgen/calibrator.joblib",
+            "data/processed/player_game_logs/player_game_logs.parquet",
+        ],
+        "validation": {
+            "gate_status": results["verdict"]["status"],
+            "test_rows": results["test_rows"],
+            "production_log_loss": round(
+                float(all_test["production"]["log_loss"]),
+                4,
+            ),
+            "candidate_log_loss": round(float(all_test["nextgen"]["log_loss"]), 4),
+            "log_loss_delta": round(float(all_test["delta"]["log_loss"]), 4),
+            "candidate_accuracy": round(float(all_test["nextgen"]["accuracy"]), 4),
+            "playoff_heldout_games": int(playoffs.get("game_count", 0)),
+            "missing_player_impact_games": int(missing.get("game_count", 0)),
+        },
+        "shadow_mode": {
+            "production_probability_remains": "ensemble_v1",
+            "shadow_probability_field": "component_outputs.nextgen_shadow_probability",
+            "enable_cli_flag": "--nextgen-shadow",
+            "enable_env_var": "NBA_PREDICT_NEXTGEN_SHADOW=1",
+        },
+    }
+
+
 def run_nextgen_validation() -> dict[str, Any]:
     """Run the cached next-gen promotion validation gate."""
     enriched_df = load_enriched_matchup_dataset()
@@ -497,6 +563,10 @@ def run_nextgen_validation() -> dict[str, Any]:
     VALIDATION_RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
     VALIDATION_RESULTS_PATH.write_text(json.dumps(results, indent=2), encoding="utf-8")
     VALIDATION_SUMMARY_PATH.write_text(build_summary_markdown(results), encoding="utf-8")
+    PROMOTION_MANIFEST_PATH.write_text(
+        json.dumps(build_promotion_manifest(results), indent=2),
+        encoding="utf-8",
+    )
     return results
 
 
