@@ -95,8 +95,19 @@ def build_injury_features_from_reports(
 
     features: list[dict[str, object]] = []
     submitted = injury_reports[injury_reports["report_submitted"]].copy()
-    if submitted.empty:
-        return pd.DataFrame(columns=["game_id", "team_idx", *INJURY_FEATURE_COLS])
+    pending = injury_reports[~injury_reports["report_submitted"]].copy()
+
+    for (game_id, team_idx), group in pending.groupby(["game_id", "team_idx"], sort=False):
+        features.append(
+            {
+                "game_id": game_id,
+                "team_idx": int(team_idx),
+                "injury_data_available": 0,
+                "report_generated_at": group["report_generated_at"].max(),
+                "report_source_url": group["source_url"].iloc[0],
+                "report_status": "not_submitted",
+            }
+        )
 
     for (game_id, team_idx), group in submitted.groupby(["game_id", "team_idx"], sort=False):
         if group["status"].eq("CLEAR").all():
@@ -147,6 +158,9 @@ def build_injury_features_from_reports(
                 "report_status": "submitted",
             }
         )
+
+    if not features:
+        return pd.DataFrame(columns=["game_id", "team_idx", *INJURY_FEATURE_COLS])
 
     return pd.DataFrame(features)
 

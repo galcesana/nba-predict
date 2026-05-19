@@ -321,9 +321,12 @@ def fetch_injury_reports_for_games(
         report_date or datetime.now(ZoneInfo(DEFAULT_TIMEZONE)).date().isoformat()
     )
     cache_path = storage_dir / f"official_injury_report_{effective_report_date}.parquet"
+    cached = pd.DataFrame()
     if cache_path.exists():
         cached = pd.read_parquet(cache_path)
-        return cached[cached["game_id"].isin(games["game_id"])].reset_index(drop=True)
+        matched = cached[cached["game_id"].isin(games["game_id"])].reset_index(drop=True)
+        if not matched.empty:
+            return matched
 
     fetched = fetch_latest_injury_report_pdf(
         effective_report_date,
@@ -343,7 +346,14 @@ def fetch_injury_reports_for_games(
     if frame.empty:
         return frame
 
+    if not cached.empty:
+        frame = (
+            pd.concat([cached, frame], ignore_index=True)
+            .drop_duplicates()
+            .reset_index(drop=True)
+        )
     frame.to_parquet(cache_path, index=False)
+    frame = frame[frame["game_id"].isin(games["game_id"])].reset_index(drop=True)
     return frame.reset_index(drop=True)
 
 

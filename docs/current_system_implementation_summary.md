@@ -309,6 +309,8 @@ Phase 11 added live overlays rather than fully retraining the core model around 
 - official NBA injury-report PDFs are parsed when available
 - team-level features are overlaid on top of fallback features
 - coverage is partial for later-week games when reports do not yet exist
+- `NOT YET SUBMITTED` official report rows are preserved as `pending` context, so the
+  dashboard and manifest can distinguish pending official submissions from true fallback/no-report state
 
 ### News overlay
 

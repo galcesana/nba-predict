@@ -104,10 +104,13 @@ def _coverage_mode(context_summary: dict, prefix: str) -> str:
     rate = float(context_summary.get(f"{prefix}_coverage_rate", 0.0) or 0.0)
     live_games = int(context_summary.get(f"{prefix}_live_games", 0) or 0)
     partial_games = int(context_summary.get(f"{prefix}_partial_games", 0) or 0)
+    pending_games = int(context_summary.get(f"{prefix}_pending_games", 0) or 0)
     if rate >= 0.999 and live_games > 0 and partial_games == 0:
         return "live"
     if rate > 0:
         return "partial"
+    if pending_games > 0:
+        return "pending"
     return "fallback"
 
 
@@ -124,6 +127,7 @@ def _coverage_metrics(
         "news_coverage_rate": float(context_summary.get("news_coverage_rate", 0.0) or 0.0),
         "injury_live_games": int(context_summary.get("injury_live_games", 0) or 0),
         "injury_partial_games": int(context_summary.get("injury_partial_games", 0) or 0),
+        "injury_pending_games": int(context_summary.get("injury_pending_games", 0) or 0),
         "news_live_games": int(context_summary.get("news_live_games", 0) or 0),
         "news_partial_games": int(context_summary.get("news_partial_games", 0) or 0),
     }

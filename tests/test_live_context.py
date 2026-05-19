@@ -116,6 +116,83 @@ def test_parse_injury_report_pdf_filters_to_requested_games(monkeypatch):
     assert "Mitchell, Donovan" in parsed["player_name"].fillna("").tolist()
 
 
+def test_fetch_injury_reports_reparses_cached_report_for_new_game(monkeypatch, tmp_path):
+    """A report-date cache scoped to one matchup should not block later matchups."""
+    fetch_calls = []
+
+    def fake_fetch(report_date: str, **_: object):
+        fetch_calls.append(report_date)
+        return b"pdf", f"https://example.com/{report_date}.pdf", f"{report_date}T10:00:00-0400"
+
+    def fake_parse(
+        pdf_bytes: bytes,
+        *,
+        games: pd.DataFrame,
+        source_url: str,
+        report_generated_at: str,
+    ):
+        assert pdf_bytes == b"pdf"
+        return pd.DataFrame(
+            [
+                {
+                    "game_id": row["game_id"],
+                    "report_game_date": pd.Timestamp(row["date"]).strftime("%m/%d/%Y"),
+                    "team_idx": int(row["home_team_idx"]),
+                    "team_name": "Home",
+                    "player_name": None,
+                    "status": "CLEAR",
+                    "reason": None,
+                    "report_submitted": True,
+                    "report_time_et": "08:00 (ET)",
+                    "report_generated_at": report_generated_at,
+                    "source_url": source_url,
+                }
+                for _, row in games.iterrows()
+            ]
+        )
+
+    monkeypatch.setattr(fetch_injuries, "fetch_latest_injury_report_pdf", fake_fetch)
+    monkeypatch.setattr(fetch_injuries, "parse_injury_report_pdf", fake_parse)
+
+    first_game = pd.DataFrame(
+        [
+            {
+                "game_id": "game-1",
+                "date": "2026-05-19",
+                "home_team_idx": 5,
+                "away_team_idx": 8,
+            }
+        ]
+    )
+    second_game = pd.DataFrame(
+        [
+            {
+                "game_id": "game-2",
+                "date": "2026-05-19",
+                "home_team_idx": 20,
+                "away_team_idx": 26,
+            }
+        ]
+    )
+
+    first = fetch_injuries.fetch_injury_reports_for_games(
+        first_game,
+        report_date="2026-05-19",
+        cache_dir=tmp_path,
+    )
+    second = fetch_injuries.fetch_injury_reports_for_games(
+        second_game,
+        report_date="2026-05-19",
+        cache_dir=tmp_path,
+    )
+
+    cached = pd.read_parquet(tmp_path / "official_injury_report_2026-05-19.parquet")
+    assert first["game_id"].tolist() == ["game-1"]
+    assert second["game_id"].tolist() == ["game-2"]
+    assert fetch_calls == ["2026-05-19", "2026-05-19"]
+    assert set(cached["game_id"]) == {"game-1", "game-2"}
+
+
 def test_build_injury_features_overlays_live_reports(monkeypatch):
     """Submitted live reports override fallback features team by team."""
     reports = pd.DataFrame(
@@ -144,6 +221,35 @@ def test_build_injury_features_overlays_live_reports(monkeypatch):
     assert away_row["injury_data_available"] == 1
     assert away_row["players_questionable_count"] == 1
     assert home_row["injury_data_available"] == 0
+
+
+def test_build_injury_features_preserves_not_submitted_status(monkeypatch):
+    """Pending official reports should stay visible while fallback values fill features."""
+    reports = pd.DataFrame(
+        [
+            {
+                "game_id": "game-1",
+                "team_idx": 5,
+                "player_name": None,
+                "status": "NOT YET SUBMITTED",
+                "reason": None,
+                "report_submitted": False,
+                "report_generated_at": "2026-05-16T11:00:00-0400",
+                "source_url": "https://example.com/report.pdf",
+            }
+        ]
+    )
+    monkeypatch.setattr(
+        "src.features.injury_features.load_injury_reports",
+        lambda games=None, allow_live_fetch=False: reports,
+    )
+
+    features = build_injury_features(_sample_games(), _sample_logs(), allow_live_fetch=True)
+    pending_row = features[features["team_idx"] == 5].iloc[0]
+
+    assert pending_row["injury_data_available"] == 0
+    assert pending_row["report_status"] == "not_submitted"
+    assert pending_row["report_generated_at"] == "2026-05-16T11:00:00-0400"
 
 
 def test_score_articles_extracts_negative_injury_signal():
@@ -220,7 +326,7 @@ def test_context_summary_counts_live_and_partial_games():
         },
         {
             "context_details": {
-                "injury_mode": "fallback",
+                "injury_mode": "pending",
                 "news_mode": "live",
                 "injury_report_generated_at": None,
                 "latest_article_at": "2026-05-16T18:00:00Z",
@@ -232,6 +338,7 @@ def test_context_summary_counts_live_and_partial_games():
     summary = _context_summary_from_predictions(predictions)
 
     assert summary["injury_live_games"] == 1
+    assert summary["injury_pending_games"] == 1
     assert summary["news_live_games"] == 1
     assert summary["news_partial_games"] == 1
     assert summary["latest_news_article_at"] == "2026-05-16T18:00:00Z"

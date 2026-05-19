@@ -329,6 +329,10 @@ This command:
   injury/news coverage mode, and coverage metrics
 - leaves the current published slate untouched if publishing fails
 
+For injury context, `pending` means an official NBA injury-report snapshot was found, but one or
+both teams were still marked `NOT YET SUBMITTED`. That is different from `fallback`, where no
+official report row was available for the matchup.
+
 Automation is defined in `.github/workflows/publish_daily.yml`, which schedules the publish job daily at `15:05 UTC` and also supports `workflow_dispatch`. The scheduled job runs with `--nextgen-shadow`, so the deployed production forecast uses `nextgen_full_value_tuned_v2` while `Model Lab` receives fresh baseline comparison fields after each publish.
 
 ### 7. Launch the API Service

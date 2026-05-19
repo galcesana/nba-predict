@@ -139,6 +139,34 @@ def test_publish_manifest_records_promoted_nextgen_model(tmp_path):
     assert manifest["shadow_model_version"] == "nextgen_full_value_tuned_v2"
 
 
+def test_publish_observability_marks_pending_injury_reports(tmp_path):
+    """Official reports that exist but are not submitted should not look missing."""
+
+    def fake_generator(date_str: str, output_dir: Path, **_: object):
+        payload = _prediction_payload(date_str)
+        payload["context_summary"] = {
+            "injury_live_games": 0,
+            "injury_partial_games": 0,
+            "injury_pending_games": 1,
+            "news_live_games": 0,
+            "news_partial_games": 0,
+            "injury_coverage_rate": 0.0,
+            "news_coverage_rate": 0.0,
+        }
+        out_path = output_dir / f"{date_str}.json"
+        _write_json(out_path, payload)
+        return payload, out_path
+
+    manifest, _ = publish_today.publish_predictions_for_date(
+        "2026-01-15",
+        published_root=tmp_path / "published",
+        prediction_generator=fake_generator,
+    )
+
+    assert manifest["publish_observability"]["api_status"]["injury"] == "pending"
+    assert manifest["publish_observability"]["coverage_metrics"]["injury_pending_games"] == 1
+
+
 def test_publish_no_games_preserves_latest_and_writes_manifest(tmp_path):
     """No-games days update only the manifest and keep the previous latest file."""
     publish_root = tmp_path / "published"

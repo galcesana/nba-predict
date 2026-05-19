@@ -29,6 +29,7 @@ def _context_summary_from_predictions(predictions: list[dict]) -> dict[str, obje
         return {
             "injury_live_games": 0,
             "injury_partial_games": 0,
+            "injury_pending_games": 0,
             "news_live_games": 0,
             "news_partial_games": 0,
             "injury_coverage_rate": 0.0,
@@ -40,6 +41,7 @@ def _context_summary_from_predictions(predictions: list[dict]) -> dict[str, obje
 
     injury_live_games = 0
     injury_partial_games = 0
+    injury_pending_games = 0
     news_live_games = 0
     news_partial_games = 0
     latest_injury_report_at = None
@@ -54,6 +56,8 @@ def _context_summary_from_predictions(predictions: list[dict]) -> dict[str, obje
             injury_live_games += 1
         elif injury_mode == "partial":
             injury_partial_games += 1
+        elif injury_mode == "pending":
+            injury_pending_games += 1
         if news_mode == "live":
             news_live_games += 1
         elif news_mode == "partial":
@@ -85,6 +89,7 @@ def _context_summary_from_predictions(predictions: list[dict]) -> dict[str, obje
     return {
         "injury_live_games": injury_live_games,
         "injury_partial_games": injury_partial_games,
+        "injury_pending_games": injury_pending_games,
         "news_live_games": news_live_games,
         "news_partial_games": news_partial_games,
         "injury_coverage_rate": round(

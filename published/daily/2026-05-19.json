@@ -3,7 +3,7 @@
   "slate_type": "week",
   "window_start": "2026-05-19",
   "window_end": "2026-05-25",
-  "generated_at": "2026-05-19T14:34:10Z",
+  "generated_at": "2026-05-19T14:46:57Z",
   "model_version": "nextgen_full_value_tuned_v2",
   "shadow_model_version": "nextgen_full_value_tuned_v2",
   "dates_with_games": [
@@ -20,11 +20,12 @@
   "context_summary": {
     "injury_live_games": 0,
     "injury_partial_games": 0,
+    "injury_pending_games": 2,
     "news_live_games": 1,
     "news_partial_games": 1,
     "injury_coverage_rate": 0.0,
     "news_coverage_rate": 0.75,
-    "latest_injury_report_at": null,
+    "latest_injury_report_at": "2026-05-19T05:30:00-0400",
     "latest_news_article_at": "2026-05-18T21:35:27Z",
     "latest_news_collection_at": "2026-05-18T21:51:05Z"
   },
@@ -49,7 +50,7 @@
         "enriched_lightgbm_probability": 0.7005
       },
       "context_details": {
-        "injury_mode": "fallback",
+        "injury_mode": "pending",
         "news_mode": "partial",
         "home_injury_data_available": false,
         "away_injury_data_available": false,
@@ -59,7 +60,10 @@
         "away_estimated_value_missing": 0.0,
         "home_questionable": 0,
         "away_questionable": 0,
-        "injury_report_generated_at": null,
+        "home_injury_report_status": "not_submitted",
+        "away_injury_report_status": "not_submitted",
+        "injury_report_generated_at": "2026-05-18T16:30:00-0400",
+        "injury_report_source_url": "https://ak-static.cms.nba.com/referee/injury/Injury-Report_2026-05-18_04_30PM.pdf",
         "home_news_available": false,
         "away_news_available": true,
         "home_article_volume_24h": 0,
@@ -115,7 +119,7 @@
         "enriched_lightgbm_probability": 0.5284
       },
       "context_details": {
-        "injury_mode": "fallback",
+        "injury_mode": "pending",
         "news_mode": "live",
         "home_injury_data_available": false,
         "away_injury_data_available": false,
@@ -125,7 +129,10 @@
         "away_estimated_value_missing": 2.659000000000022,
         "home_questionable": 0,
         "away_questionable": 0,
-        "injury_report_generated_at": null,
+        "home_injury_report_status": "not_submitted",
+        "away_injury_report_status": "not_submitted",
+        "injury_report_generated_at": "2026-05-19T05:30:00-0400",
+        "injury_report_source_url": "https://ak-static.cms.nba.com/referee/injury/Injury-Report_2026-05-19_05_30AM.pdf",
         "home_news_available": true,
         "away_news_available": true,
         "home_article_volume_24h": 0,

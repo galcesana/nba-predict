@@ -357,6 +357,12 @@ class PredictionPipeline:
             away_news_available = bool(
                 away_news_row is not None and float(away_news_row.get("news_available", 0.0)) > 0
             )
+            home_injury_status = _metadata_text(home_injury_row, "report_status") or "fallback"
+            away_injury_status = _metadata_text(away_injury_row, "report_status") or "fallback"
+            injury_pending = "not_submitted" in {
+                home_injury_status,
+                away_injury_status,
+            }
             context_details.append(
                 {
                     "injury_mode": (
@@ -364,6 +370,8 @@ class PredictionPipeline:
                         if home_injury_available and away_injury_available
                         else "partial"
                         if home_injury_available or away_injury_available
+                        else "pending"
+                        if injury_pending
                         else "fallback"
                     ),
                     "news_mode": (
@@ -397,9 +405,16 @@ class PredictionPipeline:
                     "away_questionable": int(away_injury_row.get("players_questionable_count", 0))
                     if away_injury_row is not None
                     else 0,
+                    "home_injury_report_status": home_injury_status,
+                    "away_injury_report_status": away_injury_status,
                     "injury_report_generated_at": max(
                         _metadata_text(home_injury_row, "report_generated_at"),
                         _metadata_text(away_injury_row, "report_generated_at"),
+                    )
+                    or None,
+                    "injury_report_source_url": max(
+                        _metadata_text(home_injury_row, "report_source_url"),
+                        _metadata_text(away_injury_row, "report_source_url"),
                     )
                     or None,
                     "home_news_available": home_news_available,

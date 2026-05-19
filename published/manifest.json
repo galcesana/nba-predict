@@ -1,7 +1,7 @@
 {
   "status": "published",
   "target_date": "2026-05-19",
-  "attempted_at": "2026-05-19T14:33:42Z",
+  "attempted_at": "2026-05-19T14:46:30Z",
   "latest_available_date": "2026-05-19",
   "published_file": "published/daily/2026-05-19.json",
   "games_count": 2,
@@ -14,26 +14,27 @@
   "context_summary": {
     "injury_live_games": 0,
     "injury_partial_games": 0,
+    "injury_pending_games": 2,
     "news_live_games": 1,
     "news_partial_games": 1,
     "injury_coverage_rate": 0.0,
     "news_coverage_rate": 0.75,
-    "latest_injury_report_at": null,
+    "latest_injury_report_at": "2026-05-19T05:30:00-0400",
     "latest_news_article_at": "2026-05-18T21:35:27Z",
     "latest_news_collection_at": "2026-05-18T21:51:05Z"
   },
   "publish_observability": {
     "status": "success",
     "publish_status": "published",
-    "started_at": "2026-05-19T14:33:42Z",
-    "completed_at": "2026-05-19T14:34:10Z",
-    "duration_seconds": 27.867,
-    "prediction_runtime_seconds": 27.857,
+    "started_at": "2026-05-19T14:46:30Z",
+    "completed_at": "2026-05-19T14:46:57Z",
+    "duration_seconds": 27.397,
+    "prediction_runtime_seconds": 27.386,
     "timezone": "America/New_York",
     "forecast_window_days": 7,
     "api_status": {
       "schedule": "ok",
-      "injury": "fallback",
+      "injury": "pending",
       "news": "partial"
     },
     "coverage_metrics": {
@@ -43,6 +44,7 @@
       "news_coverage_rate": 0.75,
       "injury_live_games": 0,
       "injury_partial_games": 0,
+      "injury_pending_games": 2,
       "news_live_games": 1,
       "news_partial_games": 1
     }
