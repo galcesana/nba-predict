@@ -13,10 +13,11 @@
 ## Current Landed Slices
 
 - Player identity mapping, season roster metadata, and historical player-game log ingestion are in place.
-- `src/features/player_value_features.py` now builds leakage-safe pregame player-value rows from recent minutes, role stability, starter-rate proxies, fantasy production, and plus-minus context.
-- `src/features/projected_availability.py` now builds pregame player availability rows from recent-role baselines, official injury-report overrides, and a leakage-safe historical absence proxy that discounts rotation players who missed prior team games.
+- `src/features/player_value_features.py` now builds leakage-safe pregame player-value rows from recent minutes, role stability, starter-rate proxies, fantasy production, plus-minus context, expected usage proxy, value per minute, value confidence, and role tier.
+- `src/features/projected_availability.py` now builds pregame player availability rows from recent-role baselines, official injury-report overrides, and a leakage-safe historical absence proxy that discounts rotation players who missed prior team games. It now also emits availability-adjusted projected minutes, available value, and missing value per player.
 - `src/features/lineup_features.py` now turns projected availability into leakage-safe team-game rotation features such as starter continuity, top-8 continuity, bench depth quality, minutes concentration, and missing value.
-- `src/features/build_matchup_dataset.py` now writes a parallel `matchup_dataset_enriched.parquet` with player-value summaries and lineup-aware team features, while preserving the legacy base matchup dataset.
+- `src/features/build_matchup_dataset.py` now writes a parallel `matchup_dataset_enriched.parquet` with player-value summaries, projected minutes/missing-value confidence summaries, and lineup-aware team features, while preserving the legacy base matchup dataset.
+- `docs/player_lineup_availability_upgrade_plan.md` captures the detailed upgrade plan for making the model understand tonight's actual roster and lineup quality.
 - `src/models/run_enriched_experiments.py` now runs a round-two leaderboard over the enriched matchup dataset, including M1 family ablations, optional LightGBM/CatBoost slots, Platt-calibrated tree variants, and playoff/context slice evaluation.
 - `src/models/run_production_showdown.py` now compares the saved enriched benchmark winners against the shipped neural full-fusion and production ensemble artifacts on the same held-out split.
 - `src/models/run_nextgen_ensemble.py` now trains enriched CatBoost/LightGBM input models and evaluates expanded meta-ensembles that add those probabilities to the current `neural + xgboost + elo` stack.
@@ -33,5 +34,5 @@
 
 ## Next Slice
 
-- Monitor scheduled `--nextgen-shadow` review slates in the dashboard `Model Lab` before making the candidate the default final probability.
-- Keep monitoring playoff, calibration, and missing-player slices; longer-term work should replace the historical absence proxy with richer official inactive history when available.
+- Rebuild the M1 feature stack and rerun `python -m src.models.run_enriched_experiments` to measure the new value-confidence and projected-minutes features.
+- After experiments complete, rerun `python -m src.models.run_nextgen_ensemble` and `python -m src.models.run_nextgen_validation` before any promotion decision.

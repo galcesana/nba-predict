@@ -21,7 +21,7 @@ from src.utils.paths import PROCESSED_DIR
 
 logger = logging.getLogger(__name__)
 
-ENRICHED_FEATURE_STACK_VERSION = "player_lineup_absence_proxy_v1"
+ENRICHED_FEATURE_STACK_VERSION = "player_lineup_value_confidence_v1"
 
 # Key features to compute home-minus-away differences for
 DIFF_FEATURES = [
@@ -44,6 +44,11 @@ PROJECTED_VALUE_SUMMARY_COLS = [
     "projected_top8_value_missing",
     "projected_top8_availability_mean",
     "projected_top8_confidence_mean",
+    "projected_minutes_available",
+    "projected_minutes_missing",
+    "projected_top8_minutes_available",
+    "projected_top8_minutes_missing",
+    "projected_top8_value_confidence_mean",
 ]
 
 ENRICHED_DIFF_FEATURES = [
@@ -162,6 +167,20 @@ def summarize_projected_player_values(
         ).copy()
         ordered["effective_value"] = ordered[value_column] * ordered["availability_score"]
         ordered["missing_value"] = ordered[value_column] * (1.0 - ordered["availability_score"])
+        ordered["expected_minutes"] = pd.to_numeric(
+            ordered.get("expected_minutes", 0.0),
+            errors="coerce",
+        ).fillna(0.0)
+        ordered["projected_minutes"] = (
+            ordered["expected_minutes"] * ordered["availability_score"]
+        )
+        ordered["missing_minutes"] = (
+            ordered["expected_minutes"] - ordered["projected_minutes"]
+        ).clip(lower=0.0)
+        ordered["value_confidence"] = pd.to_numeric(
+            ordered.get("value_confidence", ordered["projection_confidence"]),
+            errors="coerce",
+        ).fillna(0.0)
 
         starters = ordered.head(starter_size)
         rotation = ordered.head(rotation_size)
@@ -177,6 +196,13 @@ def summarize_projected_player_values(
                 "projected_top8_value_missing": float(rotation["missing_value"].sum()),
                 "projected_top8_availability_mean": float(rotation["availability_score"].mean()),
                 "projected_top8_confidence_mean": float(rotation["projection_confidence"].mean()),
+                "projected_minutes_available": float(ordered["projected_minutes"].sum()),
+                "projected_minutes_missing": float(ordered["missing_minutes"].sum()),
+                "projected_top8_minutes_available": float(rotation["projected_minutes"].sum()),
+                "projected_top8_minutes_missing": float(rotation["missing_minutes"].sum()),
+                "projected_top8_value_confidence_mean": float(
+                    rotation["value_confidence"].mean()
+                ),
             }
         )
 

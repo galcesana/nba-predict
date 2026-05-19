@@ -137,6 +137,11 @@ def test_build_player_value_features_uses_only_prior_games():
     assert mitchell["recent_games_played"] == 2
     assert round(mitchell["recent_minutes_avg"], 2) == 35.00
     assert round(mitchell["last_game_minutes"], 2) == 34.00
+    assert mitchell["recent_usage_proxy"] > 0
+    assert mitchell["recent_value_per_minute"] > 0
+    assert mitchell["player_value_model_version"] == (
+        player_value_features.PLAYER_VALUE_FEATURE_VERSION
+    )
 
 
 def test_build_player_value_features_capture_role_stability():
@@ -154,6 +159,7 @@ def test_build_player_value_features_capture_role_stability():
     assert mitchell["recent_role_stability"] == 1.0
     assert depth_wing["recent_role_stability"] == 0.5
     assert mitchell["recent_starter_rate"] > depth_wing["recent_starter_rate"]
+    assert mitchell["value_confidence"] > depth_wing["value_confidence"]
 
 
 def test_build_player_value_features_rank_top_players_above_depth():
@@ -169,3 +175,4 @@ def test_build_player_value_features_rank_top_players_above_depth():
 
     assert cavs.iloc[0]["player_id"] == 101
     assert cavs.iloc[0]["player_value_score"] > cavs.iloc[-1]["player_value_score"]
+    assert cavs.iloc[0]["role_tier"] == 3

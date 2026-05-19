@@ -350,6 +350,12 @@ Current output fields include:
 - `report_reason`
 - `recent_games_played`
 - `expected_minutes`
+- `expected_usage_proxy`
+- `value_confidence`
+- `role_tier`
+- `projected_minutes`
+- `projected_value_available`
+- `projected_value_missing`
 - `player_value_score`
 - `role_score`
 
@@ -378,7 +384,8 @@ Current behavior:
 
 - builds one pregame player-value row per candidate rotation player and team-game
 - uses only prior games before the target date
-- estimates role/value from recent minutes, minutes share, fantasy production, plus-minus, starter-rate proxy, and role stability
+- estimates role/value from recent minutes, minutes share, fantasy production, plus-minus, starter-rate proxy, role stability, usage proxy, and value per minute
+- emits a value-confidence score and role tier for downstream availability/lineup aggregation
 - ranks players within each team-game by a simple composite `player_value_score`
 
 Current output fields include:
@@ -387,10 +394,15 @@ Current output fields include:
 - `recent_minutes_share`
 - `recent_fantasy_points_avg`
 - `recent_plus_minus_avg`
+- `recent_usage_proxy`
+- `recent_value_per_minute`
 - `recent_starter_rate`
 - `recent_role_stability`
+- `value_confidence`
 - `player_value_score`
 - `rotation_rank`
+- `role_tier`
+- `player_value_model_version`
 
 This layer is still heuristic, but it is materially richer than treating all missing players as equal.
 
@@ -406,11 +418,13 @@ Current behavior:
 - now also writes a parallel `matchup_dataset_enriched.parquet`
 - merges in home/away lineup features and projected player-value summaries
 - computes diff columns for the new player-aware team aggregates
+- includes projected available/missing minutes and top-8 value-confidence summaries
 
 Important note:
 
-- the deployed models do not use this enriched dataset yet
-- it exists specifically to support the next model-experiment phase without breaking the current production stack
+- production probabilities still use `ensemble_v1`
+- the next-gen shadow path uses enriched player/lineup rows for candidate CatBoost and LightGBM inputs
+- enriched rows support model experimentation without breaking the current production stack
 
 ---
 

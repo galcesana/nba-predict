@@ -171,6 +171,16 @@ def test_build_projected_availability_keeps_recent_role_baseline_without_reports
     cavs = projected[projected["team_idx"] == 5]
     assert set(cavs["player_id"]) == {101, 102, 103}
     assert cavs["availability_score"].eq(1.0).all()
+    assert {
+        "expected_usage_proxy",
+        "value_confidence",
+        "role_tier",
+        "projected_minutes",
+        "projected_value_available",
+        "projected_value_missing",
+    }.issubset(projected.columns)
+    assert cavs["projected_minutes"].gt(0).any()
+    assert cavs["projected_value_available"].gt(0).any()
 
 
 def test_build_projected_availability_marks_prior_absence_without_target_leakage():
@@ -246,6 +256,8 @@ def test_build_projected_availability_marks_prior_absence_without_target_leakage
     assert absent_player["status"] == "PROJECTED_ABSENT"
     assert absent_player["source_type"] == "historical_absence_proxy"
     assert absent_player["availability_score"] < 1.0
+    assert absent_player["projected_value_missing"] > 0
+    assert absent_player["projected_minutes"] < absent_player["expected_minutes"]
     assert absent_player["availability_model_version"] == (
         projected_availability.PROJECTED_AVAILABILITY_VERSION
     )
@@ -311,3 +323,5 @@ def test_build_projected_availability_adds_report_only_players_with_role_context
     assert garland["recent_games_played"] == 1
     assert garland["expected_minutes"] > 0
     assert garland["role_score"] > 0
+    assert garland["projected_value_available"] == 0.0
+    assert garland["projected_value_missing"] > 0

@@ -14,7 +14,7 @@ from src.utils.paths import PROCESSED_DIR, RAW_DIR
 
 logger = logging.getLogger(__name__)
 
-PROJECTED_AVAILABILITY_VERSION = "historical_absence_proxy_v1"
+PROJECTED_AVAILABILITY_VERSION = "availability_value_confidence_v1"
 
 STATUS_TO_AVAILABILITY = {
     "AVAILABLE": 1.0,
@@ -59,6 +59,12 @@ AVAILABILITY_COLUMNS = [
     "report_reason",
     "recent_games_played",
     "expected_minutes",
+    "expected_usage_proxy",
+    "value_confidence",
+    "role_tier",
+    "projected_minutes",
+    "projected_value_available",
+    "projected_value_missing",
     "player_value_score",
     "minutes_share_recent",
     "starter_rate_recent",
@@ -326,6 +332,9 @@ def _fallback_role_snapshot(
         return {
             "recent_games_played": 0,
             "expected_minutes": 0.0,
+            "expected_usage_proxy": 0.0,
+            "value_confidence": 0.0,
+            "role_tier": 0,
             "player_value_score": 0.0,
             "minutes_share_recent": 0.0,
             "starter_rate_recent": 0.0,
@@ -346,14 +355,38 @@ def _fallback_role_snapshot(
         (recent_history["minutes"] * recent_history["recency_weight"]).sum()
     )
     avg_fantasy_points = float(recent_history["fantasy_points"].mean())
+    avg_points = (
+        float(recent_history["points"].mean()) if "points" in recent_history.columns else 0.0
+    )
+    avg_assists = (
+        float(recent_history["assists"].mean()) if "assists" in recent_history.columns else 0.0
+    )
+    avg_rebounds = (
+        float(recent_history["rebounds"].mean()) if "rebounds" in recent_history.columns else 0.0
+    )
+    expected_usage_proxy = avg_points + 1.5 * avg_assists + 1.2 * avg_rebounds
     recent_games_played = int(recent_history["game_id"].nunique())
+    expected_minutes = float(recent_history["minutes"].mean())
     projection_confidence = round(
         0.25 + 0.65 * min(recent_games_played, recent_team_games) / recent_team_games,
         4,
     )
+    value_confidence = round(
+        min(
+            1.0,
+            0.25
+            + 0.45 * min(recent_games_played, recent_team_games) / max(recent_team_games, 1)
+            + 0.30 * min(expected_minutes / 30.0, 1.0),
+        ),
+        4,
+    )
+    role_tier = 3 if expected_minutes >= 28 else 2 if expected_minutes >= 16 else 1
     return {
         "recent_games_played": recent_games_played,
-        "expected_minutes": float(recent_history["minutes"].mean()),
+        "expected_minutes": expected_minutes,
+        "expected_usage_proxy": float(expected_usage_proxy),
+        "value_confidence": value_confidence,
+        "role_tier": role_tier,
         "player_value_score": weighted_minutes + 0.15 * avg_fantasy_points,
         "minutes_share_recent": float(
             recent_history["minutes"].sum() / max(recent_team_games * 240, 1)
@@ -393,6 +426,9 @@ def _enrich_resolved_report_rows(
                     {
                         "recent_games_played": int(snapshot["recent_games_played"]),
                         "expected_minutes": float(snapshot["recent_minutes_avg"]),
+                        "expected_usage_proxy": float(snapshot.get("recent_usage_proxy", 0.0)),
+                        "value_confidence": float(snapshot.get("value_confidence", 0.0)),
+                        "role_tier": _coerce_int(snapshot.get("role_tier"), 0),
                         "player_value_score": float(snapshot["player_value_score"]),
                         "minutes_share_recent": float(snapshot["recent_minutes_share"]),
                         "starter_rate_recent": float(snapshot["recent_starter_rate"]),
@@ -418,6 +454,9 @@ def _enrich_resolved_report_rows(
     for column in [
         "recent_games_played",
         "expected_minutes",
+        "expected_usage_proxy",
+        "value_confidence",
+        "role_tier",
         "player_value_score",
         "minutes_share_recent",
         "starter_rate_recent",
@@ -502,6 +541,9 @@ def resolve_injury_report_players(
                 "recent_games_played": None,
                 "role_score": None,
                 "expected_minutes": None,
+                "expected_usage_proxy": None,
+                "value_confidence": None,
+                "role_tier": None,
             }
         )
 
@@ -599,6 +641,9 @@ def build_projected_availability(
                         "report_reason": None,
                         "recent_games_played": int(player["recent_games_played"]),
                         "expected_minutes": float(player["recent_minutes_avg"]),
+                        "expected_usage_proxy": float(player.get("recent_usage_proxy", 0.0)),
+                        "value_confidence": float(player.get("value_confidence", 0.0)),
+                        "role_tier": _coerce_int(player.get("role_tier"), 0),
                         "player_value_score": float(player["player_value_score"]),
                         "minutes_share_recent": float(player["recent_minutes_share"]),
                         "starter_rate_recent": float(player["recent_starter_rate"]),
@@ -649,6 +694,13 @@ def build_projected_availability(
                     "report_reason": None,
                     "recent_games_played": int(player["recent_games_played"]),
                     "expected_minutes": float(player["avg_minutes"]),
+                    "expected_usage_proxy": float(player.get("avg_fantasy_points", 0.0)),
+                    "value_confidence": float(player["projection_confidence"]),
+                    "role_tier": 3
+                    if float(player["avg_minutes"]) >= 28
+                    else 2
+                    if float(player["avg_minutes"]) >= 16
+                    else 1,
                     "player_value_score": float(player["role_score"]),
                     "minutes_share_recent": 0.0,
                     "starter_rate_recent": 0.0,
@@ -722,6 +774,11 @@ def build_projected_availability(
                 ].copy()
                 if not new_rows.empty:
                     new_rows["expected_minutes"] = new_rows["expected_minutes"].fillna(0.0)
+                    new_rows["expected_usage_proxy"] = new_rows[
+                        "expected_usage_proxy"
+                    ].fillna(0.0)
+                    new_rows["value_confidence"] = new_rows["value_confidence"].fillna(0.0)
+                    new_rows["role_tier"] = new_rows["role_tier"].fillna(0)
                     new_rows["player_value_score"] = new_rows["player_value_score"].fillna(0.0)
                     new_rows["minutes_share_recent"] = new_rows["minutes_share_recent"].fillna(0.0)
                     new_rows["starter_rate_recent"] = new_rows["starter_rate_recent"].fillna(0.0)
@@ -743,6 +800,15 @@ def build_projected_availability(
         availability["expected_minutes"] = pd.to_numeric(
             availability["expected_minutes"], errors="coerce"
         ).fillna(0.0)
+        availability["expected_usage_proxy"] = pd.to_numeric(
+            availability["expected_usage_proxy"], errors="coerce"
+        ).fillna(0.0)
+        availability["value_confidence"] = pd.to_numeric(
+            availability["value_confidence"], errors="coerce"
+        ).fillna(availability["projection_confidence"]).fillna(0.0)
+        availability["role_tier"] = pd.to_numeric(
+            availability["role_tier"], errors="coerce"
+        ).fillna(0).astype(int)
         availability["player_value_score"] = pd.to_numeric(
             availability["player_value_score"], errors="coerce"
         ).fillna(0.0)
@@ -765,6 +831,15 @@ def build_projected_availability(
         availability["recent_games_played"] = pd.to_numeric(
             availability["recent_games_played"], errors="coerce"
         ).fillna(0).astype(int)
+        availability["projected_minutes"] = (
+            availability["expected_minutes"] * availability["availability_score"]
+        ).round(4)
+        availability["projected_value_available"] = (
+            availability["player_value_score"] * availability["availability_score"]
+        ).round(4)
+        availability["projected_value_missing"] = (
+            availability["player_value_score"] * (1.0 - availability["availability_score"])
+        ).round(4)
         availability = availability.sort_values(
             ["date", "game_id", "team_idx", "role_score", "player_id"],
             ascending=[True, True, True, False, True],

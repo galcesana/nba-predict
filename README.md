@@ -152,8 +152,9 @@ These write:
 - `data/processed/lineup_features/lineup_features.parquet`
 - `data/processed/matchup_rows/matchup_dataset_enriched.parquet`
 
-They are not yet part of the deployed model's main inference stack, but they are the active
-foundation for the next-generation roadmap.
+They are used by the next-gen shadow inference path and are the active foundation for the
+next-generation roadmap. Production probabilities still remain on `ensemble_v1` until promotion
+gates justify switching the final model.
 
 To benchmark the enriched representation itself, run:
 
@@ -170,10 +171,11 @@ It compares the legacy matchup rows against the enriched M1 variants, includes f
 ablations, and will also score optional `LightGBM` / `CatBoost` leaderboard entries when those
 libraries are installed in the environment.
 
-The projected-availability layer now includes `historical_absence_proxy_v1`, a conservative
-pregame proxy that discounts rotation players who missed prior team games. It uses only games before
-the target date, so it creates measurable missing-player backtest coverage without peeking at the
-target game's box score.
+The projected-availability layer now includes a conservative historical absence proxy that discounts
+rotation players who missed prior team games. It uses only games before the target date, so it
+creates measurable missing-player backtest coverage without peeking at the target game's box score.
+The latest player/availability feature slice also adds expected usage, value confidence, role tier,
+availability-adjusted projected minutes, and projected available/missing player value.
 
 To compare those enriched winners against the shipped neural + ensemble production stack without
 retraining everything, run:

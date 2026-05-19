@@ -21,7 +21,10 @@ from src.features.build_matchup_dataset import (
     build_matchup_dataset,
 )
 from src.features.lineup_features import LINEUP_FEATURE_VERSION, build_lineup_features
-from src.features.player_value_features import build_player_value_features
+from src.features.player_value_features import (
+    PLAYER_VALUE_FEATURE_VERSION,
+    build_player_value_features,
+)
 from src.features.projected_availability import (
     PROJECTED_AVAILABILITY_VERSION,
     build_projected_availability,
@@ -280,6 +283,9 @@ def ensure_experiment_datasets() -> tuple[pd.DataFrame, pd.DataFrame]:
         player_value_path,
         games,
         label="player value features",
+        required_column_values={
+            "player_value_model_version": PLAYER_VALUE_FEATURE_VERSION,
+        },
     )
     player_value_rebuilt = False
     if player_value_features is None:

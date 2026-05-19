@@ -12,6 +12,8 @@ from src.utils.paths import PROCESSED_DIR
 
 logger = logging.getLogger(__name__)
 
+PLAYER_VALUE_FEATURE_VERSION = "value_confidence_usage_v1"
+
 PLAYER_VALUE_FEATURE_COLUMNS = [
     "game_id",
     "date",
@@ -28,12 +30,17 @@ PLAYER_VALUE_FEATURE_COLUMNS = [
     "recent_points_avg",
     "recent_assists_avg",
     "recent_rebounds_avg",
+    "recent_usage_proxy",
+    "recent_value_per_minute",
     "recent_starter_rate",
     "recent_role_stability",
+    "value_confidence",
     "last_game_minutes",
     "last_game_date",
     "player_value_score",
     "rotation_rank",
+    "role_tier",
+    "player_value_model_version",
 ]
 
 STAT_COLUMNS = [
@@ -170,6 +177,12 @@ def _build_team_player_value_rows(
     recent_points_avg = _rolling_mean_from_sum(recent_points_total, recent_games_played)
     recent_assists_avg = _rolling_mean_from_sum(recent_assists_total, recent_games_played)
     recent_rebounds_avg = _rolling_mean_from_sum(recent_rebounds_total, recent_games_played)
+    recent_usage_proxy = (
+        recent_points_avg + 1.5 * recent_assists_avg + 1.2 * recent_rebounds_avg
+    ).round(4)
+    recent_value_per_minute = recent_fantasy_points_avg.div(
+        recent_minutes_avg.replace(0, np.nan)
+    ).fillna(0.0)
 
     prior_game_counts_frame = pd.DataFrame(
         np.repeat(prior_game_counts.to_numpy()[:, None], len(player_ids), axis=1),
@@ -190,8 +203,15 @@ def _build_team_player_value_rows(
         + 20.0 * recent_minutes_share
         + 8.0 * recent_starter_rate
         + 6.0 * recent_role_stability
+        + 0.18 * recent_usage_proxy
+        + 2.5 * recent_value_per_minute
         + 0.15 * recent_plus_minus_avg
     ).round(4)
+    value_confidence = (
+        0.45 * recent_role_stability
+        + 0.35 * recent_games_played.div(prior_game_counts_frame).fillna(0.0)
+        + 0.20 * (recent_minutes_share * 5.0).clip(lower=0.0, upper=1.0)
+    ).clip(lower=0.0, upper=1.0)
 
     last_game_minutes = minutes.replace(0.0, np.nan).ffill().shift(1)
     expanded_dates = pd.Index([*game_dates.to_list(), pd.NaT], dtype="datetime64[ns]")
@@ -212,8 +232,11 @@ def _build_team_player_value_rows(
             recent_points_avg.stack().rename("recent_points_avg"),
             recent_assists_avg.stack().rename("recent_assists_avg"),
             recent_rebounds_avg.stack().rename("recent_rebounds_avg"),
+            recent_usage_proxy.stack().rename("recent_usage_proxy"),
+            recent_value_per_minute.stack().rename("recent_value_per_minute"),
             recent_starter_rate.stack().rename("recent_starter_rate"),
             recent_role_stability.stack().rename("recent_role_stability"),
+            value_confidence.stack().rename("value_confidence"),
             last_game_minutes.stack(future_stack=True).rename("last_game_minutes"),
             last_game_date.stack(future_stack=True).rename("last_game_date"),
             player_value_score.stack().rename("player_value_score"),
@@ -252,6 +275,14 @@ def _build_team_player_value_rows(
     )
     long_frame["rotation_rank"] = long_frame.groupby("game_id").cumcount() + 1
     long_frame = long_frame[long_frame["rotation_rank"] <= max_players].copy()
+    long_frame["role_tier"] = 1
+    long_frame.loc[long_frame["rotation_rank"] <= 8, "role_tier"] = 2
+    long_frame.loc[
+        (long_frame["rotation_rank"] <= starter_size)
+        | (long_frame["recent_starter_rate"] >= 0.5),
+        "role_tier",
+    ] = 3
+    long_frame["player_value_model_version"] = PLAYER_VALUE_FEATURE_VERSION
 
     long_frame["last_game_date"] = pd.to_datetime(long_frame["last_game_date"])
     return long_frame[PLAYER_VALUE_FEATURE_COLUMNS].reset_index(drop=True)
