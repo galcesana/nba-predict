@@ -38,4 +38,9 @@ jobs:
         run: python -m ruff check .
 
       - name: Test
-        run: python -m pytest tests -q
+        run: >
+          python -m pytest tests -q
+          --ignore=tests/test_baselines.py
+          --ignore=tests/test_data_foundation.py
+          --ignore=tests/test_features.py
+          --ignore=tests/test_no_leakage.py

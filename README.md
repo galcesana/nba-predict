@@ -410,9 +410,14 @@ python -m ruff check .
 python -m pytest tests -q
 ```
 
-GitHub Actions also runs those same Ruff and pytest checks on pushes to `main`, pull requests, and
-manual dispatches. Publish-only commits under `published/**` are intentionally ignored so the
-scheduled forecast bot can refresh deployment JSONs without burning a full CI run.
+GitHub Actions also runs Ruff and the clean-checkout pytest suite on pushes to `main`, pull
+requests, and manual dispatches. Publish-only commits under `published/**` are intentionally ignored
+so the scheduled forecast bot can refresh deployment JSONs without burning a full CI run.
+
+The CI pytest command uses the clean-checkout suite and skips tests that require local generated
+artifacts such as raw NBA cache parquet files, baseline prediction parquet files, and full matchup
+dataset parquet files. Run `python -m pytest tests -q` locally after data/model generation for the
+full validation pass.
 
 ---
 

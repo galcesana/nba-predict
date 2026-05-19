@@ -562,9 +562,13 @@ tracked deployment slates refresh both the promoted production forecast and the 
 It runs twice per day at `15:05 UTC` and `22:05 UTC`; the later refresh is designed to capture
 more submitted official injury-report rows before the evening games.
 
-The separate CI workflow runs `python -m ruff check .` and `python -m pytest tests -q` on code
+The separate CI workflow runs `python -m ruff check .` and the clean-checkout pytest suite on code
 pushes, pull requests, and manual dispatches. It ignores publish-only changes under `published/**`
-so routine forecast JSON commits do not trigger full quality runs.
+so routine forecast JSON commits do not trigger quality runs.
+
+CI intentionally ignores older artifact-backed tests that require local raw caches, baseline
+prediction parquet files, or full matchup parquet outputs. Those remain part of the full local
+validation suite after generated artifacts exist.
 
 The Streamlit dashboard exposes those outputs in `Model Lab`, a dedicated review page that shows
 the previous `ensemble_v1` baseline vs promoted next-gen home-win probabilities, deltas, pick flips,

@@ -237,12 +237,16 @@ class TestProjectFiles:
         assert "python -m src.app.publish_today --nextgen-shadow" in text
 
     def test_ci_workflow_runs_lint_and_tests(self):
-        """CI should enforce the current Ruff and pytest baseline."""
+        """CI should enforce lint plus clean-checkout tests."""
         workflow = _project_root() / ".github" / "workflows" / "ci.yml"
         text = workflow.read_text(encoding="utf-8")
 
         assert "python -m ruff check ." in text
         assert "python -m pytest tests -q" in text
+        assert "--ignore=tests/test_baselines.py" in text
+        assert "--ignore=tests/test_data_foundation.py" in text
+        assert "--ignore=tests/test_features.py" in text
+        assert "--ignore=tests/test_no_leakage.py" in text
         assert "pull_request:" in text
         assert "workflow_dispatch:" in text
         assert "published/**" in text
