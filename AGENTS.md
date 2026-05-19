@@ -21,7 +21,7 @@ NBA game outcome prediction system that outputs **calibrated win probabilities**
 - **Phase 10 complete** - live publishing layer implemented with tracked published forecasts, dashboard source precedence, and GitHub Actions automation, 129 tests passing
 - **Phase 11 complete** - live context ingestion added for official injury reports and team news, weekly playoff publishing hardened, 140 tests passing
 - **Phase 12 complete** - FastAPI service layer implemented for health, manifest, weekly forecast, game detail, and metrics access, 148 tests passing
-- **Active milestone** - M1 Player + Lineup Foundation in progress; player mapping, season roster metadata, historical player-log ingestion, value-confidence player features, projected availability, availability-adjusted minutes/value, lineup/rotation features, enriched matchup rows, next-gen ensemble experiments, a promotion gate, playoff-capable ingestion, `historical_absence_proxy_v1` missing-player coverage, opt-in `nextgen_full_value_tuned_v2` shadow inference, and a dashboard `Model Lab` review page are added. Current gate status: `ready` for shadow/live promotion review with 166 held-out playoff games and 2,602 held-out missing-player-impact games. Latest value-tuned next-gen candidate: `nextgen_full / raw` at 0.6159 log loss and 65.4% accuracy.
+- **Active milestone** - M1 Player + Lineup Foundation in progress; player mapping, season roster metadata, historical player-log ingestion, value-confidence player features, projected availability, availability-adjusted minutes/value, lineup/rotation features, enriched matchup rows, next-gen ensemble experiments, a promotion gate, playoff-capable ingestion, `historical_absence_proxy_v1` missing-player coverage, promoted `nextgen_full_value_tuned_v2` production inference, and a dashboard `Model Lab` review page are added. Current production model: `nextgen_full_value_tuned_v2`, with `ensemble_v1_probability` retained as the rollback/baseline comparison. Latest value-tuned candidate: `nextgen_full / raw` at 0.6159 log loss and 65.4% accuracy, validated with 166 held-out playoff games and 2,602 held-out missing-player-impact games.
 - See `docs/phases/all_phases.md` for the full phase tracker
 - See `docs/current_system_implementation_summary.md` for the current implementation reference
 - See `docs/next_generation_model_roadmap.md` for the active forward roadmap
@@ -117,7 +117,7 @@ make train-baseline              # train Elo + XGBoost
 make train-model                 # train neural model
 make predict-today               # generate today's predictions
 python -m src.app.publish_today  # publish deployment forecast JSONs
-python -m src.app.publish_today --nextgen-shadow  # publish production plus shadow review fields
+python -m src.app.publish_today --nextgen-shadow  # publish production plus comparison fields
 streamlit run streamlit_app.py   # launch dashboard
 make serve-api                   # launch FastAPI service
 python -m src.data.fetch_player_logs       # build player-game logs for M1
@@ -127,8 +127,8 @@ python -m src.features.lineup_features         # build lineup/rotation feature r
 make build-m1-features                         # refresh the full M1 feature stack
 python -m src.models.run_enriched_experiments  # benchmark enriched feature families
 python -m src.models.run_nextgen_ensemble      # train expanded next-gen ensemble
-python -m src.models.run_nextgen_validation    # run promotion gate before live promotion
-python -m src.app.predict_today --nextgen-shadow  # emit candidate probabilities beside production
+python -m src.models.run_nextgen_validation    # run promotion gate before model changes
+python -m src.app.predict_today --nextgen-shadow  # emit comparison fields beside production
 ```
 
 `configs/data_sources.yaml` includes `Regular Season` and `Playoffs`; the rebuilt promotion gate now
@@ -137,7 +137,7 @@ proxy that discounts rotation players who missed prior team games, and enriched 
 so those feature changes force rebuilds.
 
 The scheduled GitHub Actions publisher runs `python -m src.app.publish_today --nextgen-shadow`, so
-the deployed slate refreshes production probabilities and `Model Lab` shadow comparisons together.
+the deployed slate refreshes production probabilities and `Model Lab` baseline comparisons together.
 
 ## Architecture (Target)
 

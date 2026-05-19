@@ -189,7 +189,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--nextgen-shadow",
         action="store_true",
-        help="Publish production probabilities with next-gen candidate outputs for shadow review.",
+        help="Include next-gen comparison fields in the published payload.",
     )
     args = parser.parse_args(argv)
 

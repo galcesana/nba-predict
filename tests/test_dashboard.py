@@ -131,6 +131,37 @@ def test_shadow_model_frame_compares_candidate_outputs():
     assert not bool(row["pick_changed"])
 
 
+def test_shadow_model_frame_uses_legacy_baseline_after_promotion():
+    """After promotion, Model Lab should compare next-gen against ensemble_v1."""
+    payload = _payload_for_date("2026-05-16")
+    payload["model_version"] = "nextgen_full_value_tuned_v2"
+    payload["shadow_model_version"] = "nextgen_full_value_tuned_v2"
+    prediction = payload["predictions"][0]
+    prediction["home_win_probability"] = 0.64
+    prediction["away_win_probability"] = 0.36
+    prediction["component_outputs"] = {
+        "ensemble_v1_probability": 0.61,
+        "final_probability": 0.64,
+        "nextgen_shadow_probability": 0.64,
+        "nextgen_shadow_calibrated_probability": 0.63,
+        "enriched_catboost_probability": 0.66,
+        "enriched_lightgbm_probability": 0.62,
+    }
+    prediction["context_details"]["nextgen_shadow_mode"] = "promoted"
+    prediction["context_details"]["nextgen_shadow_model_version"] = (
+        "nextgen_full_value_tuned_v2"
+    )
+    prediction["context_details"]["nextgen_shadow_delta"] = 0.03
+
+    frame = dashboard_data.build_shadow_model_frame(payload)
+
+    assert len(frame) == 1
+    row = frame.iloc[0]
+    assert row["production_probability"] == pytest.approx(0.61)
+    assert row["shadow_probability"] == pytest.approx(0.64)
+    assert row["shadow_mode"] == "promoted"
+
+
 def test_streamlit_shadow_frame_fallback_handles_stale_data_module(monkeypatch):
     """Model Lab should render if Streamlit Cloud keeps an older dashboard_data module."""
     payload = _payload_for_date("2026-05-16")

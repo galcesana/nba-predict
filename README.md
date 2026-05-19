@@ -152,9 +152,9 @@ These write:
 - `data/processed/lineup_features/lineup_features.parquet`
 - `data/processed/matchup_rows/matchup_dataset_enriched.parquet`
 
-They are used by the next-gen shadow inference path and are the active foundation for the
-next-generation roadmap. Production probabilities still remain on `ensemble_v1` until promotion
-gates justify switching the final model.
+They are used by the promoted next-gen inference path and are the active foundation for the
+next-generation roadmap. The previous `ensemble_v1` probability is still emitted as a baseline
+component so live predictions can be compared and rolled back if needed.
 
 To benchmark the enriched representation itself, run:
 
@@ -208,7 +208,7 @@ That writes tracked reports to:
 Generated next-gen model artifacts are stored under `models/ensembles_nextgen/` and are ignored by
 git.
 
-Before promoting that candidate into live inference, run the promotion gate:
+Before refreshing or changing the promoted live candidate, run the promotion gate:
 
 ```bash
 python -m src.models.run_nextgen_validation
@@ -219,9 +219,9 @@ That writes:
 - `docs/experiments/nextgen_promotion_gate.json`
 - `docs/experiments/nextgen_promotion_gate.md`
 
-The gate scores production vs next-gen across regular-season, per-season, schedule-stress, context-confidence,
-playoff, and missing-player slices. The latest rebuilt gate is `ready` for shadow/live promotion
-review, with 166 held-out playoff games and 2,602 held-out missing-player-impact games.
+The gate scores `ensemble_v1` vs next-gen across regular-season, per-season, schedule-stress,
+context-confidence, playoff, and missing-player slices. The latest rebuilt gate passed, with
+166 held-out playoff games and 2,602 held-out missing-player-impact games.
 
 If `games.parquet` changes after a new fetch, or if the enriched feature-stack version changes, the
 enriched experiment runner checks cached matchup/player artifacts and rebuilds stale caches automatically.
@@ -240,11 +240,11 @@ Or run the script directly for a specific date:
 python -m src.app.predict_today --date 2026-05-16
 ```
 
-To run a safe next-gen shadow comparison, keep production probabilities unchanged while adding
-candidate probabilities to `component_outputs`:
+To force the previous production stack for a rollback comparison, set:
 
-```bash
-python -m src.app.predict_today --date 2026-05-16 --nextgen-shadow
+```powershell
+$env:NBA_PREDICT_PRODUCTION_MODEL="ensemble"
+python -m src.app.predict_today --date 2026-05-16
 ```
 
 This writes to:
@@ -307,7 +307,7 @@ Or publish a specific date manually:
 python -m src.app.publish_today --date 2024-01-15
 ```
 
-For a deployment review slate with next-gen candidate probabilities alongside production:
+For an explicit comparison-field publish:
 
 ```bash
 python -m src.app.publish_today --nextgen-shadow
@@ -318,13 +318,14 @@ This command:
 - resolves the target date in `America/New_York` by default
 - runs inference in a temporary workspace
 - attempts to enrich the slate with the latest official injury report snapshot and live team-news context
-- optionally emits next-gen shadow probabilities without changing the production final probability
+- emits the promoted next-gen probability as the production final probability
+- retains `ensemble_v1_probability` and next-gen component probabilities for comparison
 - writes `published/daily/YYYY-MM-DD.json`
 - updates `published/daily/latest.json`
 - writes `published/manifest.json`
 - leaves the current published slate untouched if publishing fails
 
-Automation is defined in `.github/workflows/publish_daily.yml`, which schedules the publish job daily at `15:05 UTC` and also supports `workflow_dispatch`. The scheduled job runs with `--nextgen-shadow`, so the deployed production forecast remains `ensemble_v1` while `Model Lab` receives fresh next-gen candidate comparisons after each publish.
+Automation is defined in `.github/workflows/publish_daily.yml`, which schedules the publish job daily at `15:05 UTC` and also supports `workflow_dispatch`. The scheduled job runs with `--nextgen-shadow`, so the deployed production forecast uses `nextgen_full_value_tuned_v2` while `Model Lab` receives fresh baseline comparison fields after each publish.
 
 ### 7. Launch the API Service
 
@@ -356,7 +357,7 @@ The Streamlit app is organized into the following pages:
 - `Game Detail` lets you inspect one matchup in depth, including component model outputs and recent team form.
 - `Archive` combines local forecasts, published forecasts, and historical backtests into one searchable table.
 - `Performance` summarizes model comparison results, rolling validation trends, and ensemble behavior.
-- `Model Lab` compares production probabilities with the opt-in next-gen shadow candidate, including deltas, pick flips, and enriched CatBoost/LightGBM component outputs.
+- `Model Lab` compares the promoted next-gen production probability with the previous `ensemble_v1` baseline, including deltas, pick flips, and enriched CatBoost/LightGBM component outputs.
 - `Calibration` shows how well predicted probabilities line up with actual outcomes, including error by probability bucket.
 - `Team Form` highlights recent record, point differential, and net-rating trends for a selected team.
 - `Injury Impact` summarizes the current slate's official injury-report coverage when available and falls back honestly when later-week games do not have reports yet.
@@ -432,7 +433,7 @@ Historical implementation history is preserved in:
 | 11 | Live Context + Playoff Hardening | Complete |
 | 12 | API Service Layer | Complete |
 
-**Current data:** 15,412 games across 12 seasons (2014-2026), including 983 playoff games. The latest enriched-feature benchmark is `enriched_value_only / catboost` at 0.6163 log loss and 66.2% accuracy. The value-tuned tracked next-gen shadow candidate is `nextgen_full / raw` at 0.6159 log loss and 65.4% accuracy, and the tracked shadow bundle reports `nextgen_full_value_tuned_v2`.
+**Current data:** 15,412 games across 12 seasons (2014-2026), including 983 playoff games. The latest enriched-feature benchmark is `enriched_value_only / catboost` at 0.6163 log loss and 66.2% accuracy. The value-tuned tracked next-gen production model is `nextgen_full / raw` at 0.6159 log loss and 65.4% accuracy, and the tracked artifact bundle reports `nextgen_full_value_tuned_v2`.
 
 ---
 

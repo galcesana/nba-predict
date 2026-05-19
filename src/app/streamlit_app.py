@@ -754,6 +754,12 @@ def _build_shadow_model_frame_compat(payload: dict | None) -> pd.DataFrame:
             continue
 
         production_probability = _shadow_first_numeric(outputs, "final_probability")
+        legacy_baseline_probability = _shadow_first_numeric(outputs, "ensemble_v1_probability")
+        if (
+            legacy_baseline_probability is not None
+            and str(payload.get("model_version", "")).startswith("nextgen")
+        ):
+            production_probability = legacy_baseline_probability
         if production_probability is None:
             production_probability = _shadow_numeric_or_none(
                 prediction.get("home_win_probability")
@@ -857,12 +863,17 @@ def render_model_lab_page() -> None:
     )
     shadow_label = ", ".join(shadow_versions) if shadow_versions else "unknown"
 
+    active_model_version = str((payload or {}).get("model_version", "ensemble_v1"))
+    nextgen_is_promoted = active_model_version in shadow_versions
+
     _metric_row(
         [
             (
-                "Shadow Candidate",
+                "Active Candidate" if nextgen_is_promoted else "Shadow Candidate",
                 shadow_label,
-                "Compared beside production only",
+                "Promoted final model"
+                if nextgen_is_promoted
+                else "Compared beside production only",
             ),
             (
                 "Avg Delta",
@@ -882,11 +893,16 @@ def render_model_lab_page() -> None:
         ]
     )
 
-    st.caption(
-        "Production remains "
-        f"{(payload or {}).get('model_version', 'ensemble_v1')}; "
-        "this page is for shadow review before any promotion."
-    )
+    if nextgen_is_promoted:
+        st.caption(
+            f"Production is now {active_model_version}; the baseline column shows the "
+            "previous ensemble_v1 probability for comparison."
+        )
+    else:
+        st.caption(
+            f"Production remains {active_model_version}; "
+            "this page is for shadow review before any promotion."
+        )
 
     display = shadow_frame.copy()
     display["date"] = display["date"].dt.strftime("%Y-%m-%d")
@@ -900,7 +916,7 @@ def render_model_lab_page() -> None:
     display["catboost_probability"] = display["catboost_probability"] * 100.0
     display["lightgbm_probability"] = display["lightgbm_probability"] * 100.0
 
-    st.markdown("#### Production vs Shadow")
+    st.markdown("#### Baseline vs Next-Gen")
     st.dataframe(
         display[
             [
@@ -921,15 +937,15 @@ def render_model_lab_page() -> None:
         hide_index=True,
         column_config={
             "production_probability": st.column_config.NumberColumn(
-                "Production home %",
+                "Baseline home %",
                 format="%.1f",
             ),
             "shadow_probability": st.column_config.NumberColumn(
-                "Shadow home %",
+                "Next-gen home %",
                 format="%.1f",
             ),
             "shadow_calibrated_probability": st.column_config.NumberColumn(
-                "Shadow calibrated %",
+                "Next-gen calibrated %",
                 format="%.1f",
             ),
             "shadow_delta": st.column_config.NumberColumn(

@@ -34,6 +34,7 @@ BASELINES_DIR = MODELS_DIR / "baselines"
 NEURAL_DIR = MODELS_DIR / "neural"
 ENSEMBLE_DIR = MODELS_DIR / "ensembles"
 NEXTGEN_DIR = MODELS_DIR / "ensembles_nextgen"
+ENSEMBLE_MODEL_VERSION = "ensemble_v1"
 NEXTGEN_INPUT_COLS = [
     "neural_prob",
     "xgboost_prob",
@@ -43,6 +44,29 @@ NEXTGEN_INPUT_COLS = [
 ]
 NEXTGEN_SHADOW_MODEL_VERSION = "nextgen_full_raw_v1"
 NEXTGEN_VALUE_TUNED_SHADOW_MODEL_VERSION = "nextgen_full_value_tuned_v2"
+DEFAULT_PRODUCTION_MODEL = "nextgen"
+
+
+def _resolve_production_model(value: str | None = None) -> str:
+    """Resolve the active production model family."""
+    selected = (value or os.getenv("NBA_PREDICT_PRODUCTION_MODEL") or DEFAULT_PRODUCTION_MODEL)
+    selected = selected.strip().lower()
+    aliases = {
+        "ensemble": "ensemble",
+        "ensemble_v1": "ensemble",
+        "legacy": "ensemble",
+        "nextgen": "nextgen",
+        "nextgen_full": "nextgen",
+        "nextgen_full_value_tuned_v2": "nextgen",
+    }
+    if selected not in aliases:
+        logger.warning(
+            "Unknown NBA_PREDICT_PRODUCTION_MODEL=%r; falling back to %s.",
+            selected,
+            DEFAULT_PRODUCTION_MODEL,
+        )
+        return DEFAULT_PRODUCTION_MODEL
+    return aliases[selected]
 
 
 def _env_flag_enabled(name: str) -> bool:
@@ -54,9 +78,12 @@ class PredictionPipeline:
         self,
         use_cuda: bool = False,
         enable_nextgen_shadow: bool | None = None,
+        production_model: str | None = None,
     ):
         """Initialize pipeline and load all models/artifacts."""
         self.device = torch.device("cuda" if use_cuda and torch.cuda.is_available() else "cpu")
+        self.production_model = _resolve_production_model(production_model)
+        self.active_model_version = ENSEMBLE_MODEL_VERSION
         self.nextgen_shadow_requested = (
             _env_flag_enabled("NBA_PREDICT_NEXTGEN_SHADOW")
             if enable_nextgen_shadow is None
@@ -131,7 +158,7 @@ class PredictionPipeline:
 
     def _load_nextgen_shadow_models(self) -> None:
         """Load next-gen candidate artifacts when shadow mode is explicitly enabled."""
-        if not self.nextgen_shadow_requested:
+        if not (self.nextgen_shadow_requested or self.production_model == "nextgen"):
             return
 
         required_paths = {
@@ -176,6 +203,8 @@ class PredictionPipeline:
         self.nextgen_calibrator = joblib.load(required_paths["calibrator"])
         self.nextgen_player_logs_path = required_paths["player_logs"]
         self.nextgen_shadow_enabled = True
+        if self.production_model == "nextgen":
+            self.active_model_version = self.nextgen_shadow_model_version
 
     def _build_auxiliary_feature_arrays(
         self,
@@ -717,8 +746,13 @@ class PredictionPipeline:
             )
 
             raw_ensemble_prob = self.meta_model.predict_proba(ensemble_in.values)[:, 1][0]
-            final_prob = self.calibrator.predict_proba(np.array([raw_ensemble_prob]))[0]
+            ensemble_final_prob = self.calibrator.predict_proba(
+                np.array([raw_ensemble_prob])
+            )[0]
             shadow = nextgen_shadow.get(game_id)
+            final_prob = float(ensemble_final_prob)
+            if self.production_model == "nextgen" and shadow:
+                final_prob = float(shadow["nextgen_shadow_probability"])
 
             if final_prob > 0.7 or final_prob < 0.3:
                 conf = "high"
@@ -731,6 +765,7 @@ class PredictionPipeline:
                 "elo_probability": float(round(elo_prob, 4)),
                 "tabular_probability": float(round(xgb_probs[i], 4)),
                 "sequence_probability": float(round(neural_probs[i], 4)),
+                "ensemble_v1_probability": float(round(ensemble_final_prob, 4)),
                 "final_probability": float(round(final_prob, 4)),
             }
             context = dict(context_details[i])
@@ -752,7 +787,15 @@ class PredictionPipeline:
                 )
                 context["nextgen_shadow_mode"] = "available"
                 context["nextgen_shadow_model_version"] = shadow["model_version"]
-                context["nextgen_shadow_delta"] = float(round(shadow_prob - final_prob, 4))
+                context["nextgen_shadow_delta"] = float(
+                    round(shadow_prob - ensemble_final_prob, 4)
+                )
+                if self.production_model == "nextgen":
+                    context["nextgen_shadow_mode"] = "promoted"
+                    context["production_baseline_model_version"] = ENSEMBLE_MODEL_VERSION
+                    context["production_baseline_delta"] = context["nextgen_shadow_delta"]
+            elif self.production_model == "nextgen":
+                context["production_model_fallback"] = ENSEMBLE_MODEL_VERSION
             elif self.nextgen_shadow_requested:
                 context["nextgen_shadow_mode"] = "unavailable"
 

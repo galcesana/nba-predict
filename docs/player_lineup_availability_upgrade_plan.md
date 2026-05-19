@@ -131,7 +131,7 @@ After experiments show improvement:
   - projected minutes missing by team
   - availability confidence
   - shadow probability movement
-- Keep `ensemble_v1` as production until the candidate clears promotion gates.
+- Candidate cleared promotion gates and `nextgen_full_value_tuned_v2` is now production; keep `ensemble_v1_probability` as the rollback/baseline comparison.
 
 ## Promotion Rule
 

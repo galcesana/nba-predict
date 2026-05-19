@@ -1,11 +1,11 @@
 {
   "status": "published",
   "target_date": "2026-05-19",
-  "attempted_at": "2026-05-19T09:36:13Z",
+  "attempted_at": "2026-05-19T10:31:02Z",
   "latest_available_date": "2026-05-19",
   "published_file": "published/daily/2026-05-19.json",
   "games_count": 2,
-  "model_version": "ensemble_v1",
+  "model_version": "nextgen_full_value_tuned_v2",
   "shadow_model_version": "nextgen_full_value_tuned_v2",
   "slate_type": "week",
   "window_start": "2026-05-19",

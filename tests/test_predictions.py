@@ -16,7 +16,11 @@ from src.app.predict_today import (
     generate_predictions_for_window,
 )
 from src.app.run_backtest import run_backtest
-from src.models.predict import PredictionPipeline
+from src.models.predict import (
+    NEXTGEN_VALUE_TUNED_SHADOW_MODEL_VERSION,
+    PredictionPipeline,
+    _resolve_production_model,
+)
 from src.utils.paths import PROCESSED_DIR
 
 
@@ -180,7 +184,17 @@ class TestPredictionPipeline:
         assert "elo_probability" in comps
         assert "tabular_probability" in comps
         assert "sequence_probability" in comps
+        assert "ensemble_v1_probability" in comps
         assert "final_probability" in comps
+
+    def test_pipeline_defaults_to_value_tuned_nextgen_production(self, pipeline):
+        """The promoted next-gen stack should be the default production model."""
+        assert pipeline.active_model_version == NEXTGEN_VALUE_TUNED_SHADOW_MODEL_VERSION
+
+    def test_resolve_production_model_accepts_legacy_override(self):
+        """Operators can still force the previous ensemble stack when needed."""
+        assert _resolve_production_model("ensemble_v1") == "ensemble"
+        assert _resolve_production_model("nextgen_full_value_tuned_v2") == "nextgen"
 
     def test_shadow_model_version_detects_nextgen_outputs(self):
         """Prediction payload metadata should label opt-in shadow candidate outputs."""

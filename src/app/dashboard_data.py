@@ -386,6 +386,12 @@ def build_shadow_model_frame(payload: dict[str, Any] | None = None) -> pd.DataFr
             continue
 
         production_probability = _first_numeric(outputs, "final_probability")
+        legacy_baseline_probability = _first_numeric(outputs, "ensemble_v1_probability")
+        if (
+            legacy_baseline_probability is not None
+            and str(payload.get("model_version", "")).startswith("nextgen")
+        ):
+            production_probability = legacy_baseline_probability
         if production_probability is None:
             production_probability = _numeric_or_none(prediction.get("home_win_probability"))
         if production_probability is None:

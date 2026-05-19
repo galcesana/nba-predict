@@ -113,6 +113,11 @@ def _shadow_model_version_from_predictions(predictions: list[dict]) -> str | Non
     return None
 
 
+def _model_version_from_pipeline(pipeline: PredictionPipeline | object) -> str:
+    """Return the active production model version for a prediction payload."""
+    return str(getattr(pipeline, "active_model_version", "ensemble_v1"))
+
+
 def _load_team_mapping() -> dict[str, int]:
     with open(DATA_DIR / "mappings" / "team_to_idx.json") as f:
         return json.load(f)
@@ -392,7 +397,7 @@ def generate_predictions_for_date(
         "date": date_str,
         "slate_type": "day",
         "generated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "model_version": "ensemble_v1",
+        "model_version": _model_version_from_pipeline(pipeline),
         "shadow_model_version": shadow_model_version,
         "context_summary": _context_summary_from_predictions(results),
         "predictions": results,
@@ -487,7 +492,7 @@ def generate_predictions_for_window(
         "window_start": forecast_dates[0],
         "window_end": forecast_dates[-1],
         "generated_at": generated_at,
-        "model_version": "ensemble_v1",
+        "model_version": _model_version_from_pipeline(pipeline),
         "shadow_model_version": shadow_model_version,
         "dates_with_games": dates_with_games,
         "playoff_filtering_mode": "next_game_per_series",
@@ -524,7 +529,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument(
         "--nextgen-shadow",
         action="store_true",
-        help="Emit opt-in next-gen candidate probabilities alongside production outputs.",
+        help="Emit next-gen comparison fields alongside the active production output.",
     )
     args = parser.parse_args(argv)
 

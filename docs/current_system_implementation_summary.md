@@ -257,11 +257,11 @@ Current behavior:
 - attempts live injury/news overlays for target games
 - falls back to zero or proxy defaults when live context is missing
 - returns prediction payloads with `context_details`
-- optionally emits next-gen shadow probabilities when `--nextgen-shadow` or `NBA_PREDICT_NEXTGEN_SHADOW=1` is enabled
+- uses `nextgen_full_value_tuned_v2` as the default production model
+- retains the previous `ensemble_v1_probability` in component outputs for baseline comparison
 
 Important current limitation:
 
-- production final probabilities still come from `ensemble_v1` until a separate promotion flips the default model version
 - when no live aux data exists, inference still zero-fills or fallback-fills the aux streams rather than reasoning over player-level uncertainty
 
 ---
@@ -422,9 +422,9 @@ Current behavior:
 
 Important note:
 
-- production probabilities still use `ensemble_v1`
-- the next-gen shadow path uses enriched player/lineup rows for candidate CatBoost and LightGBM inputs
-- enriched rows support model experimentation without breaking the current production stack
+- production probabilities now use the promoted `nextgen_full_value_tuned_v2` stack
+- the previous `ensemble_v1` probability remains available as a comparison/rollback baseline
+- enriched rows support model experimentation without breaking the rollback path
 
 ---
 
@@ -536,25 +536,23 @@ Next-generation promotion gate outputs:
 - `docs/experiments/nextgen_promotion_gate.json`
 - `docs/experiments/nextgen_promotion_gate.md`
 
-The promotion gate runner lives at `src/models/run_nextgen_validation.py`. It compares production
+The promotion gate runner lives at `src/models/run_nextgen_validation.py`. It compares legacy
 raw ensemble probabilities against next-gen raw probabilities across aggregate, per-season,
 schedule-stress, context-confidence, playoff, and missing-player-impact slices.
 
-Current promotion status is `ready` for shadow/live promotion review: the next-gen candidate clears
-the aggregate log-loss check, playoff coverage gate, missing-player coverage gate, and critical
-slice-regression gate.
+Current promotion status is live: the next-gen candidate cleared the aggregate log-loss check,
+playoff coverage gate, missing-player coverage gate, and critical slice-regression gate.
 
-Shadow inference is available but opt-in. `python -m src.app.predict_today --nextgen-shadow` and
-`python -m src.app.publish_today --nextgen-shadow` keep the production final probability as
-`ensemble_v1` while adding `component_outputs.nextgen_shadow_probability`, enriched CatBoost/LightGBM
-probabilities, and `shadow_model_version=nextgen_full_value_tuned_v2` for review.
+Live inference emits `home_win_probability` from `nextgen_full_value_tuned_v2`, while also adding
+`component_outputs.ensemble_v1_probability`, enriched CatBoost/LightGBM probabilities, and
+`shadow_model_version=nextgen_full_value_tuned_v2` for comparison.
 
 The scheduled GitHub Actions publisher uses `python -m src.app.publish_today --nextgen-shadow`, so
-tracked deployment slates refresh both the production forecast and the shadow review fields.
+tracked deployment slates refresh both the promoted production forecast and the comparison fields.
 
-The Streamlit dashboard exposes those candidate outputs in `Model Lab`, a dedicated review page that
-shows production vs shadow home-win probabilities, candidate deltas, pick flips, candidate component
-probabilities, and the shadow artifact version for the loaded slate.
+The Streamlit dashboard exposes those outputs in `Model Lab`, a dedicated review page that shows
+the previous `ensemble_v1` baseline vs promoted next-gen home-win probabilities, deltas, pick flips,
+candidate component probabilities, and the active artifact version for the loaded slate.
 
 The first coverage fix is complete: historical game and player-log fetchers request playoff rows,
 carry `season_type` forward, and the rebuilt evaluation now includes 166 held-out playoff games.
@@ -581,15 +579,14 @@ The current system is already strong in these ways:
 
 These are the most important limitations to remember before extending the system:
 
-1. **The model is still mostly team-level.**
-2. **The new player foundation is not yet integrated into training or inference.**
-3. **The new player-value layer is still heuristic and not yet learned end-to-end.**
-4. **Injury value is still heuristic in many cases.**
-5. **News coverage is still sparse and often fallback-heavy.**
-6. **Playoff handling is stronger in publishing logic than in model design.**
-7. **Displayed explanations are still partly heuristic rather than fully learned attribution.**
-8. **The ensemble is simple and not yet context-aware or regime-aware.**
-9. **The next-gen candidate is ready for shadow/live review, but official inactive-history coverage is still a future quality upgrade.**
+1. **The model is still partly team-level, even though player/lineup signals now feed next-gen.**
+2. **The player-value layer is still heuristic and not yet learned end-to-end.**
+3. **Injury value is still heuristic in many cases.**
+4. **News coverage is still sparse and often fallback-heavy.**
+5. **Playoff handling is stronger in publishing logic than in model design.**
+6. **Displayed explanations are still partly heuristic rather than fully learned attribution.**
+7. **The ensemble is simple and not yet context-aware or regime-aware.**
+8. **Official inactive-history coverage is still a future quality upgrade.**
 
 ---
 

@@ -22,18 +22,18 @@
 - `src/models/run_production_showdown.py` now compares the saved enriched benchmark winners against the shipped neural full-fusion and production ensemble artifacts on the same held-out split.
 - `src/models/run_nextgen_ensemble.py` now trains model-specific enriched CatBoost/LightGBM input models and evaluates expanded meta-ensembles that add those probabilities to the current `neural + xgboost + elo` stack.
 - `src/models/run_nextgen_validation.py` now runs a promotion gate across aggregate, per-season, schedule-stress, context-confidence, playoff, and missing-player slices before any live model promotion.
-- `src/models/predict.py`, `src/app/predict_today.py`, and `src/app/publish_today.py` now support opt-in `nextgen_full_value_tuned_v2` shadow outputs through `--nextgen-shadow` / `NBA_PREDICT_NEXTGEN_SHADOW=1`, while production final probabilities remain `ensemble_v1`.
-- The Streamlit dashboard now includes a `Model Lab` page that compares production vs next-gen shadow probabilities, candidate deltas, pick flips, and enriched CatBoost/LightGBM component outputs for the loaded slate.
-- The daily GitHub Actions publisher now runs `python -m src.app.publish_today --nextgen-shadow`, so `Model Lab` updates automatically with each scheduled deployment publish.
-- The small next-gen shadow bundle and historical player-log inference bundle are tracked so clean checkouts can emit candidate probabilities for review.
+- `src/models/predict.py`, `src/app/predict_today.py`, and `src/app/publish_today.py` now promote `nextgen_full_value_tuned_v2` as the default production model while retaining `ensemble_v1_probability` as a baseline comparison field.
+- The Streamlit dashboard now includes a `Model Lab` page that compares the promoted next-gen probability against the previous `ensemble_v1` baseline, candidate deltas, pick flips, and enriched CatBoost/LightGBM component outputs for the loaded slate.
+- The daily GitHub Actions publisher runs `python -m src.app.publish_today --nextgen-shadow`, so the deployed slate refreshes the promoted next-gen forecast and comparison fields together.
+- The small next-gen artifact bundle and historical player-log inference bundle are tracked so clean checkouts can emit promoted next-gen probabilities.
 - `src/data/fetch_games.py` and `src/data/fetch_player_logs.py` now support configured `Regular Season` + `Playoffs` ingestion and preserve `season_type` into processed rows for regime-aware evaluation.
 - `src/models/run_enriched_experiments.py` now detects stale cached matchup/player feature artifacts when the game universe or feature-stack version changes, so adding playoff rows or changing availability logic forces the enriched stack to rebuild instead of silently reusing old caches.
 - `src/models/run_nextgen_ensemble.py` now also invalidates stale enriched input prediction caches, and `src/models/run_production_showdown.py` reports saved-production coverage when old artifacts do not cover every enriched test row.
-- Latest enriched-feature experiment after the roster-value upgrade: `enriched_value_only / catboost` at `0.6163` log loss, `0.6616` accuracy, and `0.7169` ROC-AUC. This is now the configured CatBoost input family for the next shadow ensemble rebuild.
+- Latest enriched-feature experiment after the roster-value upgrade: `enriched_value_only / catboost` at `0.6163` log loss, `0.6616` accuracy, and `0.7169` ROC-AUC. This is now the configured CatBoost input family for the promoted next-gen ensemble.
 - Current best value-tuned candidate: `nextgen_full / raw` at `0.6159` log loss and `0.6536` accuracy, beating the saved production raw ensemble at `0.6196` log loss on the current held-out split.
-- Current promotion status: `ready` for shadow/live promotion review. Playoff coverage passes with 166 held-out playoff games, and missing-player-impact coverage now covers 2,602 held-out games through `historical_absence_proxy_v1`.
+- Current promotion status: promoted to live production. The validation gate passed with 166 held-out playoff games and 2,602 held-out missing-player-impact games through `historical_absence_proxy_v1`.
 
 ## Next Slice
 
-- Run a live shadow publication with `python -m src.app.publish_today --nextgen-shadow` and review `Model Lab` before any final production flip.
-- Keep monitoring playoff, calibration, and missing-player slices before promoting the shadow probability to the default final probability.
+- Monitor the promoted model in `Model Lab`, especially playoff, calibration, and missing-player slices.
+- Keep `NBA_PREDICT_PRODUCTION_MODEL=ensemble` available as the rollback switch if live behavior looks wrong.
