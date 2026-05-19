@@ -17,6 +17,32 @@ data/processed/
 *.parquet
 *.csv
 
+# Keep empty scaffold/cache directories available on clean checkouts.
+!data/raw/
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/nba_api/
+data/raw/nba_api/*
+!data/raw/nba_api/.gitkeep
+!data/raw/injuries/
+data/raw/injuries/*
+!data/raw/injuries/.gitkeep
+!data/raw/news/
+data/raw/news/*
+!data/raw/news/.gitkeep
+!data/interim/
+data/interim/*
+!data/interim/.gitkeep
+!data/interim/cleaned_games/
+data/interim/cleaned_games/*
+!data/interim/cleaned_games/.gitkeep
+!data/interim/cleaned_boxscores/
+data/interim/cleaned_boxscores/*
+!data/interim/cleaned_boxscores/.gitkeep
+!data/interim/anonymized_articles/
+data/interim/anonymized_articles/*
+!data/interim/anonymized_articles/.gitkeep
+
 # Keep mappings (small JSON files)
 !data/mappings/
 
@@ -74,6 +100,9 @@ data/processed/team_game_logs/*
 !data/processed/player_game_logs/
 data/processed/player_game_logs/*
 !data/processed/player_game_logs/player_game_logs.parquet
+!data/processed/matchup_rows/
+data/processed/matchup_rows/*
+!data/processed/matchup_rows/.gitkeep
 !data/processed/injury_features/
 data/processed/injury_features/*
 !data/processed/injury_features/injury_features.parquet
