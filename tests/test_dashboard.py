@@ -8,6 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from src.app import dashboard_data, streamlit_app
@@ -119,6 +120,42 @@ def test_benchmark_table_loads_model_ladder():
     }.issubset(set(frame["model"]))
     assert frame["log_loss"].notna().any()
     assert "log_loss_gain_vs_home" in frame.columns
+
+
+def test_streamlit_benchmark_table_refreshes_stale_data_module(monkeypatch):
+    """Benchmark page should survive Streamlit Cloud holding a stale data module."""
+    expected = pd.DataFrame(
+        [
+            {
+                "model": "Next-gen model",
+                "family": "ensemble",
+                "test_games": 10,
+                "accuracy": 0.65,
+                "log_loss": 0.61,
+                "roc_auc": 0.72,
+                "brier": 0.21,
+                "ece": 0.04,
+                "source": "test",
+                "log_loss_gain_vs_home": 0.08,
+            }
+        ]
+    )
+    fresh_data = type(
+        "FreshDataModule",
+        (),
+        {"build_benchmark_table": staticmethod(lambda: expected)},
+    )()
+
+    streamlit_app._benchmark_table.clear()
+    monkeypatch.setattr(streamlit_app, "data", object())
+    monkeypatch.setattr(streamlit_app.importlib, "reload", lambda module: fresh_data)
+
+    try:
+        frame = streamlit_app._benchmark_table()
+    finally:
+        streamlit_app._benchmark_table.clear()
+
+    assert frame.equals(expected)
 
 
 def test_market_odds_benchmark_requires_real_odds(tmp_path):

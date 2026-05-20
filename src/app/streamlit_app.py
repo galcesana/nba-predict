@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import importlib
 import sys
 from pathlib import Path
 from typing import Iterable
@@ -349,6 +350,21 @@ def _archive_frame() -> pd.DataFrame:
     return data.build_archive_dataframe()
 
 
+def _dashboard_data_builder(name: str):
+    """Return a dashboard-data function, refreshing after Streamlit Cloud hot deploys."""
+    global data
+
+    builder = getattr(data, name, None)
+    if callable(builder):
+        return builder
+
+    # Streamlit Cloud can rerun this script with a new file while keeping imported
+    # project modules cached from the previous deploy. Refresh once before giving up.
+    data = importlib.reload(data)
+    builder = getattr(data, name, None)
+    return builder if callable(builder) else None
+
+
 @st.cache_data(show_spinner=False)
 def _model_comparison() -> pd.DataFrame:
     return data.build_model_performance_table()
@@ -356,12 +372,18 @@ def _model_comparison() -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False)
 def _benchmark_table() -> pd.DataFrame:
-    return data.build_benchmark_table()
+    builder = _dashboard_data_builder("build_benchmark_table")
+    if builder is None:
+        return pd.DataFrame()
+    return builder()
 
 
 @st.cache_data(show_spinner=False)
 def _market_odds_benchmark() -> pd.DataFrame:
-    return data.build_market_odds_benchmark()
+    builder = _dashboard_data_builder("build_market_odds_benchmark")
+    if builder is None:
+        return pd.DataFrame()
+    return builder()
 
 
 @st.cache_data(show_spinner=False)
