@@ -6,6 +6,26 @@ import re
 
 import pandas as pd
 
+_EXCLUDED_NEWS_TERMS = [
+    "BEST BET",
+    "BETTING",
+    "BETMGM",
+    "BONUS",
+    "COMPUTER PICKS",
+    "DRAFTKINGS",
+    "FANDUEL",
+    "ODDS",
+    "PARLAY",
+    "PLAYER PROP",
+    "POLYMARKET",
+    "PROMO CODE",
+    "PROP BET",
+    "PROP PROJECTION",
+    "SPORTSLINE",
+    "SAME GAME PARLAY",
+    "DFS",
+]
+
 
 def clean_html_text(value: str | None) -> str:
     """Strip simple HTML tags and whitespace from RSS content."""
@@ -54,6 +74,12 @@ def compute_article_relevance(
     return round(score, 4), reason
 
 
+def is_betting_or_promo_article(title: str, summary: str, source: str | None = None) -> bool:
+    """Return whether an article is odds/prop/promo content, not team context."""
+    haystack = f"{title} {summary} {source or ''}".upper()
+    return any(term in haystack for term in _EXCLUDED_NEWS_TERMS)
+
+
 def filter_team_articles(
     articles: pd.DataFrame,
     team_aliases: list[str],
@@ -75,4 +101,17 @@ def filter_team_articles(
     )
     scored["article_relevance"] = [item[0] for item in relevance]
     scored["article_relevance_reason"] = [item[1] for item in relevance]
-    return scored[scored["article_relevance"] >= min_relevance].reset_index(drop=True)
+    scored["excluded_news_reason"] = scored.apply(
+        lambda row: "betting_or_promo"
+        if is_betting_or_promo_article(
+            str(row.get("title", "")),
+            str(row.get("summary", "")),
+            str(row.get("source") or ""),
+        )
+        else "",
+        axis=1,
+    )
+    return scored[
+        (scored["article_relevance"] >= min_relevance)
+        & (scored["excluded_news_reason"] == "")
+    ].reset_index(drop=True)

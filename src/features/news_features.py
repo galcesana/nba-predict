@@ -40,6 +40,15 @@ def load_news_scores(
     allow_live_fetch: bool = False,
 ) -> pd.DataFrame | None:
     """Load cached or live-scored team news rows."""
+    if allow_live_fetch and games is not None and _is_live_forecast_window(games):
+        try:
+            scores = fetch_news_scores_for_games(games)
+            if not scores.empty:
+                return scores.reset_index(drop=True)
+            logger.info("Live news fetch returned no rows - checking cached scores")
+        except Exception as exc:
+            logger.warning("Live news fetch failed: %s", exc)
+
     news_dir = RAW_DIR / "news"
     cached_frames = []
     if news_dir.exists():
@@ -54,14 +63,6 @@ def load_news_scores(
             scores = scores[scores["team_idx"].isin(target_teams)]
         if not scores.empty:
             return scores.reset_index(drop=True)
-
-    if allow_live_fetch and games is not None and _is_live_forecast_window(games):
-        try:
-            scores = fetch_news_scores_for_games(games)
-            if not scores.empty:
-                return scores.reset_index(drop=True)
-        except Exception as exc:
-            logger.warning("Live news fetch failed: %s", exc)
 
     logger.info("No news score rows available - using fallback vectors")
     return None

@@ -28,7 +28,7 @@ NBA game outcome prediction system that outputs **calibrated win probabilities**
 - See `docs/m1_player_lineup_foundation.md` for the concrete next implementation target
 - See `docs/player_lineup_availability_upgrade_plan.md` for the current roster-intelligence upgrade plan
 - `docs/nba_game_prediction_project_plan.md` is retained only as a legacy archive
-- Latest verification: repo-wide Ruff passes; Linux clean-checkout CI suite passes with 178 tests; full local validation passes with 222 tests. A CI workflow now enforces `python -m ruff check .` plus the clean-checkout pytest suite on code pushes/PRs while ignoring publish-only `published/**` refresh commits. Full local validation remains `python -m pytest tests -q` after generated artifacts exist. `requirements.txt` pins `scikit-learn==1.6.0` for Python runtimes below 3.14 to match the saved joblib artifacts, with a Python 3.14 fallback for existing Streamlit Cloud deployments.
+- Latest verification: repo-wide Ruff passes; Linux clean-checkout CI suite passes with 178 tests; full local validation passes with 224 tests. A CI workflow now enforces `python -m ruff check .` plus the clean-checkout pytest suite on code pushes/PRs while ignoring publish-only `published/**` refresh commits. Full local validation remains `python -m pytest tests -q` after generated artifacts exist. `requirements.txt` pins `scikit-learn==1.6.0` for Python runtimes below 3.14 to match the saved joblib artifacts, with a Python 3.14 fallback for existing Streamlit Cloud deployments.
 
 ## Project Structure
 

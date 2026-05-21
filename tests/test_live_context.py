@@ -6,8 +6,9 @@ import pandas as pd
 
 from src.app.predict_today import _context_summary_from_predictions
 from src.data import fetch_injuries
+from src.features import news_features
 from src.features.injury_features import build_injury_features
-from src.features.news_features import build_news_features
+from src.features.news_features import build_news_features, load_news_scores
 from src.nlp.extract_sentiment import score_articles
 
 
@@ -275,6 +276,36 @@ def test_score_articles_extracts_negative_injury_signal():
     assert scores.iloc[0]["overall_sentiment"] < 0
 
 
+def test_score_articles_filters_betting_promos():
+    """Odds and prop-bet articles should not feed the team-news model stream."""
+    articles = pd.DataFrame(
+        [
+            {
+                "team_idx": 5,
+                "published_at": "2026-05-21T19:30:00Z",
+                "title": "Best Donovan Mitchell prop bet for Cavaliers vs Knicks Game 2",
+                "summary": "DraftKings odds and promo picks for Thursday's playoff matchup.",
+                "source": "DraftKings Network",
+                "link": "https://example.com/props",
+            },
+            {
+                "team_idx": 19,
+                "published_at": "2026-05-21T19:25:00Z",
+                "title": "Knicks center Mitchell Robinson available before Game 2",
+                "summary": "New York expects its rotation center to play regular minutes.",
+                "source": "Example Beat",
+                "link": "https://example.com/knicks-lineup",
+            },
+        ]
+    )
+
+    scores = score_articles(articles)
+
+    assert scores["title"].tolist() == [
+        "Knicks center Mitchell Robinson available before Game 2"
+    ]
+
+
 def test_build_news_features_uses_live_scores(monkeypatch):
     """Live-scored articles are aggregated into non-zero news features."""
     scores = pd.DataFrame(
@@ -310,6 +341,62 @@ def test_build_news_features_uses_live_scores(monkeypatch):
     assert away_row["article_volume_24h"] >= 1
     assert away_row["weighted_sentiment_72h"] > 0
     assert home_row["news_available"] == 0
+
+
+def test_live_news_scores_prefer_fresh_fetch_over_stale_cache(monkeypatch, tmp_path):
+    """Live prediction should not reuse old cached news when a fresh fetch is allowed."""
+    news_dir = tmp_path / "news"
+    news_dir.mkdir(parents=True)
+    stale_scores = pd.DataFrame(
+        [
+            {
+                "article_id": "old",
+                "team_idx": 5,
+                "published_at": "2026-05-16T12:00:00Z",
+                "title": "Old Cavaliers note",
+                "source": "Old Source",
+                "article_relevance": 0.8,
+                "overall_sentiment": 0.0,
+                "injury_concern": 0.0,
+                "pressure": 0.0,
+                "team_cohesion": 0.5,
+                "motivation": 0.0,
+                "llm_confidence": 0.8,
+                "link": "https://example.com/old",
+                "collected_at": "2026-05-16T13:00:00Z",
+            }
+        ]
+    )
+    stale_scores.to_parquet(news_dir / "team_news_scores_2026-05-16.parquet", index=False)
+
+    fresh_scores = pd.DataFrame(
+        [
+            {
+                "article_id": "fresh",
+                "team_idx": 19,
+                "published_at": "2026-05-21T18:00:00Z",
+                "title": "Fresh Knicks lineup note",
+                "source": "Fresh Source",
+                "article_relevance": 0.9,
+                "overall_sentiment": 0.4,
+                "injury_concern": 0.0,
+                "pressure": 0.5,
+                "team_cohesion": 0.6,
+                "motivation": 0.5,
+                "llm_confidence": 0.9,
+                "link": "https://example.com/fresh",
+                "collected_at": "2026-05-21T18:05:00Z",
+            }
+        ]
+    )
+
+    monkeypatch.setattr(news_features, "RAW_DIR", tmp_path)
+    monkeypatch.setattr(news_features, "_is_live_forecast_window", lambda games: True)
+    monkeypatch.setattr(news_features, "fetch_news_scores_for_games", lambda games: fresh_scores)
+
+    scores = load_news_scores(_sample_games(), allow_live_fetch=True)
+
+    assert scores["article_id"].tolist() == ["fresh"]
 
 
 def test_context_summary_counts_live_and_partial_games():
