@@ -20,6 +20,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Show publish revision
+        run: |
+          echo "Publishing from commit $(git rev-parse --short HEAD)"
+          git log -1 --oneline
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
