@@ -1,7 +1,7 @@
 {
   "status": "published",
   "target_date": "2026-05-21",
-  "attempted_at": "2026-05-21T19:41:38Z",
+  "attempted_at": "2026-05-21T23:13:01Z",
   "latest_available_date": "2026-05-21",
   "published_file": "published/daily/2026-05-21.json",
   "games_count": 2,
@@ -19,17 +19,17 @@
     "news_partial_games": 0,
     "injury_coverage_rate": 0.0,
     "news_coverage_rate": 0.0,
-    "latest_injury_report_at": "2026-05-21T15:30:00-0400",
+    "latest_injury_report_at": "2026-05-21T16:30:00-0400",
     "latest_news_article_at": null,
     "latest_news_collection_at": null
   },
   "publish_observability": {
     "status": "success",
     "publish_status": "published",
-    "started_at": "2026-05-21T19:41:38Z",
-    "completed_at": "2026-05-21T19:43:26Z",
-    "duration_seconds": 108.823,
-    "prediction_runtime_seconds": 108.822,
+    "started_at": "2026-05-21T23:13:01Z",
+    "completed_at": "2026-05-21T23:14:54Z",
+    "duration_seconds": 113.283,
+    "prediction_runtime_seconds": 113.282,
     "timezone": "America/New_York",
     "forecast_window_days": 7,
     "api_status": {

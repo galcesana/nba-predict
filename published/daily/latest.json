@@ -3,7 +3,7 @@
   "slate_type": "week",
   "window_start": "2026-05-21",
   "window_end": "2026-05-27",
-  "generated_at": "2026-05-21T19:43:26Z",
+  "generated_at": "2026-05-21T23:14:54Z",
   "model_version": "nextgen_full_value_tuned_v2",
   "shadow_model_version": "nextgen_full_value_tuned_v2",
   "dates_with_games": [
@@ -25,7 +25,7 @@
     "news_partial_games": 0,
     "injury_coverage_rate": 0.0,
     "news_coverage_rate": 0.0,
-    "latest_injury_report_at": "2026-05-21T15:30:00-0400",
+    "latest_injury_report_at": "2026-05-21T16:30:00-0400",
     "latest_news_article_at": null,
     "latest_news_collection_at": null
   },
@@ -136,8 +136,8 @@
         "away_questionable": 0,
         "home_injury_report_status": "not_submitted",
         "away_injury_report_status": "not_submitted",
-        "injury_report_generated_at": "2026-05-21T15:30:00-0400",
-        "injury_report_source_url": "https://ak-static.cms.nba.com/referee/injury/Injury-Report_2026-05-21_03_30PM.pdf",
+        "injury_report_generated_at": "2026-05-21T16:30:00-0400",
+        "injury_report_source_url": "https://ak-static.cms.nba.com/referee/injury/Injury-Report_2026-05-21_04_30PM.pdf",
         "home_news_available": false,
         "away_news_available": false,
         "home_article_volume_24h": 0,
