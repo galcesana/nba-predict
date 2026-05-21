@@ -8,10 +8,13 @@ import json
 import pandas as pd
 import pytest
 
+from src.app import predict_today
 from src.app.predict_today import (
+    _fetch_schedule_cdn,
     _filter_confirmed_schedule,
     _filter_to_next_playoff_games,
     _shadow_model_version_from_predictions,
+    fetch_schedule,
     generate_predictions_for_date,
     generate_predictions_for_window,
 )
@@ -227,6 +230,81 @@ class TestPredictionPipeline:
 
 
 class TestScripts:
+    def test_cdn_schedule_parses_playoff_game_with_string_boolean(self, monkeypatch):
+        """The CDN fallback handles the official schedule shape and string booleans."""
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {
+                    "leagueSchedule": {
+                        "gameDates": [
+                            {
+                                "gameDate": "05/21/2026 00:00:00",
+                                "games": [
+                                    {
+                                        "gameId": "0042500302",
+                                        "gameCode": "20260521/CLENYK",
+                                        "gameStatusText": "8:00 pm ET",
+                                        "ifNecessary": "false",
+                                        "gameLabel": "East Conf. Finals",
+                                        "gameSubLabel": "Game 2",
+                                        "seriesText": "NYK leads 1-0",
+                                        "homeTeam": {"teamTricode": "NYK"},
+                                        "awayTeam": {"teamTricode": "CLE"},
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                }
+
+        monkeypatch.setattr(
+            predict_today.requests,
+            "get",
+            lambda *args, **kwargs: FakeResponse(),
+        )
+
+        frame = _fetch_schedule_cdn(
+            "2026-05-21",
+            {"NYK": 1, "CLE": 2},
+        )
+
+        assert frame["game_id"].tolist() == ["0042500302"]
+        assert frame.iloc[0]["home_team_idx"] == 1
+        assert frame.iloc[0]["away_team_idx"] == 2
+        assert not bool(frame.iloc[0]["if_necessary"])
+
+    def test_fetch_schedule_falls_back_to_cdn_when_scoreboard_times_out(self, monkeypatch):
+        """GitHub Actions should not fail just because stats.nba.com times out."""
+        expected = pd.DataFrame(
+            [
+                {
+                    "game_id": "g1",
+                    "date": "2026-05-21",
+                    "home_team_idx": 1,
+                    "away_team_idx": 2,
+                    "if_necessary": False,
+                }
+            ]
+        )
+
+        def fail_v3(date_str, team_mapping):
+            raise TimeoutError("stats host timed out")
+
+        def fail_v2(date_str, team_mapping):
+            raise AssertionError("ScoreboardV2 should not be needed")
+
+        monkeypatch.setattr(predict_today, "_fetch_schedule_v3", fail_v3)
+        monkeypatch.setattr(predict_today, "_fetch_schedule_cdn", lambda *_: expected)
+        monkeypatch.setattr(predict_today, "_fetch_schedule_v2", fail_v2)
+
+        frame = fetch_schedule("2026-05-21")
+
+        assert frame.equals(expected)
+
     def test_if_necessary_games_are_filtered(self):
         """Tentative playoff placeholders are excluded from the live slate."""
         schedule = pd.DataFrame(

@@ -8,11 +8,13 @@ Usage:
 import argparse
 import json
 import logging
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable
 
 import pandas as pd
+import requests
 from nba_api.stats.endpoints import scoreboardv2, scoreboardv3
 
 from src.anonymization.team_mapping import idx_to_team_abbr
@@ -22,6 +24,18 @@ from src.utils.paths import DATA_DIR, PREDICTIONS_DIR, PROCESSED_DIR
 
 logger = logging.getLogger(__name__)
 DEFAULT_FORECAST_WINDOW_DAYS = 7
+NBA_STATS_TIMEOUT_SECONDS = 12
+NBA_CDN_TIMEOUT_SECONDS = 15
+NBA_CDN_SCHEDULE_URL = "https://cdn.nba.com/static/json/staticData/scheduleLeagueV2.json"
+NBA_CDN_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36"
+    ),
+    "Accept": "application/json,text/plain,*/*",
+    "Referer": "https://www.nba.com/",
+    "Origin": "https://www.nba.com",
+}
 
 
 def _context_summary_from_predictions(predictions: list[dict]) -> dict[str, object]:
@@ -174,6 +188,13 @@ def _filter_confirmed_schedule(schedule: pd.DataFrame) -> pd.DataFrame:
     return confirmed
 
 
+def _as_bool(value: object) -> bool:
+    """Parse NBA API boolean-ish fields that sometimes arrive as strings."""
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "t", "yes", "y"}
+    return bool(value)
+
+
 def _playoff_series_key(row: pd.Series) -> str | None:
     """Return a stable series key for playoff games, otherwise None."""
     game_label = str(row.get("game_label") or "")
@@ -186,6 +207,38 @@ def _playoff_series_key(row: pd.Series) -> str | None:
 
     teams = sorted([int(row["home_team_idx"]), int(row["away_team_idx"])])
     return f"{game_label}|{teams[0]}|{teams[1]}"
+
+
+def _schedule_row_from_nba_game(
+    game: dict,
+    *,
+    date_str: str,
+    season_str: str,
+    team_mapping: dict[str, int],
+) -> dict | None:
+    home_team = game.get("homeTeam", {})
+    away_team = game.get("awayTeam", {})
+    home_abbr = str(home_team.get("teamTricode", "")).upper()
+    away_abbr = str(away_team.get("teamTricode", "")).upper()
+
+    if home_abbr not in team_mapping or away_abbr not in team_mapping:
+        return None
+
+    return {
+        "game_id": str(game["gameId"]),
+        "date": date_str,
+        "season": season_str,
+        "home_team_idx": team_mapping[home_abbr],
+        "away_team_idx": team_mapping[away_abbr],
+        "game_label": game.get("gameLabel"),
+        "game_sub_label": game.get("gameSubLabel") or game.get("seriesGameNumber"),
+        "series_text": game.get("seriesText"),
+        "game_status_text": game.get("gameStatusText"),
+        "game_time_utc": game.get("gameTimeUTC") or game.get("gameDateTimeUTC"),
+        "game_time_et": game.get("gameEt") or game.get("gameDateTimeEst"),
+        "game_code": game.get("gameCode"),
+        "if_necessary": _as_bool(game.get("ifNecessary", False)),
+    }
 
 
 def _filter_to_next_playoff_games(
@@ -218,7 +271,10 @@ def _filter_to_next_playoff_games(
 
 
 def _fetch_schedule_v3(date_str: str, team_mapping: dict[str, int]) -> pd.DataFrame:
-    sb = scoreboardv3.ScoreboardV3(game_date=date_str)
+    sb = scoreboardv3.ScoreboardV3(
+        game_date=date_str,
+        timeout=NBA_STATS_TIMEOUT_SECONDS,
+    )
     scoreboard = sb.get_dict().get("scoreboard", {})
     games = scoreboard.get("games", [])
 
@@ -230,36 +286,77 @@ def _fetch_schedule_v3(date_str: str, team_mapping: dict[str, int]) -> pd.DataFr
     season_str = _season_from_date(date_str)
 
     for game in games:
-        home_team = game.get("homeTeam", {})
-        away_team = game.get("awayTeam", {})
-        home_abbr = str(home_team.get("teamTricode", "")).upper()
-        away_abbr = str(away_team.get("teamTricode", "")).upper()
-
-        if home_abbr in team_mapping and away_abbr in team_mapping:
-            schedule_rows.append(
-                {
-                    "game_id": str(game["gameId"]),
-                    "date": date_str,
-                    "season": season_str,
-                    "home_team_idx": team_mapping[home_abbr],
-                    "away_team_idx": team_mapping[away_abbr],
-                    "game_label": game.get("gameLabel"),
-                    "game_sub_label": game.get("gameSubLabel"),
-                    "series_text": game.get("seriesText"),
-                    "game_status_text": game.get("gameStatusText"),
-                    "game_time_utc": game.get("gameTimeUTC"),
-                    "game_time_et": game.get("gameEt"),
-                    "game_code": game.get("gameCode"),
-                    "if_necessary": bool(game.get("ifNecessary", False)),
-                }
-            )
+        row = _schedule_row_from_nba_game(
+            game,
+            date_str=date_str,
+            season_str=season_str,
+            team_mapping=team_mapping,
+        )
+        if row is not None:
+            schedule_rows.append(row)
 
     logger.info("Found %d scheduled games via ScoreboardV3.", len(schedule_rows))
     return _filter_confirmed_schedule(pd.DataFrame(schedule_rows))
 
 
+def _schedule_day_matches(raw_date: object, date_str: str) -> bool:
+    if raw_date is None:
+        return False
+
+    raw = str(raw_date)
+    for fmt in ("%m/%d/%Y %H:%M:%S", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(raw, fmt).date().isoformat() == date_str
+        except ValueError:
+            continue
+
+    parsed = pd.to_datetime(raw, errors="coerce")
+    return bool(not pd.isna(parsed) and parsed.date().isoformat() == date_str)
+
+
+def _fetch_schedule_cdn(date_str: str, team_mapping: dict[str, int]) -> pd.DataFrame:
+    response = requests.get(
+        NBA_CDN_SCHEDULE_URL,
+        headers=NBA_CDN_HEADERS,
+        timeout=NBA_CDN_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    schedule = response.json().get("leagueSchedule", {})
+    game_dates = schedule.get("gameDates", [])
+
+    target_day = next(
+        (
+            day
+            for day in game_dates
+            if _schedule_day_matches(day.get("gameDate"), date_str)
+        ),
+        None,
+    )
+    if target_day is None:
+        logger.info("No games scheduled for %s via NBA CDN schedule.", date_str)
+        return pd.DataFrame()
+
+    season_str = _season_from_date(date_str)
+    schedule_rows = []
+    for game in target_day.get("games", []):
+        row = _schedule_row_from_nba_game(
+            game,
+            date_str=date_str,
+            season_str=season_str,
+            team_mapping=team_mapping,
+        )
+        if row is not None:
+            schedule_rows.append(row)
+
+    logger.info("Found %d scheduled games via NBA CDN schedule.", len(schedule_rows))
+    return _filter_confirmed_schedule(pd.DataFrame(schedule_rows))
+
+
 def _fetch_schedule_v2(date_str: str, team_mapping: dict[str, int]) -> pd.DataFrame:
-    sb = scoreboardv2.ScoreboardV2(game_date=date_str)
+    sb = scoreboardv2.ScoreboardV2(
+        game_date=date_str,
+        timeout=NBA_STATS_TIMEOUT_SECONDS,
+    )
     df = sb.get_data_frames()[0]
 
     if len(df) == 0:
@@ -292,18 +389,76 @@ def _fetch_schedule_v2(date_str: str, team_mapping: dict[str, int]) -> pd.DataFr
     return _filter_confirmed_schedule(pd.DataFrame(games))
 
 
+def _fetch_schedule_with_retries(
+    source_name: str,
+    date_str: str,
+    fetcher: Callable[[], pd.DataFrame],
+    *,
+    attempts: int = 1,
+    retry_delay_seconds: float = 1.0,
+) -> pd.DataFrame:
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return fetcher()
+        except Exception as exc:
+            last_error = exc
+            if attempt < attempts:
+                logger.warning(
+                    "%s fetch attempt %d/%d failed for %s: %s",
+                    source_name,
+                    attempt,
+                    attempts,
+                    date_str,
+                    exc,
+                )
+                time.sleep(retry_delay_seconds)
+            else:
+                logger.warning("%s fetch failed for %s: %s", source_name, date_str, exc)
+
+    if last_error is None:
+        msg = f"{source_name} fetch failed for {date_str}"
+        raise RuntimeError(msg)
+    raise last_error
+
+
 def fetch_schedule(date_str: str) -> pd.DataFrame:
     """Fetch the schedule for a given date."""
     logger.info("Fetching schedule for %s...", date_str)
 
     team_mapping = _load_team_mapping()
+    sources: list[tuple[str, Callable[[], pd.DataFrame], int]] = [
+        (
+            "ScoreboardV3",
+            lambda: _fetch_schedule_v3(date_str, team_mapping),
+            1,
+        ),
+        (
+            "NBA CDN schedule",
+            lambda: _fetch_schedule_cdn(date_str, team_mapping),
+            2,
+        ),
+        (
+            "ScoreboardV2",
+            lambda: _fetch_schedule_v2(date_str, team_mapping),
+            1,
+        ),
+    ]
 
-    try:
-        return _fetch_schedule_v3(date_str, team_mapping)
-    except Exception as exc:
-        logger.warning("ScoreboardV3 fetch failed for %s: %s", date_str, exc)
+    errors = []
+    for source_name, fetcher, attempts in sources:
+        try:
+            return _fetch_schedule_with_retries(
+                source_name,
+                date_str,
+                fetcher,
+                attempts=attempts,
+            )
+        except Exception as exc:
+            errors.append(f"{source_name}: {exc}")
 
-    return _fetch_schedule_v2(date_str, team_mapping)
+    msg = f"All schedule sources failed for {date_str}: {' | '.join(errors)}"
+    raise RuntimeError(msg)
 
 
 def forecast_window_dates(start_date: str, days: int = DEFAULT_FORECAST_WINDOW_DAYS) -> list[str]:
