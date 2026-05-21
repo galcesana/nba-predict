@@ -38,6 +38,16 @@ jobs:
       - name: Publish forecast
         run: python -m src.app.publish_today --nextgen-shadow
 
+      - name: Upload context store artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: context-store-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            data/context_store/context.duckdb
+            data/context_store/parquet/**
+          if-no-files-found: ignore
+          retention-days: 90
+
       - name: Commit published artifacts
         run: |
           if [ -z "$(git status --porcelain published)" ]; then

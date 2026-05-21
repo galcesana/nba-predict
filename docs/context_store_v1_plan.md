@@ -23,6 +23,7 @@ Phase 13A through Phase 13C are implemented:
 - `src.context_store.writer` appends successful publish snapshots to `forecast_runs`, `game_snapshots`, `prediction_outputs`, `model_features`, `injury_context`, `news_articles`, and `news_scores`.
 - `src.data.fetch_news` now annotates fetched articles with inclusion/exclusion metadata so rejected betting, promo, stale, duplicate, or low-relevance articles can still be audited later.
 - `src.app.publish_today` preserves the existing `published/` JSON contract and records context snapshots after successful production publishes.
+- `.github/workflows/publish_daily.yml` uploads the generated DuckDB/Parquet context bundle as a GitHub Actions artifact for each successful publish run.
 
 Phase 13D through Phase 13F remain planned: outcome hydration, future training export, and dashboard/data-quality views. V1 model-feature capture stores numeric fields available in the published payload and component/context metadata; deeper hidden tensors or raw training matrices are intentionally deferred until the context store has real prospective volume.
 

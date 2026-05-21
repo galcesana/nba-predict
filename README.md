@@ -416,6 +416,10 @@ official report row was available for the matchup.
 
 Automation is defined in `.github/workflows/publish_daily.yml`, which schedules the publish job at `15:05 UTC` and `22:05 UTC` each day, and also supports `workflow_dispatch`. The later refresh is intentional: it gives official injury reports more time to move from `NOT YET SUBMITTED` to submitted player rows before game time. The scheduled job runs with `--nextgen-shadow`, so the deployed production forecast uses `nextgen_full_value_tuned_v2` while `Model Lab` receives fresh baseline comparison fields after each publish.
 
+Each GitHub Actions publish also uploads the generated context store as a workflow artifact named
+`context-store-<run_id>-<run_attempt>`. This preserves the prospective DuckDB/Parquet bundle without
+committing generated database files to `main`.
+
 ### 6A. Initialize the Prospective Context Store
 
 Successful production publishes now append model-visible context to a local DuckDB + Parquet store:

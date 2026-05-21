@@ -145,7 +145,9 @@ so those feature changes force rebuilds.
 
 The scheduled GitHub Actions publisher runs `python -m src.app.publish_today --nextgen-shadow`, so
 the deployed slate refreshes production probabilities and `Model Lab` baseline comparisons together.
-It runs at `15:05 UTC` and `22:05 UTC` daily; the second run is an injury-report refresh pass.
+It runs at `15:05 UTC` and `22:05 UTC` daily; the second run is an injury-report refresh pass. Each
+successful publish uploads the generated `data/context_store/` DuckDB/Parquet bundle as a workflow
+artifact while committing only `published/` JSON files to `main`.
 
 A separate CI workflow runs `python -m ruff check .` and the clean-checkout pytest suite on code
 changes and pull requests. Forecast-only commits under `published/**` are ignored so automated slate

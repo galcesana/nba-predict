@@ -587,6 +587,10 @@ tracked deployment slates refresh both the promoted production forecast and the 
 It runs twice per day at `15:05 UTC` and `22:05 UTC`; the later refresh is designed to capture
 more submitted official injury-report rows before the evening games.
 
+Successful scheduled/manual publish jobs upload the generated `data/context_store/` DuckDB/Parquet
+bundle as a GitHub Actions artifact. The workflow still commits only `published/` JSON files to
+`main`, keeping generated context-store data out of the repository.
+
 The separate CI workflow runs `python -m ruff check .` and the clean-checkout pytest suite on code
 pushes, pull requests, and manual dispatches. It ignores publish-only changes under `published/**`
 so routine forecast JSON commits do not trigger quality runs.
@@ -703,6 +707,7 @@ Implemented in Phase 13A-13C:
   `model_features`, `injury_context`, `news_articles`, and `news_scores`
 - news article inclusion/exclusion metadata for auditability
 - append-only `run_id` snapshots with `as_of_utc` timestamps
+- GitHub Actions artifact upload for the generated DuckDB/Parquet bundle
 
 The key leakage rule is that pregame context is append-only, while final scores and winners are
 hydrated later into a separate `outcomes` table. Outcome hydration, context-training export, and a

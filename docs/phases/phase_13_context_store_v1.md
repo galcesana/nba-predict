@@ -191,6 +191,7 @@ python -m pytest tests/test_dashboard.py tests/test_context_store.py -q
 - [x] Context store initializes locally without requiring external services
 - [x] Generated context-store files are gitignored
 - [x] Successful publish writes forecast, game, prediction, feature, injury, and news context rows
+- [x] GitHub Actions uploads generated context-store artifacts after scheduled/manual publishes
 - [x] Failed publish leaves context store untouched
 - [x] Betting/prop/promo articles can be stored as excluded instead of model-fed
 - [x] All pregame context rows include `as_of_utc`
