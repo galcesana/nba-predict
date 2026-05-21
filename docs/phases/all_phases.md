@@ -3,8 +3,10 @@
 > **Master tracker for all implementation phases.**
 > Update the status column as you work. Each phase has its own detailed doc linked below.
 >
-> This tracker is now primarily a **historical implementation record** for phases 0-12.
-> The active forward roadmap lives in [../next_generation_model_roadmap.md](../next_generation_model_roadmap.md).
+> This tracker is now primarily a **historical implementation record** for phases 0-12,
+> plus the planned Phase 13 context-store roadmap.
+> The active forward roadmap lives in [../next_generation_model_roadmap.md](../next_generation_model_roadmap.md),
+> with Context Store V1 detailed in [../context_store_v1_plan.md](../context_store_v1_plan.md).
 
 ---
 
@@ -25,8 +27,9 @@
 | [10](phase_10_live_publishing.md) | Live Publishing Layer | M | 2-4 days | `[x]` Complete | Phase 9 |
 | [11](phase_11_live_context_playoff_hardening.md) | Live Context + Playoff Hardening | L | 4-7 days | `[x]` Complete | Phase 10 |
 | [12](phase_12_api_service_layer.md) | API Service Layer | M | 2-4 days | `[x]` Complete | Phase 11 |
+| [13](phase_13_context_store_v1.md) | Context Store V1 | L | 1-2 weeks | `[ ]` Planned | Phase 10 + 11 + 12 |
 
-**Total estimated: ~13-17 weeks**
+**Total estimated: ~14-19 weeks including planned Phase 13**
 
 ---
 
@@ -50,7 +53,7 @@ Phase 0 -> Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 ----+
                                  |                       |
                                  +-> Phase 6 -----------|
                                                          v
-                                                    Phase 7 -> Phase 8 -> Phase 9 -> Phase 10 -> Phase 11 -> Phase 12
+                                                    Phase 7 -> Phase 8 -> Phase 9 -> Phase 10 -> Phase 11 -> Phase 12 -> Phase 13
 ```
 
 ---
@@ -82,7 +85,8 @@ Phase 0 -> Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 ----+
 | 10 | 8 | Publishing, manifest state, dashboard source precedence |
 | 11 | 11 | Live injury/news context overlays, coverage summaries, playoff filtering |
 | 12 | 8 | API health, manifest, forecast, game detail, and metrics endpoints |
-| **Total** | **148 automated + 8 manual** | |
+| 13 | planned | Context-store schema, append-only publish capture, live injury/news preservation |
+| **Total** | **148 automated + 8 manual before Phase 13** | |
 
 ---
 
@@ -108,3 +112,4 @@ Phase 0 -> Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 ----+
 | Normalization | Per-season StandardScaler, train-only fit |
 | Scope | Regular season only (V1) |
 | Meta-model | Logistic regression ensemble |
+| Prospective context | Phase 13 planned DuckDB + Parquet context store |

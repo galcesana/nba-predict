@@ -20,6 +20,9 @@ promoted next-gen enriched stack with player-value, projected-availability, and 
 It already includes live injury/news overlays, but those overlays are still limited compared to a
 fully learned player- and lineup-aware system.
 
+The next planned infrastructure slice is Context Store V1: an append-only prospective store for the
+exact features, injury context, news context, and predictions available before each live game.
+
 ---
 
 ## 2. Historical Data Foundation
@@ -640,6 +643,7 @@ These are the most important limitations to remember before extending the system
 6. **Displayed explanations are still partly heuristic rather than fully learned attribution.**
 7. **The ensemble is simple and not yet context-aware or regime-aware.**
 8. **Official inactive-history coverage is still a future quality upgrade.**
+9. **Live injury/news context is not yet persisted as a future training corpus.**
 
 ---
 
@@ -669,3 +673,26 @@ Use this doc before:
 For future work planning, pair this document with:
 
 - [next_generation_model_roadmap.md](next_generation_model_roadmap.md)
+- [context_store_v1_plan.md](context_store_v1_plan.md)
+
+---
+
+## 15. Planned Context Store V1
+
+Context Store V1 is planned, not implemented yet. The goal is to preserve the exact pregame context
+used by live forecasts so future models can train on real prospective injury/news signals rather
+than historical proxies.
+
+Canonical plan:
+
+- [context_store_v1_plan.md](context_store_v1_plan.md)
+- [phases/phase_13_context_store_v1.md](phases/phase_13_context_store_v1.md)
+
+Planned storage:
+
+- `data/context_store/context.duckdb`
+- `data/context_store/parquet/`
+- `data/processed/context_training/context_training_dataset.parquet`
+
+The key leakage rule is that pregame context is append-only, while final scores and winners are
+hydrated later into a separate `outcomes` table.
