@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -14,7 +15,11 @@ import pandas as pd
 import requests
 
 from src.data.team_metadata import load_team_metadata_by_idx
-from src.nlp.article_filtering import clean_html_text
+from src.nlp.article_filtering import (
+    clean_html_text,
+    compute_article_relevance,
+    is_betting_or_promo_article,
+)
 from src.nlp.extract_sentiment import score_articles
 from src.utils.logging import setup_logging
 from src.utils.paths import RAW_DIR
@@ -26,6 +31,7 @@ DEFAULT_LOOKBACK_DAYS = 3
 DEFAULT_MAX_ITEMS = 20
 GOOGLE_NEWS_ENDPOINT = "https://news.google.com/rss/search"
 REQUEST_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; nba-predict/1.0)"}
+MIN_ARTICLE_RELEVANCE = 0.18
 
 
 def _rss_query_for_team(team_metadata: dict[str, object]) -> str:
@@ -59,6 +65,68 @@ def _parse_rss_items(xml_text: str, *, team_idx: int) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows)
+
+
+def _article_id(row: pd.Series) -> str:
+    title = str(row.get("title", ""))
+    return hashlib.sha1(
+        f"{row.get('link', '')}|{row.get('published_at', '')}|{title}".encode("utf-8")
+    ).hexdigest()
+
+
+def annotate_team_news_articles(
+    articles: pd.DataFrame,
+    *,
+    collected_at: str,
+) -> pd.DataFrame:
+    """Annotate fetched articles with model inclusion/exclusion metadata."""
+    if articles.empty:
+        return articles
+
+    team_metadata = load_team_metadata_by_idx()
+    annotated = articles.copy()
+    annotated["article_id"] = annotated.apply(_article_id, axis=1)
+
+    relevance_scores = []
+    relevance_reasons = []
+    excluded_reasons = []
+    collected_ts = pd.to_datetime(collected_at, utc=True, errors="coerce")
+    for _, row in annotated.iterrows():
+        aliases = list(team_metadata[int(row["team_idx"])]["aliases"])
+        relevance, reason = compute_article_relevance(
+            str(row.get("title", "")),
+            str(row.get("summary", "")),
+            aliases,
+        )
+        published_ts = pd.to_datetime(row.get("published_at"), utc=True, errors="coerce")
+        stale_article = (
+            pd.notna(collected_ts)
+            and pd.notna(published_ts)
+            and published_ts < collected_ts - pd.Timedelta(days=DEFAULT_LOOKBACK_DAYS)
+        )
+        relevance_scores.append(relevance)
+        relevance_reasons.append(reason)
+        if is_betting_or_promo_article(
+            str(row.get("title", "")),
+            str(row.get("summary", "")),
+            str(row.get("source") or ""),
+        ):
+            excluded_reasons.append("betting_or_promo")
+        elif stale_article:
+            excluded_reasons.append("stale")
+        elif relevance < MIN_ARTICLE_RELEVANCE:
+            excluded_reasons.append("low_relevance")
+        else:
+            excluded_reasons.append("")
+
+    annotated["article_relevance"] = relevance_scores
+    annotated["article_relevance_reason"] = relevance_reasons
+    annotated["excluded_reason"] = excluded_reasons
+    duplicate_mask = annotated.duplicated(subset=["team_idx", "link", "title"], keep="first")
+    annotated.loc[duplicate_mask, "excluded_reason"] = "duplicate"
+    annotated["included_in_model"] = annotated["excluded_reason"] == ""
+    annotated["collected_at"] = collected_at
+    return annotated.reset_index(drop=True)
 
 
 def fetch_team_news_articles(
@@ -103,6 +171,7 @@ def fetch_news_scores_for_games(
 
     as_of_date = datetime.now(ZoneInfo(DEFAULT_TIMEZONE)).date().isoformat()
     cache_path = storage_dir / f"team_news_scores_{as_of_date}.parquet"
+    article_cache_path = storage_dir / f"team_news_articles_{as_of_date}.parquet"
     if cache_path.exists():
         cached = pd.read_parquet(cache_path)
         target_teams = set(games["home_team_idx"]).union(set(games["away_team_idx"]))
@@ -130,11 +199,18 @@ def fetch_news_scores_for_games(
     if articles.empty:
         return pd.DataFrame()
 
-    scores = score_articles(articles)
+    collected_at = datetime.now(ZoneInfo("UTC")).strftime("%Y-%m-%dT%H:%M:%SZ")
+    annotated_articles = annotate_team_news_articles(articles, collected_at=collected_at)
+    annotated_articles.to_parquet(article_cache_path, index=False)
+    model_articles = annotated_articles[annotated_articles["included_in_model"]].copy()
+    if model_articles.empty:
+        return pd.DataFrame()
+
+    scores = score_articles(model_articles)
     if scores.empty:
         return scores
 
-    scores["collected_at"] = datetime.now(ZoneInfo("UTC")).strftime("%Y-%m-%dT%H:%M:%SZ")
+    scores["collected_at"] = collected_at
     scores.to_parquet(cache_path, index=False)
     return scores.reset_index(drop=True)
 

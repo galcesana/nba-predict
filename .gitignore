@@ -42,6 +42,7 @@ data/interim/cleaned_boxscores/*
 !data/interim/anonymized_articles/
 data/interim/anonymized_articles/*
 !data/interim/anonymized_articles/.gitkeep
+data/context_store/
 
 # Keep mappings (small JSON files)
 !data/mappings/

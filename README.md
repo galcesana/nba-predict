@@ -59,6 +59,7 @@ flowchart LR
     L["Elo ratings"] --> K
     K --> M["Calibrated P(home win)"]
     M --> N["Published JSON + Streamlit + API"]
+    N --> O["Context Store V1 (DuckDB + Parquet)"]
 ```
 
 ## Screenshots
@@ -120,6 +121,7 @@ nba-predict/
 |  |- raw/                       # Cached API responses (Parquet) - gitignored
 |  |- interim/                   # Cleaned intermediate data - gitignored
 |  |- processed/                 # Feature tables (minimal inference bundle tracked)
+|  |- context_store/             # Prospective forecast context store - gitignored
 |  `- mappings/                  # team_to_idx.json
 |- models/                       # Saved model artifacts (minimal inference bundle tracked)
 |- predictions/                  # Local daily + backtest prediction JSONs
@@ -131,6 +133,7 @@ nba-predict/
 |  |- features/                  # Rolling, schedule, injury, news features
 |  |- models/                    # Elo, tabular, neural, ensemble, calibration
 |  |- app/                       # Daily prediction, publishing, Streamlit dashboard, FastAPI service
+|  |- context_store/             # DuckDB schema, init CLI, and publish-context writer
 |  `- utils/                     # Logging, paths, validation
 |- tests/                        # Comprehensive test suite
 `- docs/phases/                  # Phase-by-phase implementation guides
@@ -401,6 +404,8 @@ This command:
 - writes `published/daily/YYYY-MM-DD.json`
 - updates `published/daily/latest.json`
 - writes `published/manifest.json`
+- appends successful publish context to `data/context_store/context.duckdb` and
+  `data/context_store/parquet/`
 - records publish observability in the manifest, including runtime, schedule status,
   injury/news coverage mode, and coverage metrics
 - leaves the current published slate untouched if publishing fails
@@ -410,6 +415,17 @@ both teams were still marked `NOT YET SUBMITTED`. That is different from `fallba
 official report row was available for the matchup.
 
 Automation is defined in `.github/workflows/publish_daily.yml`, which schedules the publish job at `15:05 UTC` and `22:05 UTC` each day, and also supports `workflow_dispatch`. The later refresh is intentional: it gives official injury reports more time to move from `NOT YET SUBMITTED` to submitted player rows before game time. The scheduled job runs with `--nextgen-shadow`, so the deployed production forecast uses `nextgen_full_value_tuned_v2` while `Model Lab` receives fresh baseline comparison fields after each publish.
+
+### 6A. Initialize the Prospective Context Store
+
+Successful production publishes now append model-visible context to a local DuckDB + Parquet store:
+
+```bash
+python -m src.context_store.init
+```
+
+Generated context-store files are intentionally gitignored. The store is for accumulating prospective
+training data from this point forward, not for backfilling old live injury/news context.
 
 ### 7. Launch the API Service
 
@@ -473,9 +489,10 @@ For day-to-day use, the simplest flow is:
 2. Build data and train models once with `make fetch-data`, `make build-features`, `make train-baseline`, `make train-model`, and `make evaluate`.
 3. Generate a local slate with `make predict-today`.
 4. Publish a deployment-ready slate with `python -m src.app.publish_today`.
-5. Optionally run backtests for past date ranges.
-6. Launch `streamlit run streamlit_app.py` to explore predictions and diagnostics.
-7. Launch `uvicorn src.app.api:app --reload` when you want programmatic access to the same published slate.
+5. Initialize the prospective context store with `python -m src.context_store.init` if you want local publish-context history.
+6. Optionally run backtests for past date ranges.
+7. Launch `streamlit run streamlit_app.py` to explore predictions and diagnostics.
+8. Launch `uvicorn src.app.api:app --reload` when you want programmatic access to the same published slate.
 
 ---
 
@@ -527,6 +544,7 @@ Historical implementation history is preserved in:
 | 10 | Live Publishing Layer | Complete |
 | 11 | Live Context + Playoff Hardening | Complete |
 | 12 | API Service Layer | Complete |
+| 13 | Context Store V1 | In Progress - 13A-13C implemented |
 
 **Current data:** 15,412 games across 12 seasons (2014-2026), including 983 playoff games. The latest enriched-feature benchmark is `enriched_value_only / catboost` at 0.6163 log loss and 66.2% accuracy. The value-tuned tracked next-gen production model is `nextgen_full / raw` at 0.6159 log loss and 65.4% accuracy, and the tracked artifact bundle reports `nextgen_full_value_tuned_v2`.
 

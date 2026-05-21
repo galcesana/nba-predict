@@ -6,6 +6,7 @@ import pandas as pd
 
 from src.app.predict_today import _context_summary_from_predictions
 from src.data import fetch_injuries
+from src.data.fetch_news import annotate_team_news_articles
 from src.features import news_features
 from src.features.injury_features import build_injury_features
 from src.features.news_features import build_news_features, load_news_scores
@@ -304,6 +305,30 @@ def test_score_articles_filters_betting_promos():
     assert scores["title"].tolist() == [
         "Knicks center Mitchell Robinson available before Game 2"
     ]
+
+
+def test_annotate_team_news_articles_marks_stale_rows():
+    """The context store should preserve stale exclusions for auditability."""
+    articles = pd.DataFrame(
+        [
+            {
+                "team_idx": 19,
+                "published_at": "2026-05-17T18:00:00Z",
+                "title": "Knicks rotation looks sharp before Game 2",
+                "summary": "New York expects stable minutes from its key playoff rotation.",
+                "source": "Example Beat",
+                "link": "https://example.com/old-knicks",
+            }
+        ]
+    )
+
+    annotated = annotate_team_news_articles(
+        articles,
+        collected_at="2026-05-21T18:00:00Z",
+    )
+
+    assert not bool(annotated.iloc[0]["included_in_model"])
+    assert annotated.iloc[0]["excluded_reason"] == "stale"
 
 
 def test_build_news_features_uses_live_scores(monkeypatch):

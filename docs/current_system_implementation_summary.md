@@ -20,8 +20,9 @@ promoted next-gen enriched stack with player-value, projected-availability, and 
 It already includes live injury/news overlays, but those overlays are still limited compared to a
 fully learned player- and lineup-aware system.
 
-The next planned infrastructure slice is Context Store V1: an append-only prospective store for the
-exact features, injury context, news context, and predictions available before each live game.
+The current infrastructure now includes Context Store V1 Phase 13A-13C: an append-only prospective
+store for successful publish snapshots, model-visible features, injury context, news context, and
+prediction outputs available before each live game.
 
 ---
 
@@ -677,22 +678,32 @@ For future work planning, pair this document with:
 
 ---
 
-## 15. Planned Context Store V1
+## 15. Context Store V1
 
-Context Store V1 is planned, not implemented yet. The goal is to preserve the exact pregame context
-used by live forecasts so future models can train on real prospective injury/news signals rather
-than historical proxies.
+Context Store V1 is partially implemented. Successful production publishes now append the exact
+pregame context available to the live forecast so future models can train on real prospective
+injury/news signals rather than historical proxies.
 
 Canonical plan:
 
 - [context_store_v1_plan.md](context_store_v1_plan.md)
 - [phases/phase_13_context_store_v1.md](phases/phase_13_context_store_v1.md)
 
-Planned storage:
+Storage:
 
 - `data/context_store/context.duckdb`
 - `data/context_store/parquet/`
 - `data/processed/context_training/context_training_dataset.parquet`
 
+Implemented in Phase 13A-13C:
+
+- schema initialization through `python -m src.context_store.init`
+- gitignored DuckDB and Parquet storage under `data/context_store/`
+- successful publish capture for `forecast_runs`, `game_snapshots`, `prediction_outputs`,
+  `model_features`, `injury_context`, `news_articles`, and `news_scores`
+- news article inclusion/exclusion metadata for auditability
+- append-only `run_id` snapshots with `as_of_utc` timestamps
+
 The key leakage rule is that pregame context is append-only, while final scores and winners are
-hydrated later into a separate `outcomes` table.
+hydrated later into a separate `outcomes` table. Outcome hydration, context-training export, and a
+dashboard data-quality view are still planned follow-up slices.

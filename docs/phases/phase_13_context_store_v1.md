@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Size** | L (1-2 weeks for 13A-13C) |
-| **Status** | `[ ]` Planned |
+| **Status** | `[/]` In Progress - 13A-13C implemented |
 | **Depends on** | Phase 10 + Phase 11 + Phase 12 |
 | **Unlocks** | Prospective injury/news/context training corpus for future models |
 
@@ -51,10 +51,10 @@ Goal: create the storage foundation without changing prediction behavior.
 
 Deliverables:
 
-- [ ] Add path constants for `data/context_store/`
-- [ ] Add explicit `.gitignore` rules for generated context store DB/parquet files
-- [ ] Add `src/context_store/` package scaffold
-- [ ] Add schema definitions for:
+- [x] Add path constants for `data/context_store/`
+- [x] Add explicit `.gitignore` rules for generated context store DB/parquet files
+- [x] Add `src/context_store/` package scaffold
+- [x] Add schema definitions for:
   - `forecast_runs`
   - `game_snapshots`
   - `model_features`
@@ -63,9 +63,9 @@ Deliverables:
   - `news_scores`
   - `prediction_outputs`
   - `outcomes`
-- [ ] Add `python -m src.context_store.init`
-- [ ] Add tests proving empty tables initialize successfully
-- [ ] Add tests proving pregame tables do not contain outcome columns
+- [x] Add `python -m src.context_store.init`
+- [x] Add tests proving empty tables initialize successfully
+- [x] Add tests proving pregame tables do not contain outcome columns
 
 Acceptance checks:
 
@@ -82,14 +82,14 @@ Goal: every successful publish writes a full context snapshot.
 
 Deliverables:
 
-- [ ] Add a context-store writer for published payload + manifest
-- [ ] Generate a stable `run_id` per publish attempt
-- [ ] Save one `forecast_runs` row per successful publish
-- [ ] Save one `game_snapshots` row per game
-- [ ] Save one `prediction_outputs` row per game
-- [ ] Save long-format `model_features` rows for model-visible features available from the prediction run
-- [ ] Preserve existing `published/` JSON behavior
-- [ ] Avoid partial context-store writes on failed publish
+- [x] Add a context-store writer for published payload + manifest
+- [x] Generate a stable `run_id` per publish attempt
+- [x] Save one `forecast_runs` row per successful publish
+- [x] Save one `game_snapshots` row per game
+- [x] Save one `prediction_outputs` row per game
+- [x] Save long-format `model_features` rows for model-visible features available from the prediction run
+- [x] Preserve existing `published/` JSON behavior
+- [x] Avoid partial context-store writes on failed publish
 
 Acceptance checks:
 
@@ -106,13 +106,13 @@ Goal: preserve live context that future training cannot reconstruct from histori
 
 Deliverables:
 
-- [ ] Save injury feature rows used by prediction into `injury_context`
-- [ ] Save news feature rows used by prediction into `news_scores`
-- [ ] Save article metadata into `news_articles`
-- [ ] Store whether each article was included or excluded from model features
-- [ ] Store exclusion reasons such as `betting_or_promo`, `low_relevance`, `stale`, and `duplicate`
-- [ ] Store injury report timestamp/source URL, article publish time, and news collection time
-- [ ] Ensure every context row has `as_of_utc`
+- [x] Save injury feature rows used by prediction into `injury_context`
+- [x] Save news feature rows used by prediction into `news_scores`
+- [x] Save article metadata into `news_articles`
+- [x] Store whether each article was included or excluded from model features
+- [x] Store exclusion reasons such as `betting_or_promo`, `low_relevance`, `stale`, and `duplicate`
+- [x] Store injury report timestamp/source URL, article publish time, and news collection time
+- [x] Ensure every context row has `as_of_utc`
 
 Acceptance checks:
 
@@ -188,16 +188,16 @@ python -m pytest tests/test_dashboard.py tests/test_context_store.py -q
 
 ## Definition of Done For Phase 13A-13C
 
-- [ ] Context store initializes locally without requiring external services
-- [ ] Generated context-store files are gitignored
-- [ ] Successful publish writes forecast, game, prediction, feature, injury, and news context rows
-- [ ] Failed publish leaves context store untouched
-- [ ] Betting/prop/promo articles can be stored as excluded instead of model-fed
-- [ ] All pregame context rows include `as_of_utc`
-- [ ] Existing Streamlit, FastAPI, and `published/` contracts remain unchanged
-- [ ] Focused validation passes
-- [ ] Full validation passes
-- [ ] Tracking docs are updated
+- [x] Context store initializes locally without requiring external services
+- [x] Generated context-store files are gitignored
+- [x] Successful publish writes forecast, game, prediction, feature, injury, and news context rows
+- [x] Failed publish leaves context store untouched
+- [x] Betting/prop/promo articles can be stored as excluded instead of model-fed
+- [x] All pregame context rows include `as_of_utc`
+- [x] Existing Streamlit, FastAPI, and `published/` contracts remain unchanged
+- [x] Focused validation passes (`24 passed`)
+- [x] Full validation passes (`231 passed`)
+- [x] Tracking docs are updated
 
 ---
 
@@ -205,3 +205,4 @@ python -m pytest tests/test_dashboard.py tests/test_context_store.py -q
 
 - Planned after the live news relevance fix. The current system can fetch and feed live news, but without a context store those prospective signals are lost after each run.
 - The first implementation should prioritize append-only capture over sophisticated analytics.
+- 13A-13C now write successful publish snapshots to DuckDB and per-table Parquet files. 13D-13F remain planned follow-up slices.

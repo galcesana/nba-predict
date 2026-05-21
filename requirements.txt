@@ -1,6 +1,7 @@
 # Core
 pandas>=2.0
 numpy>=1.24
+duckdb>=1.0
 # Saved joblib artifacts were produced with scikit-learn 1.6.0. Use the same
 # version on Python runtimes that support it; keep a Python 3.14 fallback so
 # existing Streamlit Cloud apps on newer runtimes can still resolve.

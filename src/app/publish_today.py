@@ -19,7 +19,7 @@ from src.app.predict_today import (
     generate_predictions_for_window,
 )
 from src.utils.logging import setup_logging
-from src.utils.paths import PUBLISHED_DIR
+from src.utils.paths import CONTEXT_STORE_DB, CONTEXT_STORE_PARQUET_DIR, PUBLISHED_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -174,6 +174,8 @@ def publish_predictions_for_date(
     published_root: Path = PUBLISHED_DIR,
     prediction_generator: PredictionGenerator = generate_predictions_for_window,
     enable_nextgen_shadow: bool = False,
+    context_store_db_path: Path | None = None,
+    context_store_parquet_root: Path | None = None,
 ) -> tuple[dict, list[Path]]:
     """Publish a forecast snapshot for the requested date."""
     started_dt = datetime.now(timezone.utc)
@@ -279,7 +281,45 @@ def publish_predictions_for_date(
         ),
     }
     _write_json_atomic(manifest_path, manifest)
+    _save_context_store_snapshot(
+        payload,
+        manifest,
+        published_root=publish_root,
+        context_store_db_path=context_store_db_path,
+        context_store_parquet_root=context_store_parquet_root,
+    )
     return manifest, [dated_path, latest_path, manifest_path]
+
+
+def _save_context_store_snapshot(
+    payload: dict,
+    manifest: dict,
+    *,
+    published_root: Path,
+    context_store_db_path: Path | None,
+    context_store_parquet_root: Path | None,
+) -> None:
+    """Best-effort context-store append for successful production publishes."""
+    should_write = context_store_db_path is not None or context_store_parquet_root is not None
+    try:
+        should_write = should_write or published_root.resolve() == PUBLISHED_DIR.resolve()
+    except OSError:
+        should_write = should_write or published_root == PUBLISHED_DIR
+    if not should_write:
+        return
+
+    try:
+        from src.context_store.writer import save_forecast_context
+
+        run_id = save_forecast_context(
+            payload,
+            manifest,
+            db_path=context_store_db_path or CONTEXT_STORE_DB,
+            parquet_root=context_store_parquet_root or CONTEXT_STORE_PARQUET_DIR,
+        )
+        logger.info("Saved forecast context snapshot run_id=%s", run_id)
+    except Exception:
+        logger.exception("Context-store snapshot failed; published forecast remains valid.")
 
 
 def main(argv: list[str] | None = None) -> int:

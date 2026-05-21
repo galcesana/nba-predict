@@ -25,6 +25,9 @@ MODELS_DIR = PROJECT_ROOT / "models"
 # Prediction outputs
 PREDICTIONS_DIR = PROJECT_ROOT / "predictions"
 PUBLISHED_DIR = PROJECT_ROOT / "published"
+CONTEXT_STORE_DIR = DATA_DIR / "context_store"
+CONTEXT_STORE_DB = CONTEXT_STORE_DIR / "context.duckdb"
+CONTEXT_STORE_PARQUET_DIR = CONTEXT_STORE_DIR / "parquet"
 
 # Docs
 DOCS_DIR = PROJECT_ROOT / "docs"

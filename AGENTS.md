@@ -21,17 +21,17 @@ NBA game outcome prediction system that outputs **calibrated win probabilities**
 - **Phase 10 complete** - live publishing layer implemented with tracked published forecasts, dashboard source precedence, and GitHub Actions automation, 129 tests passing
 - **Phase 11 complete** - live context ingestion added for official injury reports and team news, weekly playoff publishing hardened, 140 tests passing
 - **Phase 12 complete** - FastAPI service layer implemented for health, manifest, weekly forecast, game detail, and metrics access, 148 tests passing
-- **Phase 13 planned** - Context Store V1 documented as an append-only prospective store for model-visible features, live injury context, live news context, predictions, and later outcomes
+- **Phase 13 in progress** - Context Store V1 Phase 13A-13C implemented with DuckDB/Parquet schema initialization, append-only successful-publish snapshots, model-visible feature capture, injury context capture, news score/article audit trails, and later outcomes still isolated for future hydration
 - **Active milestone** - M1 Player + Lineup Foundation in progress; player mapping, season roster metadata, historical player-log ingestion, value-confidence player features, projected availability, availability-adjusted minutes/value, lineup/rotation features, enriched matchup rows, next-gen ensemble experiments, a promotion gate, playoff-capable ingestion, `historical_absence_proxy_v1` missing-player coverage, `replacement_risk_v1` absence-impact candidate features, promoted `nextgen_full_value_tuned_v2` production inference, target-only live sequence inference, base-matchup reuse for next-gen publish enrichment, publish observability, pending official injury-report status, public team labels in forecast JSON/API records, a dashboard `Model Lab` review page, and a proof-oriented `Benchmark` page are added. Current production model: `nextgen_full_value_tuned_v2`, with `ensemble_v1_probability` retained as the rollback/baseline comparison. Latest value-tuned candidate: `nextgen_full / raw` at 0.6159 log loss and 65.4% accuracy, validated with 166 held-out playoff games and 2,602 held-out missing-player-impact games. `replacement_risk_v1` was evaluated but should not be promoted as-is: best single enriched result was `0.6172` log loss, below the current value-tuned best `0.6163`.
 - See `docs/phases/all_phases.md` for the full phase tracker
 - See `docs/current_system_implementation_summary.md` for the current implementation reference
-- See `docs/context_store_v1_plan.md` for the planned prospective context-store design
+- See `docs/context_store_v1_plan.md` for the prospective context-store design and implementation status
 - See `docs/phases/phase_13_context_store_v1.md` for the Context Store V1 implementation phase plan
 - See `docs/next_generation_model_roadmap.md` for the active forward roadmap
 - See `docs/m1_player_lineup_foundation.md` for the concrete next implementation target
 - See `docs/player_lineup_availability_upgrade_plan.md` for the current roster-intelligence upgrade plan
 - `docs/nba_game_prediction_project_plan.md` is retained only as a legacy archive
-- Latest verification: repo-wide Ruff passes; Linux clean-checkout CI suite passes with 178 tests; full local validation passes with 224 tests. A CI workflow now enforces `python -m ruff check .` plus the clean-checkout pytest suite on code pushes/PRs while ignoring publish-only `published/**` refresh commits. Full local validation remains `python -m pytest tests -q` after generated artifacts exist. `requirements.txt` pins `scikit-learn==1.6.0` for Python runtimes below 3.14 to match the saved joblib artifacts, with a Python 3.14 fallback for existing Streamlit Cloud deployments.
+- Latest verification: repo-wide Ruff passes; focused Context Store validation passes with 24 tests; Linux clean-checkout CI suite passes with 178 tests; full local validation passes with 231 tests. A CI workflow now enforces `python -m ruff check .` plus the clean-checkout pytest suite on code pushes/PRs while ignoring publish-only `published/**` refresh commits. Full local validation remains `python -m pytest tests -q` after generated artifacts exist. `requirements.txt` pins `scikit-learn==1.6.0` for Python runtimes below 3.14 to match the saved joblib artifacts, with a Python 3.14 fallback for existing Streamlit Cloud deployments.
 
 ## Project Structure
 
@@ -42,6 +42,7 @@ nba-predict/
 |  |- raw/                       # Cached API responses (Parquet) - gitignored
 |  |- interim/                   # Cleaned intermediate data - gitignored
 |  |- processed/                 # Feature tables (minimal inference bundle tracked)
+|  |- context_store/             # DuckDB + Parquet prospective forecast context - gitignored
 |  `- mappings/                  # team_to_idx.json (tracked in git)
 |- published/                    # Tracked deployment forecast JSONs
 |- src/
@@ -51,6 +52,7 @@ nba-predict/
 |  |- features/                  # Feature engineering (rolling, schedule, injury, news)
 |  |- models/                    # Elo, tabular, neural, ensemble, calibration
 |  |- app/                       # Daily prediction, publishing, Streamlit dashboard, FastAPI service
+|  |- context_store/             # Context Store V1 schema, init CLI, and publish writer
 |  `- utils/                     # paths.py, logging.py
 |- models/                       # Saved model artifacts (minimal inference bundle tracked)
 |- predictions/                  # Local output JSONs - gitignored
@@ -107,7 +109,7 @@ nba-predict/
 - **Paths** use `src/utils/paths.py` constants - never hardcode paths.
 - **Logging** via `src/utils/logging.py` - call `setup_logging()` in entry points.
 - **Tests** live in `tests/`, one file per phase: `test_project_structure.py`, `test_data_foundation.py`, etc.
-- **Data** is mostly gitignored. Raw API responses stay cached locally; the minimal Phase 10 inference bundle is tracked.
+- **Data** is mostly gitignored. Raw API responses and `data/context_store/` stay cached locally; the minimal Phase 10 inference bundle is tracked.
 - **Models** save to `models/{baselines,neural,calibrators,ensembles}/`; only the minimal inference bundle is tracked.
 
 ## Running
@@ -122,6 +124,7 @@ make train-model                 # train neural model
 make predict-today               # generate today's predictions
 python -m src.app.publish_today  # publish deployment forecast JSONs
 python -m src.app.publish_today --nextgen-shadow  # publish production plus comparison fields
+python -m src.context_store.init # initialize local prospective context store
 streamlit run streamlit_app.py   # launch dashboard
 make serve-api                   # launch FastAPI service
 python -m src.data.fetch_player_logs       # build player-game logs for M1
