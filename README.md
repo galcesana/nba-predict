@@ -431,6 +431,18 @@ python -m src.context_store.init
 Generated context-store files are intentionally gitignored. The store is for accumulating prospective
 training data from this point forward, not for backfilling old live injury/news context.
 
+### 6B. Optional Google Drive Corpus Backup
+
+The publish workflow can also copy each zipped context-store bundle to Google Drive. To enable it,
+create a Google Cloud service account, share a Drive folder with that service-account email, then add
+these GitHub Actions repository secrets:
+
+- `GDRIVE_SERVICE_ACCOUNT_JSON` - the full service-account JSON key
+- `GDRIVE_CONTEXT_FOLDER_ID` - the destination Google Drive folder id from the folder URL
+
+If either secret is missing, the workflow skips Drive upload and still publishes normally. The
+canonical uploaded bundle is the zipped DuckDB/Parquet context store, not a single CSV.
+
 ### 7. Launch the API Service
 
 ```bash

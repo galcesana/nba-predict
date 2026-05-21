@@ -38,15 +38,69 @@ jobs:
       - name: Publish forecast
         run: python -m src.app.publish_today --nextgen-shadow
 
+      - name: Package context store bundle
+        run: |
+          mkdir -p artifacts
+          if [ ! -d data/context_store ]; then
+            echo "No context store directory found; skipping bundle."
+            exit 0
+          fi
+
+          python - <<'PY'
+          import os
+          import zipfile
+          from pathlib import Path
+
+          source = Path("data/context_store")
+          output = Path("artifacts") / (
+              f"context-store-{os.environ['GITHUB_RUN_ID']}-"
+              f"{os.environ['GITHUB_RUN_ATTEMPT']}.zip"
+          )
+
+          with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+              for path in sorted(source.rglob("*")):
+                  if path.is_file():
+                      archive.write(path, path.as_posix())
+
+          print(f"Wrote {output}")
+          PY
+
       - name: Upload context store artifact
         uses: actions/upload-artifact@v4
         with:
           name: context-store-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            data/context_store/context.duckdb
-            data/context_store/parquet/**
+          path: artifacts/context-store-${{ github.run_id }}-${{ github.run_attempt }}.zip
           if-no-files-found: ignore
           retention-days: 90
+
+      - name: Upload context store to Google Drive
+        env:
+          GDRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
+          GDRIVE_CONTEXT_FOLDER_ID: ${{ secrets.GDRIVE_CONTEXT_FOLDER_ID }}
+        run: |
+          if [ -z "$GDRIVE_SERVICE_ACCOUNT_JSON" ] || [ -z "$GDRIVE_CONTEXT_FOLDER_ID" ]; then
+            echo "Google Drive secrets are not configured; skipping Drive upload."
+            exit 0
+          fi
+
+          if [ -z "$(ls -A artifacts 2>/dev/null)" ]; then
+            echo "No packaged context store artifacts found; skipping Drive upload."
+            exit 0
+          fi
+
+          curl https://rclone.org/install.sh | sudo bash
+
+          printf "%s" "$GDRIVE_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/gdrive-service-account.json"
+          cat > "$RUNNER_TEMP/rclone.conf" <<EOF
+          [gdrive]
+          type = drive
+          scope = drive
+          service_account_file = $RUNNER_TEMP/gdrive-service-account.json
+          root_folder_id = $GDRIVE_CONTEXT_FOLDER_ID
+          EOF
+
+          RCLONE_CONFIG="$RUNNER_TEMP/rclone.conf" \
+            rclone copy artifacts gdrive: --drive-chunk-size 64M --transfers 1 --checkers 4
 
       - name: Commit published artifacts
         run: |
