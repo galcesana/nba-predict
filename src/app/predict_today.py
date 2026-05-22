@@ -9,9 +9,10 @@ import argparse
 import json
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import requests
@@ -195,6 +196,59 @@ def _as_bool(value: object) -> bool:
     return bool(value)
 
 
+def _format_utc(value: datetime) -> str:
+    return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _extract_time(value: object):
+    """Extract a clock time from NBA schedule fields that may omit the real date."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+
+    normalized = (
+        text.replace("(ET)", "")
+        .replace("ET", "")
+        .replace("EDT", "")
+        .replace("EST", "")
+        .strip()
+    )
+    parsed = pd.to_datetime(normalized, errors="coerce")
+    if pd.isna(parsed):
+        return None
+    return parsed.to_pydatetime().time().replace(tzinfo=None)
+
+
+def _normalize_game_time_utc(game: dict, *, date_str: str) -> str | None:
+    """Return a real UTC tipoff datetime even when CDN fields are time-only."""
+    for key in ("gameDateTimeUTC", "gameTimeUTC"):
+        value = game.get(key)
+        parsed = pd.to_datetime(value, utc=True, errors="coerce")
+        if pd.notna(parsed) and parsed.year >= 2000:
+            return _format_utc(parsed.to_pydatetime())
+
+    et_time = _extract_time(
+        game.get("gameDateTimeEst") or game.get("gameEt") or game.get("gameStatusText")
+    )
+    if et_time is not None:
+        local_tipoff = datetime.combine(
+            datetime.strptime(date_str, "%Y-%m-%d").date(),
+            et_time,
+            tzinfo=ZoneInfo("America/New_York"),
+        )
+        return _format_utc(local_tipoff)
+
+    utc_time = _extract_time(game.get("gameTimeUTC"))
+    if utc_time is None:
+        return None
+    utc_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    if utc_time.hour < 12:
+        utc_date += timedelta(days=1)
+    return _format_utc(datetime.combine(utc_date, utc_time, tzinfo=timezone.utc))
+
+
 def _playoff_series_key(row: pd.Series) -> str | None:
     """Return a stable series key for playoff games, otherwise None."""
     game_label = str(row.get("game_label") or "")
@@ -234,7 +288,7 @@ def _schedule_row_from_nba_game(
         "game_sub_label": game.get("gameSubLabel") or game.get("seriesGameNumber"),
         "series_text": game.get("seriesText"),
         "game_status_text": game.get("gameStatusText"),
-        "game_time_utc": game.get("gameTimeUTC") or game.get("gameDateTimeUTC"),
+        "game_time_utc": _normalize_game_time_utc(game, date_str=date_str),
         "game_time_et": game.get("gameEt") or game.get("gameDateTimeEst"),
         "game_code": game.get("gameCode"),
         "if_necessary": _as_bool(game.get("ifNecessary", False)),

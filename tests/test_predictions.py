@@ -248,6 +248,8 @@ class TestScripts:
                                         "gameId": "0042500302",
                                         "gameCode": "20260521/CLENYK",
                                         "gameStatusText": "8:00 pm ET",
+                                        "gameTimeUTC": "1900-01-01T00:00:00Z",
+                                        "gameEt": "8:00 pm ET",
                                         "ifNecessary": "false",
                                         "gameLabel": "East Conf. Finals",
                                         "gameSubLabel": "Game 2",
@@ -275,6 +277,7 @@ class TestScripts:
         assert frame["game_id"].tolist() == ["0042500302"]
         assert frame.iloc[0]["home_team_idx"] == 1
         assert frame.iloc[0]["away_team_idx"] == 2
+        assert frame.iloc[0]["game_time_utc"] == "2026-05-22T00:00:00Z"
         assert not bool(frame.iloc[0]["if_necessary"])
 
     def test_fetch_schedule_falls_back_to_cdn_when_scoreboard_times_out(self, monkeypatch):
