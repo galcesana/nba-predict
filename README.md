@@ -444,10 +444,10 @@ use one of these modes.
 Recommended for a normal personal Google Drive account:
 
 - Create an `rclone` Google Drive remote named `gdrive` on your local machine with OAuth login.
-- Add the destination folder as `root_folder_id` in that remote config, or accept uploads to the
-  Drive root.
+- By default, workflow uploads go to a Drive folder path named `nba-predict-context-store`.
 - Add one GitHub Actions repository secret:
   - `GDRIVE_RCLONE_CONFIG` - the full `[gdrive]` block from your local `rclone.conf`
+- Optionally add `GDRIVE_CONTEXT_PATH` if you want a different destination path under that remote.
 
 Service-account mode is only recommended for a Google Workspace Shared Drive or another setup where
 the service account has usable storage ownership. Normal personal "My Drive" folders often fail with

@@ -590,11 +590,12 @@ intended local publish time.
 
 Successful scheduled/manual publish jobs package the generated `data/context_store/` DuckDB/Parquet
 bundle as a zip and upload it as a GitHub Actions artifact. If `GDRIVE_RCLONE_CONFIG` is configured,
-the same zip is copied to Google Drive through an OAuth-backed `rclone` remote. A service-account
-fallback using `GDRIVE_SERVICE_ACCOUNT_JSON` and `GDRIVE_CONTEXT_FOLDER_ID` is still supported, but
-is mainly useful for Shared Drives or Workspace setups because normal service accounts do not have
-personal My Drive storage quota. Drive backup is non-blocking; publish JSON and GitHub artifact
-backup remain valid if Drive upload fails.
+the same zip is copied to Google Drive through an OAuth-backed `rclone` remote. The default Drive
+destination path is `nba-predict-context-store`, overridable with `GDRIVE_CONTEXT_PATH`. A
+service-account fallback using `GDRIVE_SERVICE_ACCOUNT_JSON` and `GDRIVE_CONTEXT_FOLDER_ID` is still
+supported, but is mainly useful for Shared Drives or Workspace setups because normal service
+accounts do not have personal My Drive storage quota. Drive backup is non-blocking; publish JSON and
+GitHub artifact backup remain valid if Drive upload fails.
 
 The separate CI workflow runs `python -m ruff check .` and the clean-checkout pytest suite on code
 pushes, pull requests, and manual dispatches. It ignores publish-only changes under `published/**`

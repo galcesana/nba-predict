@@ -110,6 +110,7 @@ jobs:
           GDRIVE_RCLONE_CONFIG: ${{ secrets.GDRIVE_RCLONE_CONFIG }}
           GDRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
           GDRIVE_CONTEXT_FOLDER_ID: ${{ secrets.GDRIVE_CONTEXT_FOLDER_ID }}
+          GDRIVE_CONTEXT_PATH: ${{ secrets.GDRIVE_CONTEXT_PATH }}
         run: |
           if [ -z "$GDRIVE_RCLONE_CONFIG" ] && { [ -z "$GDRIVE_SERVICE_ACCOUNT_JSON" ] || [ -z "$GDRIVE_CONTEXT_FOLDER_ID" ]; }; then
             echo "Google Drive secrets are not configured; skipping Drive upload."
@@ -136,8 +137,11 @@ jobs:
           EOF
           fi
 
+          DRIVE_DESTINATION="${GDRIVE_CONTEXT_PATH:-nba-predict-context-store}"
+          echo "Uploading context store bundle to gdrive:${DRIVE_DESTINATION}"
+
           if ! RCLONE_CONFIG="$RUNNER_TEMP/rclone.conf" \
-            rclone copy artifacts gdrive: \
+            rclone copy artifacts "gdrive:${DRIVE_DESTINATION}" \
               --drive-chunk-size 64M \
               --transfers 1 \
               --checkers 4 \
