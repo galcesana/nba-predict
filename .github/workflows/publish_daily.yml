@@ -105,11 +105,13 @@ jobs:
 
       - name: Upload context store to Google Drive
         if: steps.schedule_gate.outputs.should_publish == 'true'
+        continue-on-error: true
         env:
+          GDRIVE_RCLONE_CONFIG: ${{ secrets.GDRIVE_RCLONE_CONFIG }}
           GDRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
           GDRIVE_CONTEXT_FOLDER_ID: ${{ secrets.GDRIVE_CONTEXT_FOLDER_ID }}
         run: |
-          if [ -z "$GDRIVE_SERVICE_ACCOUNT_JSON" ] || [ -z "$GDRIVE_CONTEXT_FOLDER_ID" ]; then
+          if [ -z "$GDRIVE_RCLONE_CONFIG" ] && { [ -z "$GDRIVE_SERVICE_ACCOUNT_JSON" ] || [ -z "$GDRIVE_CONTEXT_FOLDER_ID" ]; }; then
             echo "Google Drive secrets are not configured; skipping Drive upload."
             exit 0
           fi
@@ -121,17 +123,30 @@ jobs:
 
           curl https://rclone.org/install.sh | sudo bash
 
-          printf "%s" "$GDRIVE_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/gdrive-service-account.json"
-          cat > "$RUNNER_TEMP/rclone.conf" <<EOF
+          if [ -n "$GDRIVE_RCLONE_CONFIG" ]; then
+            printf "%s" "$GDRIVE_RCLONE_CONFIG" > "$RUNNER_TEMP/rclone.conf"
+          else
+            printf "%s" "$GDRIVE_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/gdrive-service-account.json"
+            cat > "$RUNNER_TEMP/rclone.conf" <<EOF
           [gdrive]
           type = drive
           scope = drive
           service_account_file = $RUNNER_TEMP/gdrive-service-account.json
           root_folder_id = $GDRIVE_CONTEXT_FOLDER_ID
           EOF
+          fi
 
-          RCLONE_CONFIG="$RUNNER_TEMP/rclone.conf" \
-            rclone copy artifacts gdrive: --drive-chunk-size 64M --transfers 1 --checkers 4
+          if ! RCLONE_CONFIG="$RUNNER_TEMP/rclone.conf" \
+            rclone copy artifacts gdrive: \
+              --drive-chunk-size 64M \
+              --transfers 1 \
+              --checkers 4 \
+              --retries 1 \
+              --low-level-retries 1; then
+            echo "::warning::Google Drive backup failed. Publish JSON and GitHub artifact upload remain valid."
+            echo "::warning::For personal Google Drive, use GDRIVE_RCLONE_CONFIG instead of service-account upload."
+            exit 0
+          fi
 
       - name: Commit published artifacts
         if: steps.schedule_gate.outputs.should_publish == 'true'

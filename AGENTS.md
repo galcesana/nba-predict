@@ -148,8 +148,10 @@ the deployed slate refreshes production probabilities and `Model Lab` baseline c
 It publishes once per day at `07:00 Asia/Jerusalem`; the workflow uses two UTC cron triggers plus an
 Israel-time gate so daylight saving changes do not shift the intended local publish time. Each
 successful publish uploads the generated `data/context_store/` DuckDB/Parquet bundle as a workflow
-artifact, and can optionally copy the same zip to Google Drive when `GDRIVE_SERVICE_ACCOUNT_JSON`
-and `GDRIVE_CONTEXT_FOLDER_ID` repository secrets are configured. It commits only `published/` JSON
+artifact, and can optionally copy the same zip to Google Drive when `GDRIVE_RCLONE_CONFIG` is
+configured. A service-account fallback is supported for Shared Drive/Workspace setups, but normal
+personal My Drive folders should use OAuth-backed `rclone` because service accounts do not have
+personal storage quota. Drive backup is non-blocking. The workflow commits only `published/` JSON
 files to `main`.
 
 A separate CI workflow runs `python -m ruff check .` and the clean-checkout pytest suite on code

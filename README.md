@@ -439,14 +439,28 @@ training data from this point forward, not for backfilling old live injury/news 
 ### 6B. Optional Google Drive Corpus Backup
 
 The publish workflow can also copy each zipped context-store bundle to Google Drive. To enable it,
-create a Google Cloud service account, share a Drive folder with that service-account email, then add
-these GitHub Actions repository secrets:
+use one of these modes.
+
+Recommended for a normal personal Google Drive account:
+
+- Create an `rclone` Google Drive remote named `gdrive` on your local machine with OAuth login.
+- Add the destination folder as `root_folder_id` in that remote config, or accept uploads to the
+  Drive root.
+- Add one GitHub Actions repository secret:
+  - `GDRIVE_RCLONE_CONFIG` - the full `[gdrive]` block from your local `rclone.conf`
+
+Service-account mode is only recommended for a Google Workspace Shared Drive or another setup where
+the service account has usable storage ownership. Normal personal "My Drive" folders often fail with
+`storageQuotaExceeded` because service accounts do not have personal storage quota. For this mode,
+create a Google Cloud service account, share the destination Drive/Shared Drive folder with that
+service-account email, then add:
 
 - `GDRIVE_SERVICE_ACCOUNT_JSON` - the full service-account JSON key
 - `GDRIVE_CONTEXT_FOLDER_ID` - the destination Google Drive folder id from the folder URL
 
-If either secret is missing, the workflow skips Drive upload and still publishes normally. The
-canonical uploaded bundle is the zipped DuckDB/Parquet context store, not a single CSV.
+If Drive backup is not configured or fails, the workflow still publishes normally and keeps the
+GitHub Actions artifact backup. The canonical uploaded bundle is the zipped DuckDB/Parquet context
+store, not a single CSV.
 
 ### 7. Launch the API Service
 
