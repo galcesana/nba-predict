@@ -584,8 +584,9 @@ Live inference emits `home_win_probability` from `nextgen_full_value_tuned_v2`, 
 
 The scheduled GitHub Actions publisher uses `python -m src.app.publish_today --nextgen-shadow`, so
 tracked deployment slates refresh both the promoted production forecast and the comparison fields.
-It runs twice per day at `15:05 UTC` and `22:05 UTC`; the later refresh is designed to capture
-more submitted official injury-report rows before the evening games.
+It publishes once per day at `07:00 Asia/Jerusalem`. Because GitHub cron is UTC-only, the workflow
+uses two UTC cron triggers plus an Israel-time gate so daylight saving changes do not shift the
+intended local publish time.
 
 Successful scheduled/manual publish jobs package the generated `data/context_store/` DuckDB/Parquet
 bundle as a zip and upload it as a GitHub Actions artifact. If `GDRIVE_SERVICE_ACCOUNT_JSON` and

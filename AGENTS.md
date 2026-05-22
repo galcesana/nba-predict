@@ -145,7 +145,8 @@ so those feature changes force rebuilds.
 
 The scheduled GitHub Actions publisher runs `python -m src.app.publish_today --nextgen-shadow`, so
 the deployed slate refreshes production probabilities and `Model Lab` baseline comparisons together.
-It runs at `15:05 UTC` and `22:05 UTC` daily; the second run is an injury-report refresh pass. Each
+It publishes once per day at `07:00 Asia/Jerusalem`; the workflow uses two UTC cron triggers plus an
+Israel-time gate so daylight saving changes do not shift the intended local publish time. Each
 successful publish uploads the generated `data/context_store/` DuckDB/Parquet bundle as a workflow
 artifact, and can optionally copy the same zip to Google Drive when `GDRIVE_SERVICE_ACCOUNT_JSON`
 and `GDRIVE_CONTEXT_FOLDER_ID` repository secrets are configured. It commits only `published/` JSON
