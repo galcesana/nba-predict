@@ -234,13 +234,15 @@ class TestProjectFiles:
         """.env.example exists at project root."""
         assert (_project_root() / ".env.example").exists()
 
-    def test_publish_workflow_has_morning_and_evening_refreshes(self):
-        """The deployed publisher should refresh once early and once after injury reports."""
+    def test_publish_workflow_runs_at_israel_morning(self):
+        """The deployed publisher should run once per day at 07:00 Israel time."""
         workflow = _project_root() / ".github" / "workflows" / "publish_daily.yml"
         text = workflow.read_text(encoding="utf-8")
 
-        assert 'cron: "5 15 * * *"' in text
-        assert 'cron: "5 22 * * *"' in text
+        assert 'cron: "0 4 * * *"' in text
+        assert 'cron: "0 5 * * *"' in text
+        assert 'ZoneInfo("Asia/Jerusalem")' in text
+        assert "local_time.hour == 7" in text
         assert "python -m src.app.publish_today --nextgen-shadow" in text
 
     def test_ci_workflow_runs_lint_and_tests(self):
